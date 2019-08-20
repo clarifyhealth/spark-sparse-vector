@@ -3,15 +3,12 @@ import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.sql.api.java.UDF1
 import scala.collection.mutable
 import org.apache.spark.ml.linalg.Vectors
+import org.apache.spark.sql.api.java.UDF2
 
-class SparseVectorAdd extends UDF1[SparseVector, SparseVector] {
+class SparseVectorAdd extends UDF2[SparseVector, SparseVector, SparseVector] {
 
-  override def call(v1: SparseVector): SparseVector = {
-
-    Option(v1) match {
-      case Some(v1) => sparse_vector_add(v1, v1)
-      case None     => new SparseVector(3, Array(0), Array(0.1))
-    }
+  override def call(v1: SparseVector, v2: SparseVector): SparseVector = {
+    sparse_vector_add(v1, v2)
   }
 
   def sparse_vector_add(v1: SparseVector, v2: SparseVector): SparseVector = {

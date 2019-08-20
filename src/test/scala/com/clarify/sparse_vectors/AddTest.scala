@@ -36,7 +36,7 @@ class AddTest extends QueryTest with SparkSessionTestWrapper {
 
     spark.udf.register("sparse_vector_add", add_function)
 
-    val out_df = spark.sql("select sparse_vector_add(input_col) from my_table2")
+    val out_df = spark.sql("select sparse_vector_add(input_col, input_col) from my_table2")
 
     // checkAnswer(out_df.selectExpr("count"), Seq(Row(1), Row(2)))
 
