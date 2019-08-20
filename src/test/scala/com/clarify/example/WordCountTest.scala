@@ -7,7 +7,7 @@ import com.clarify.sparse_vectors.SparkSessionTestWrapper
 
 class WordCountTest extends QueryTest with SparkSessionTestWrapper {
 
-  test("word count") {
+  ignore("word count") {
     spark.sharedState.cacheManager.clearCache()
     val data = List(Row("Hello this is my favourite test"),
       Row("This is cool"),

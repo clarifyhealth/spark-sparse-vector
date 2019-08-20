@@ -8,7 +8,13 @@ import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 
 class AddTest extends QueryTest with SparkSessionTestWrapper {
 
-  test("add") {
+  test("add simple") {
+    val v1 = new SparseVector(3, Array(0), Array(0.1))
+    val v2 = new SparseVector(3, Array(0), Array(0.1))
+    val v3 = new SparseVectorAdd().sparse_vector_add(v1, v2)
+    print(v3)
+  }
+  test ("add") {
     spark.sharedState.cacheManager.clearCache()
 
     val data = List(Row(new SparseVector(3, Array(0), Array(0.1))),
@@ -39,6 +45,7 @@ class AddTest extends QueryTest with SparkSessionTestWrapper {
     // assert(6 == df.count())
 
   }
+
 
 }
 
