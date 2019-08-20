@@ -6,11 +6,11 @@ import org.apache.spark.sql.{QueryTest, Row}
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 
-class AddTest extends QueryTest with SharedSparkSession {
+class AddTest extends QueryTest with SparkSessionTestWrapper {
 
   test("add") {
     spark.sharedState.cacheManager.clearCache()
-    
+
     val data = List(Row(new SparseVector(3, Array(0), Array(0.1))),
       Row(new SparseVector(3, Array(0), Array(0.1))),
       Row(new SparseVector(3, Array(0), Array(0.1))))
