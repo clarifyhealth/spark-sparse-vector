@@ -20,3 +20,5 @@ project/plugins/project/
 spark-sparse-vector.iml
 
 .metals/
+.bloop/
+

@@ -4,7 +4,7 @@ import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.sql.{QueryTest, Row}
 
-class WordCountTest extends QueryTest with SharedSparkSession {
+/* class WordCountTest extends QueryTest with SharedSparkSession {
 
   test("word count") {
 
@@ -40,5 +40,5 @@ class WordCountTest extends QueryTest with SharedSparkSession {
 
   }
 
-}
+} */
 

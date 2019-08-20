@@ -15,9 +15,11 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % Provided,
   "org.apache.spark" %% "spark-sql" % sparkVersion % Provided,
   "org.apache.spark" %% "spark-catalyst" % sparkVersion % Provided,
+  "org.apache.spark" %% "spark-mllib" % sparkVersion % Provided,  
   "org.apache.spark" %% "spark-core" % sparkVersion % "test" classifier "tests",
   "org.apache.spark" %% "spark-sql" % sparkVersion % "test" classifier "tests",
   "org.apache.spark" %% "spark-catalyst" % sparkVersion %"test" classifier "tests",
+  "org.apache.spark" %% "spark-mllib" % sparkVersion %"test" classifier "tests",
   "org.scalatest" %% "scalatest" % "3.0.8" % Test,
   "org.scalactic" %% "scalactic" % "3.0.8" % Test
 )
