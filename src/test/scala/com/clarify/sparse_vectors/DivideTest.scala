@@ -5,22 +5,30 @@ import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.sql.{QueryTest, Row}
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.scalactic.TolerantNumerics
 
 class DivideTest extends QueryTest with SparkSessionTestWrapper {
 
-  ignore("divide simple") {
-    val v1 = new SparseVector(3, Array(0), Array(0.6))
-    val v2 = new SparseVector(3, Array(0), Array(0.2))
+  test("divide simple") {
+    val v1 = new SparseVector(3, Array(0), Array(6))
+    val v2 = new SparseVector(3, Array(0), Array(2))
     val v3 = new SparseVectorDivide().sparse_vector_divide(v1, v2)
-    assert(v3 == new SparseVector(3, Array(0), Array(0.3)))
+    assert(v3 === new SparseVector(3, Array(0), Array(3)))
   }
   test("divide by other vectors") {
     spark.sharedState.cacheManager.clearCache()
 
     val data = List(
-      Row(new SparseVector(3, Array(0, 2), Array(0.1, 0.2)), new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
-      Row(new SparseVector(3, Array(0), Array(0.1)), new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
-      Row(new SparseVector(3, Array(0,1), Array(0.1, 0.1)), new SparseVector(3, Array(0, 2), Array(0.1, 0.5)))
+      Row(
+        new SparseVector(3, Array(0, 2), Array(6, 16)), new SparseVector(3, Array(0, 2), Array(3, 2))
+      ),
+      Row(
+        new SparseVector(3, Array(0), Array(8)), new SparseVector(3, Array(0, 2), Array(2, 3))
+      ),
+      Row(
+        new SparseVector(3, Array(0, 1), Array(6, 16)), new SparseVector(3, Array(0), Array(2))
+        // [6,16,0] / [2, 0, 0] = [3, Infinity ]
+      )
     )
 
     val fields = List(
@@ -33,24 +41,24 @@ class DivideTest extends QueryTest with SparkSessionTestWrapper {
 
     df.createOrReplaceTempView("my_table2")
 
-    df.show()
+    df.show(truncate = false)
 
-    val add_function = new SparseVectorAdd().call _
+    val add_function = new SparseVectorDivide().call _
 
-    spark.udf.register("sparse_vector_add", add_function)
+    spark.udf.register("sparse_vector_divide", add_function)
 
     val out_df = spark.sql(
-      "select sparse_vector_add(v1, v2) as result from my_table2"
+      "select sparse_vector_divide(v1, v2) as result from my_table2"
     )
 
-    out_df.show()
-    
+    out_df.show(truncate = false)
+
     checkAnswer(
       out_df.selectExpr("result"),
       Seq(
-        Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.4))),
-        Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.2))),
-        Row(new SparseVector(3, Array(0,1,2), Array(0.2, 0.1, 0.5)))
+        Row(new SparseVector(3, Array(0, 2), Array(2, 8))),
+        Row(new SparseVector(3, Array(0), Array(4))),
+        Row(new SparseVector(3, Array(0, 1), Array(3, Double.PositiveInfinity)))
       )
     )
     assert(3 == out_df.count())
