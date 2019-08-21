@@ -27,7 +27,7 @@ class SparseVectorSubtract extends UDF2[SparseVector, SparseVector, SparseVector
       val index = v2.indices(i)
       values(index) =
         if (values.contains(index)) values(index) - v2.values(i)
-        else v2.values(i)
+        else 0 - v2.values(i)
     }
     return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
   }
