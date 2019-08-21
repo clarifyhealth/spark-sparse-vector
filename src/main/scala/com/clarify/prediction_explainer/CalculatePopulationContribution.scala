@@ -47,7 +47,7 @@ class CalculatePopulationContribution
       val feature_tuple = feature_list.filter(x => x._1 == index).head
       val base_feature_name = feature_tuple._2
       val related_feature_indices =
-        feature_list.filter(x => x._2 == base_feature_name).map(x => x._1)
+        feature_list.filter(x => x._3 == base_feature_name).map(x => x._1)
 
       var population_log: Double = 0
       for (j <- 0 until (v2.indices.size)) {
@@ -63,8 +63,8 @@ class CalculatePopulationContribution
       if (v1.indices.contains(index) == false) {
         // find the feature's base feature name in feature_list
         val feature_tuple = feature_list.filter(x => x._1 == index).head
-        val feature_name = feature_tuple._1
-        val base_feature_name = feature_tuple._2
+        val feature_name = feature_tuple._2
+        val base_feature_name = feature_tuple._3
         if (feature_name == base_feature_name) { // not an OHE
           values(v2.indices(j)) = v2.values(j)
         }
