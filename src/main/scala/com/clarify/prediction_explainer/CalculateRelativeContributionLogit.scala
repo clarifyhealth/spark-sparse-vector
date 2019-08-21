@@ -60,6 +60,7 @@ class CalculateRelativeContributionLogit
     val one_plus_eBX_over_one_plus_eBx: Double = Math.pow((one_plus_e_sum_BX / one_plus_e_sum_Bx), (1 / number_features))
     // multiply all values with one_plus_eBX_over_one_plus_eBx
     for ((k,v) <- values) values(k) = values(k) * one_plus_eBX_over_one_plus_eBx
-    return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
+    
+    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

@@ -36,6 +36,6 @@ class SparseVectorExponentDivide
       val index = v2.indices(i)
       values(index) = 1 / Math.exp(v2.values(i))
     }
-    return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
+    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

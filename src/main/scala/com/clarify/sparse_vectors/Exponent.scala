@@ -21,6 +21,6 @@ class SparseVectorExponent extends UDF1[SparseVector, SparseVector] {
       val index = v1.indices(i)
       values(index) = Math.exp(v1.values(i))
     }
-    return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
+    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

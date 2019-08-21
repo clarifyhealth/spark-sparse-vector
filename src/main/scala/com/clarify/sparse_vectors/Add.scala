@@ -29,6 +29,6 @@ class SparseVectorAdd extends UDF2[SparseVector, SparseVector, SparseVector] {
         if (values.contains(index)) values(index) + v2.values(i)
         else v2.values(i)
     }
-    return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
+    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

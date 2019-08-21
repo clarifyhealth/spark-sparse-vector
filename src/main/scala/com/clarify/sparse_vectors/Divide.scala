@@ -32,6 +32,6 @@ class SparseVectorDivide
       }
       values(index) = v1.values(i) / division_factor
     }
-    return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
+    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

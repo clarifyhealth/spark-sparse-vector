@@ -71,6 +71,6 @@ class CalculatePopulationContribution
       }
     }
 
-    return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
+    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

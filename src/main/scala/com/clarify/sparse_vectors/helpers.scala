@@ -26,4 +26,10 @@ object Helpers {
   ): String = {
     feature_list.filter(x => x._1 == index).head._2
   }
+
+  def remove_zeros(
+    values: scala.collection.mutable.Map[Int, Double]
+  ): scala.collection.mutable.Map[Int, Double] = {
+    values.filter(v => v._2 != 0)
+  }
 }
