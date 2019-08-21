@@ -7,14 +7,14 @@ import org.apache.spark.sql.api.java.UDF2
 import scala.collection.immutable.TreeMap
 import scala.util.control.Breaks._
 
-class SparseVectorDivide
+class SparseVectorExponentDivide
     extends UDF2[SparseVector, SparseVector, SparseVector] {
 
   override def call(v1: SparseVector, v2: SparseVector): SparseVector = {
-    sparse_vector_divide(v1, v2)
+    sparse_vector_exponent_divide(v1, v2)
   }
 
-  def sparse_vector_divide(
+  def sparse_vector_exponent_divide(
       v1: SparseVector,
       v2: SparseVector
   ): SparseVector = {
@@ -30,7 +30,11 @@ class SparseVectorDivide
           break
         }
       }
-      values(index) = v1.values(i) / division_factor
+      values(index) = Math.exp(v1.values(i)) / Math.exp(division_factor)
+    }
+    for (i <- 0 until (v2.indices.size)) {
+      val index = v2.indices(i)
+      values(index) = 1 / Math.exp(v2.values(i))
     }
     return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
   }
