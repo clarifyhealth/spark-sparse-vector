@@ -4,6 +4,7 @@ import org.apache.spark.sql.api.java.UDF1
 import scala.collection.mutable
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.sql.api.java.UDF2
+import scala.collection.immutable.TreeMap
 
 class SparseVectorAdd extends UDF2[SparseVector, SparseVector, SparseVector] {
 
@@ -28,6 +29,6 @@ class SparseVectorAdd extends UDF2[SparseVector, SparseVector, SparseVector] {
         if (values.contains(index)) values(index) + v2.values(i)
         else v2.values(i)
     }
-    return new SparseVector(v1.size, values.keys.toArray, values.values.toArray)
+    return Vectors.sparse(v1.size, values.toSeq).asInstanceOf[SparseVector]
   }
 }

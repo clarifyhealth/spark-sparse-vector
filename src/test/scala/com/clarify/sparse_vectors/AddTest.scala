@@ -17,7 +17,7 @@ class AddTest extends QueryTest with SparkSessionTestWrapper {
   test ("add") {
     spark.sharedState.cacheManager.clearCache()
 
-    val data = List(Row(new SparseVector(3, Array(0), Array(0.1))),
+    val data = List(Row(new SparseVector(3, Array(0,2), Array(0.1, 0.2))),
       Row(new SparseVector(3, Array(0), Array(0.1))),
       Row(new SparseVector(3, Array(0), Array(0.1))))
 

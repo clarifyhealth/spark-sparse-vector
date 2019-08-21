@@ -2,7 +2,7 @@ name := "spark-sparse-vector"
 
 version := "0.1"
 
-scalaVersion := "2.11.12"
+scalaVersion := "2.12.9"
 
 val sparkVersion = "2.4.3"
 
