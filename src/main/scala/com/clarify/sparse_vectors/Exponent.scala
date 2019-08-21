@@ -3,20 +3,16 @@ import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.sql.api.java.UDF1
 import scala.collection.mutable
 import org.apache.spark.ml.linalg.Vectors
-import org.apache.spark.sql.api.java.UDF2
-import scala.collection.immutable.TreeMap
 import scala.util.control.Breaks._
 
-class SparseVectorExponent
-    extends UDF2[SparseVector, SparseVector, SparseVector] {
+class SparseVectorExponent extends UDF1[SparseVector, SparseVector] {
 
-  override def call(v1: SparseVector, v2: SparseVector): SparseVector = {
-    sparse_vector_exponent(v1, v2)
+  override def call(v1: SparseVector): SparseVector = {
+    sparse_vector_exponent(v1)
   }
 
   def sparse_vector_exponent(
-      v1: SparseVector,
-      v2: SparseVector
+      v1: SparseVector
   ): SparseVector = {
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
