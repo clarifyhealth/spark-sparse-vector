@@ -7,7 +7,7 @@ import scala.util.control.Breaks._
 import org.apache.spark.sql.api.java.UDF4
 import scala.util.control.Breaks._
 
-class GetRelativeContributionLogit
+class CalculateRelativeContributionLogit
     extends UDF4[SparseVector, SparseVector, Double, Double, SparseVector] {
 
   override def call(
