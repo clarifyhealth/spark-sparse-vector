@@ -14,15 +14,16 @@ class AddTest extends QueryTest with SparkSessionTestWrapper {
     val v3 = new SparseVectorAdd().sparse_vector_add(v1, v2)
     print(v3)
   }
-  test ("add") {
+  test("add") {
     spark.sharedState.cacheManager.clearCache()
 
-    val data = List(Row(new SparseVector(3, Array(0,2), Array(0.1, 0.2))),
+    val data = List(
+      Row(new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
       Row(new SparseVector(3, Array(0), Array(0.1))),
-      Row(new SparseVector(3, Array(0), Array(0.1))))
+      Row(new SparseVector(3, Array(0), Array(0.1)))
+    )
 
-    val fields = List(
-      StructField("input_col", VectorType, nullable = false))
+    val fields = List(StructField("input_col", VectorType, nullable = false))
 
     val data_rdd = spark.sparkContext.makeRDD(data)
 
@@ -36,16 +37,24 @@ class AddTest extends QueryTest with SparkSessionTestWrapper {
 
     spark.udf.register("sparse_vector_add", add_function)
 
-    val out_df = spark.sql("select sparse_vector_add(input_col, input_col) from my_table2")
-
-    // checkAnswer(out_df.selectExpr("count"), Seq(Row(1), Row(2)))
+    val out_df = spark.sql(
+      "select sparse_vector_add(input_col, input_col) as result from my_table2"
+    )
 
     out_df.show()
+    
+    checkAnswer(
+      out_df.selectExpr("result"),
+      Seq(
+        Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.4))),
+        Row(new SparseVector(3, Array(0), Array(0.2))),
+        Row(new SparseVector(3, Array(0), Array(0.2)))
+      )
+    )
+
 
     // assert(6 == df.count())
 
   }
 
-
 }
-
