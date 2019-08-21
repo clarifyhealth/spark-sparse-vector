@@ -20,4 +20,10 @@ object Helpers {
     return default_value
   }
 
+  def get_feature_name(
+      feature_list: Seq[(Int, String, String)],
+      index: Int
+  ): String = {
+    feature_list.filter(x => x._1 == index).head._2
+  }
 }
