@@ -6,14 +6,18 @@ import scala.util.control.Breaks._
 import org.apache.spark.sql.api.java.UDF2
 import org.apache.spark.sql.api.java.UDF3
 
-class SparseVectorGetByIndex extends UDF3[SparseVector, Int, Double, Double] {
-
-  override def call(
+object Helpers {
+  def sparse_vector_get_float_by_index(
       v1: SparseVector,
-      index: Int,
+      index_to_find: Int,
       default_value: Double
   ): Double = {
-    Helpers.sparse_vector_get_float_by_index(v1, index, default_value)
+    for (i <- 0 until (v1.indices.size)) {
+      val index = v1.indices(i)
+      if (index == index_to_find)
+        return v1.values(i)
+    }
+    return default_value
   }
 
 }
