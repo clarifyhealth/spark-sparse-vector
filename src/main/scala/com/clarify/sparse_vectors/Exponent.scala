@@ -1,9 +1,7 @@
 package com.clarify.sparse_vectors
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
+
+import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF1
-import scala.collection.mutable
-import org.apache.spark.ml.linalg.Vectors
-import scala.util.control.Breaks._
 
 class SparseVectorExponent extends UDF1[SparseVector, SparseVector] {
 
@@ -17,10 +15,10 @@ class SparseVectorExponent extends UDF1[SparseVector, SparseVector] {
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
     // Add values from v1
-    for (i <- 0 until (v1.indices.size)) {
+    for (i <- 0 until v1.indices.length) {
       val index = v1.indices(i)
       values(index) = Math.exp(v1.values(i))
     }
-    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
+    Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }
