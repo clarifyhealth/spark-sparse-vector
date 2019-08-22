@@ -3,19 +3,17 @@ package com.clarify.sparse_vectors
 import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF2
 
-import scala.util.control.Breaks._
-
 class ExponentDivide
-    extends UDF2[SparseVector, SparseVector, SparseVector] {
+  extends UDF2[SparseVector, SparseVector, SparseVector] {
 
   override def call(v1: SparseVector, v2: SparseVector): SparseVector = {
     sparse_vector_exponent_divide(v1, v2)
   }
 
   def sparse_vector_exponent_divide(
-      v1: SparseVector,
-      v2: SparseVector
-  ): SparseVector = {
+                                     v1: SparseVector,
+                                     v2: SparseVector
+                                   ): SparseVector = {
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
     // Add values from v1
@@ -25,15 +23,16 @@ class ExponentDivide
       for (j <- 0 until (v2.indices.size)) {
         if (v2.indices(j) == v1.indices(i)) {
           division_factor = v2.values(j)
-          break
         }
       }
       values(index) = Math.exp(v1.values(i)) / Math.exp(division_factor)
     }
-    for (i <- 0 until (v2.indices.size)) {
-      val index = v2.indices(i)
-      values(index) = 1 / Math.exp(v2.values(i))
+    for (j <- 0 until (v2.indices.size)) {
+      val index = v2.indices(j)
+      if (v1.indices.contains(v2.indices(j)) == false) {
+        values(index) = 1 / Math.exp(v2.values(j))
+      }
     }
-    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
+    Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }
