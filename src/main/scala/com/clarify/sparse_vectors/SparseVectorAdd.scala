@@ -1,10 +1,7 @@
 package com.clarify.sparse_vectors
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
-import org.apache.spark.sql.api.java.UDF1
-import scala.collection.mutable
-import org.apache.spark.ml.linalg.Vectors
+
+import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF2
-import scala.collection.immutable.TreeMap
 
 class SparseVectorAdd extends UDF2[SparseVector, SparseVector, SparseVector] {
 
