@@ -3,8 +3,6 @@ package com.clarify.sparse_vectors
 import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF2
 
-import scala.util.control.Breaks._
-
 class Multiply
     extends UDF2[SparseVector, SparseVector, SparseVector] {
 
@@ -25,7 +23,6 @@ class Multiply
       for (j <- 0 until (v2.indices.size)) {
         if (v2.indices(j) == v1.indices(i)) {
           multiply_factor = v2.values(j)
-          break
         }
       }
       values(index) = v1.values(i) * multiply_factor
