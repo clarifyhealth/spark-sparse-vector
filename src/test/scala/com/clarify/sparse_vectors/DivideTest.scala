@@ -1,18 +1,16 @@
 package com.clarify.sparse_vectors
 
-import org.apache.spark.sql.test.SharedSparkSession
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.{QueryTest, Row}
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
-import org.scalactic.TolerantNumerics
+import org.apache.spark.ml.linalg.SparseVector
+import org.apache.spark.sql.types.{StructField, StructType}
+import org.apache.spark.sql.{QueryTest, Row}
 
 class DivideTest extends QueryTest with SparkSessionTestWrapper {
 
   test("divide simple") {
     val v1 = new SparseVector(3, Array(0), Array(6))
     val v2 = new SparseVector(3, Array(0), Array(2))
-    val v3 = new SparseVectorDivide().sparse_vector_divide(v1, v2)
+    val v3 = new Divide().sparse_vector_divide(v1, v2)
     assert(v3 === new SparseVector(3, Array(0), Array(3)))
   }
   test("divide by other vectors") {
@@ -43,7 +41,7 @@ class DivideTest extends QueryTest with SparkSessionTestWrapper {
 
     df.show(truncate = false)
 
-    val add_function = new SparseVectorDivide().call _
+    val add_function = new Divide().call _
 
     spark.udf.register("sparse_vector_divide", add_function)
 

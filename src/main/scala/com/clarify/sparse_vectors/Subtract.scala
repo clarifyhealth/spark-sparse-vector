@@ -1,12 +1,9 @@
 package com.clarify.sparse_vectors
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
-import org.apache.spark.sql.api.java.UDF1
-import scala.collection.mutable
-import org.apache.spark.ml.linalg.Vectors
-import org.apache.spark.sql.api.java.UDF2
-import scala.collection.immutable.TreeMap
 
-class SparseVectorSubtract extends UDF2[SparseVector, SparseVector, SparseVector] {
+import org.apache.spark.ml.linalg.{SparseVector, Vectors}
+import org.apache.spark.sql.api.java.UDF2
+
+class Subtract extends UDF2[SparseVector, SparseVector, SparseVector] {
 
   override def call(v1: SparseVector, v2: SparseVector): SparseVector = {
     sparse_vector_subtract(v1, v2)

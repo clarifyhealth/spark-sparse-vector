@@ -1,17 +1,16 @@
 package com.clarify.sparse_vectors
 
-import org.apache.spark.sql.test.SharedSparkSession
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.{QueryTest, Row}
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.SparseVector
+import org.apache.spark.sql.types.{StructField, StructType}
+import org.apache.spark.sql.{QueryTest, Row}
 
 class SubtractTest extends QueryTest with SparkSessionTestWrapper {
 
   test("subtract simple") {
     val v1 = new SparseVector(3, Array(0), Array(0.2))
     val v2 = new SparseVector(3, Array(0), Array(0.1))
-    val v3 = new SparseVectorSubtract().sparse_vector_subtract(v1, v2)
+    val v3 = new Subtract().sparse_vector_subtract(v1, v2)
     assert(v3 == new SparseVector(3, Array(0), Array(0.1)))
   }
   test("subtract with vectors") {
@@ -39,7 +38,7 @@ class SubtractTest extends QueryTest with SparkSessionTestWrapper {
 
     df.show()
 
-    val add_function = new SparseVectorSubtract().call _
+    val add_function = new Subtract().call _
 
     spark.udf.register("sparse_vector_subtract", add_function)
 

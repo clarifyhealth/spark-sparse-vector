@@ -1,16 +1,15 @@
 package com.clarify.sparse_vectors
 
-import org.apache.spark.sql.test.SharedSparkSession
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.{QueryTest, Row}
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.{DenseVector, SparseVector}
+import org.apache.spark.sql.types.{StructField, StructType}
+import org.apache.spark.sql.{QueryTest, Row}
 
 class DenseToSparseTest extends QueryTest with SparkSessionTestWrapper {
 
   test("dense to sparse simple") {
     val v1 = new DenseVector(List(0.0, 1, 3, 0, 6).toArray)
-    val v3 = new DenseVectorToSparse().dense_vector_to_sparse(v1)
+    val v3 = new DenseToSparse().dense_vector_to_sparse(v1)
     assert(v3 == new SparseVector(5, Array(1, 2, 4), Array(1, 3, 6)))
   }
   test("dense to sparse with vectors") {
@@ -42,7 +41,7 @@ class DenseToSparseTest extends QueryTest with SparkSessionTestWrapper {
 
     df.show()
 
-    val add_function = new DenseVectorToSparse().call _
+    val add_function = new DenseToSparse().call _
 
     spark.udf.register("dense_vector_to_sparse", add_function)
 

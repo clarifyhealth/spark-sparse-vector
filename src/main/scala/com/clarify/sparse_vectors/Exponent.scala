@@ -3,7 +3,7 @@ package com.clarify.sparse_vectors
 import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF1
 
-class SparseVectorExponent extends UDF1[SparseVector, SparseVector] {
+class Exponent extends UDF1[SparseVector, SparseVector] {
 
   override def call(v1: SparseVector): SparseVector = {
     sparse_vector_exponent(v1)

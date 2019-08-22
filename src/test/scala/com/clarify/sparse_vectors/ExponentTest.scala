@@ -9,7 +9,7 @@ class ExponentTest extends QueryTest with SparkSessionTestWrapper {
 
   test("exponent simple") {
     val v1 = new SparseVector(3, Array(0), Array(0.1))
-    val v3 = new SparseVectorExponent().sparse_vector_exponent(v1)
+    val v3 = new Exponent().sparse_vector_exponent(v1)
     assert(v3 == new SparseVector(3, Array(0), Array(1.1051709180756477)))
   }
   test("exponent") {
@@ -32,7 +32,7 @@ class ExponentTest extends QueryTest with SparkSessionTestWrapper {
 
     df.show()
 
-    val add_function = new SparseVectorExponent().call _
+    val add_function = new Exponent().call _
 
     spark.udf.register("sparse_vector_exponent", add_function)
 

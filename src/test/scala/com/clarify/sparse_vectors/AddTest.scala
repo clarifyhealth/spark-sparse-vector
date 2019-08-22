@@ -10,7 +10,7 @@ class AddTest extends QueryTest with SparkSessionTestWrapper {
   test("add simple") {
     val v1 = new SparseVector(3, Array(0), Array(0.1))
     val v2 = new SparseVector(3, Array(0), Array(0.1))
-    val v3 = new SparseVectorAdd().sparse_vector_add(v1, v2)
+    val v3 = new Add().sparse_vector_add(v1, v2)
     assert(v3 == new SparseVector(3, Array(0), Array(0.2)))
   }
   test("add to other vectors") {
@@ -34,7 +34,7 @@ class AddTest extends QueryTest with SparkSessionTestWrapper {
 
     df.show()
 
-    val add_function = new SparseVectorAdd().call _
+    val add_function = new Add().call _
 
     spark.udf.register("sparse_vector_add", add_function)
 
