@@ -1,10 +1,6 @@
 package com.clarify.sparse_vectors
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
-import scala.collection.mutable
-import org.apache.spark.ml.linalg.Vectors
-import scala.collection.immutable.TreeMap
-import scala.util.control.Breaks._
-import scala.util.control.Breaks._
+
+import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.sql.api.java.UDF7
 
 class CalculateFeatureImpactFromSparseVectors

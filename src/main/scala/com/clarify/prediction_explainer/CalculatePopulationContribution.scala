@@ -1,76 +1,85 @@
 package com.clarify.sparse_vectors
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
-import scala.collection.mutable
-import org.apache.spark.ml.linalg.Vectors
-import scala.collection.immutable.TreeMap
-import scala.util.control.Breaks._
-import scala.util.control.Breaks._
+
+import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF3
 
 class CalculatePopulationContribution
-    extends UDF3[
-      SparseVector,
-      SparseVector,
-      Seq[(Int, String, String)],
-      SparseVector
-    ] {
+  extends UDF3[
+    SparseVector,
+    SparseVector,
+    Seq[(Int, String, String)],
+    SparseVector
+  ] {
 
   override def call(
-      v1: SparseVector,
-      v2: SparseVector,
-      feature_list: Seq[(Int, String, String)]
-  ): SparseVector = {
-    sparse_vector_calculate_population_contribution(v1, v2, feature_list)
+                     v1: SparseVector,
+                     v2: SparseVector,
+                     feature_list: Seq[(Int, String, String)]
+                   ): SparseVector = {
+    sparse_vector_calculate_population_contribution_log_odds(v1, v2, feature_list)
   }
 
-  def sparse_vector_calculate_population_contribution(
-      v1: SparseVector,
-      v2: SparseVector,
-      feature_list: Seq[(Int, String, String)]
-  ): SparseVector = {
-    // Calculates the relative contribution of each element in a vector
+  def sparse_vector_calculate_population_contribution_log_odds(
+                                                                ccg_log_odds_vector: SparseVector,
+                                                                pop_log_odds_vector: SparseVector,
+                                                                feature_list: Seq[(Int, String, String)]
+                                                              ): SparseVector = {
+    // Calculates the population log odds for a ccg
     // if x1 and x2 are one hot encoded values of the same feature
-    //     uses the formula e^B1x1/(e^B1X1*e^B2X2)
+    //     uses the formula B1X1 + B2X2
     // else
-    //     uses the formula e^B1x1/(e^B1X1)
-    // :param v1: current row's feature vector
-    // :param v2: population feature vector
-    // :param feature_list:
+    //     uses the formula B1X1
+    // :param v1: current row's feature contribution vector
+    //        [ 0.1, 0.2, 0.3 ] means B1x1 = 0.1, B2x2 = 0.2, B2x2 = 0.3
+    // :param v2: population feature contribution vector
+    //        [0.1, 0.2, 0.3] means B1X1 = 0.1, B2X2 = 0.2, B3X3 = 0.3
+    // :param feature_list: list of feature indices (feature_index, feature_name, ohe_feature_name)
 
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
 
     // first calculate contribution for features in v1
-    for (i <- 0 until (v1.indices.size)) {
+    for (i <- 0 until (ccg_log_odds_vector.indices.size)) {
       // find the appropriate index on the other side
-      val index = v1.indices(i)
-      val feature_tuple = feature_list.filter(x => x._1 == index).head
-      val base_feature_name = feature_tuple._2
-      val related_feature_indices =
-        feature_list.filter(x => x._3 == base_feature_name).map(x => x._1)
+      val index = ccg_log_odds_vector.indices(i)
 
-      var population_log: Double = 0
-      for (j <- 0 until (v2.indices.size)) {
-        if (related_feature_indices.contains(v2.indices(j))) {
-          population_log = population_log + v2.values(j)
-        }
-      }
-      values(v1.indices(i)) = population_log
+      var population_log_odds: Double = get_population_log_odds_for_feature(pop_log_odds_vector, feature_list, index)
+      values(ccg_log_odds_vector.indices(i)) = population_log_odds
     }
     // now add population contribution for features that are not in the ccg vector
-    for (j <- 0 until (v2.indices.size)) {
-      val index = v2.indices(j)
-      if (v1.indices.contains(index) == false) {
-        // find the feature's base feature name in feature_list
-        val feature_tuple = feature_list.filter(x => x._1 == index).head
-        val feature_name = feature_tuple._2
-        val base_feature_name = feature_tuple._3
-        if (feature_name == base_feature_name) { // not an OHE
-          values(v2.indices(j)) = v2.values(j)
+    //    except for the OHE features since they are summed up above
+    for (j <- 0 until (pop_log_odds_vector.indices.size)) {
+      val index = pop_log_odds_vector.indices(j)
+      if (ccg_log_odds_vector.indices.contains(index) == false) {
+        // feature is not already in the ccg vector
+        val (feature_index, feature_name, ohe_feature_name) = feature_list.filter(x => x._1 == index).head
+        if (feature_name == ohe_feature_name) { // not an OHE
+          values(pop_log_odds_vector.indices(j)) = pop_log_odds_vector.values(j)
         }
       }
     }
 
-    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
+    return Vectors.sparse(ccg_log_odds_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
+
+  def get_population_log_odds_for_feature(pop_log_odds_vector: SparseVector, feature_list: Seq[(Int, String, String)], index: Int): Double = {
+    // find the corresponding entry in feature_list for this feature
+    val (_, _, ohe_feature_name) = feature_list.filter(x => x._1 == index).head
+    // get OHE (one hot encoded) feature name. In case of OHE this is the feature name for all OHE values.
+    //    otherwise it is the same as the feature name
+    // find all features related to this ohe feature
+    val related_feature_indices =
+    feature_list.filter(x => x._3 == ohe_feature_name).map(x => x._1)
+
+    // calculate the population log odds by adding Bjxj of all the related features
+    var population_log_odds: Double = 0
+    for (j <- 0 until (pop_log_odds_vector.indices.size)) {
+      if (related_feature_indices.contains(pop_log_odds_vector.indices(j))) {
+        population_log_odds = population_log_odds + pop_log_odds_vector.values(j)
+      }
+    }
+    population_log_odds
+  }
+
+
 }

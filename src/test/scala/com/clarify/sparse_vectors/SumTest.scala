@@ -17,11 +17,11 @@ class SumTest extends QueryTest with SparkSessionTestWrapper {
 
     val data = List(
       Row(new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
-      Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.3))),
+      Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.3)))
     )
 
     val fields = List(
-      StructField("v1", VectorType, nullable = false),
+      StructField("v1", VectorType, nullable = false)
     )
 
     val data_rdd = spark.sparkContext.makeRDD(data)
@@ -46,7 +46,7 @@ class SumTest extends QueryTest with SparkSessionTestWrapper {
       out_df.selectExpr("result"),
       Seq(
         Row(0.30000000000000004),
-        Row(0.5),
+        Row(0.5)
       )
     )
     assert(2 == out_df.count())

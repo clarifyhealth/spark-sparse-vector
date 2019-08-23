@@ -17,11 +17,11 @@ class ExponentTest extends QueryTest with SparkSessionTestWrapper {
 
     val data = List(
       Row(new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
-      Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.1))),
+      Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.1)))
     )
 
     val fields = List(
-      StructField("v1", VectorType, nullable = false),
+      StructField("v1", VectorType, nullable = false)
     )
 
     val data_rdd = spark.sparkContext.makeRDD(data)
@@ -46,7 +46,7 @@ class ExponentTest extends QueryTest with SparkSessionTestWrapper {
       out_df.selectExpr("result"),
       Seq(
         Row(new SparseVector(3, Array(0, 2), Array(1.1051709180756477, 1.2214027581601699))),
-        Row(new SparseVector(3, Array(0, 2), Array(1.2214027581601699, 1.1051709180756477))),
+        Row(new SparseVector(3, Array(0, 2), Array(1.2214027581601699, 1.1051709180756477)))
       )
     )
     assert(2 == out_df.count())
