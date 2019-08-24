@@ -8,12 +8,20 @@ import org.apache.spark.sql.{QueryTest, Row}
 
 class CalculatePopulationContributionTest extends QueryTest with SparkSessionTestWrapper {
 
-  test("get_population_log_odds_for_feature") {
+  test("get population log odds for simple feature") {
     val population_log_odds_vector = new SparseVector(3, Array(0, 1), Array(0.1, 0.2))
     val feature_list: Seq[(Int, String, String)] = Seq((0, "foo", "foo"))
     val contribution: Double = new CalculatePopulationContribution()
       .get_population_log_odds_for_feature(population_log_odds_vector, feature_list, 0)
     assert(contribution == 0.1)
+  }
+
+  test("get population log odds for ohe feature") {
+    val population_log_odds_vector = new SparseVector(3, Array(0, 1), Array(0.2, 0.3))
+    val feature_list: Seq[(Int, String, String)] = Seq((0, "foo", "foo"), (1, "bar", "foo"))
+    val contribution: Double = new CalculatePopulationContribution()
+      .get_population_log_odds_for_feature(population_log_odds_vector, feature_list, 0)
+    assert(contribution == 0.5)
   }
 
   ignore("add simple") {
