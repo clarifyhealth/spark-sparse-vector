@@ -16,6 +16,14 @@ class CalculatePopulationContributionTest extends QueryTest with SparkSessionTes
     assert(contribution == 0.1)
   }
 
+  test("get population log odds for non-ohe feature") {
+    val population_log_odds_vector = new SparseVector(3, Array(0, 1), Array(0.2, 0.3))
+    val feature_list: Seq[(Int, String, String)] = Seq((0, "foo", "foo"), (1, "bar", "bar"))
+    val contribution: Double = new CalculatePopulationContribution()
+      .get_population_log_odds_for_feature(population_log_odds_vector, feature_list, 0)
+    assert(contribution == 0.2)
+  }
+
   test("get population log odds for ohe feature") {
     val population_log_odds_vector = new SparseVector(3, Array(0, 1), Array(0.2, 0.3))
     val feature_list: Seq[(Int, String, String)] = Seq((0, "foo", "foo"), (1, "bar", "foo"))
@@ -24,12 +32,14 @@ class CalculatePopulationContributionTest extends QueryTest with SparkSessionTes
     assert(contribution == 0.5)
   }
 
-  ignore("add simple") {
-    val v1 = new SparseVector(3, Array(0), Array(0.1))
-    val v2 = new SparseVector(3, Array(0), Array(0.1))
-    val feature_list: Seq[(Int, String, String)] = Seq((0, "foo", "foo"))
-    val v3 = new CalculatePopulationContribution().sparse_vector_calculate_population_contribution_log_odds(v1, v2, feature_list)
-    assert(v3 == new SparseVector(3, Array(0), Array(0.2)))
+  test("calculate pop log odds simple") {
+    val ccg_log_odds_vector: SparseVector = new SparseVector(3, Array(0, 1, 2), Array(0.2, 0.3, 0.4))
+    val pop_log_odds_vector: SparseVector = new SparseVector(3, Array(0, 1, 2), Array(0.3, 0.4, 0.5))
+    val feature_list: Seq[(Int, String, String)] = Seq((0, "foo", "foo"), (1, "bar", "foo"), (2, "moo", "moo"))
+
+    val v3 = new CalculatePopulationContribution().sparse_vector_calculate_population_contribution_log_odds(
+      ccg_log_odds_vector, pop_log_odds_vector, feature_list)
+    assert(v3 == new SparseVector(3, Array(0, 1, 2), Array(0.7, 0.7, 0.3)))
   }
   ignore("add to other vectors") {
     spark.sharedState.cacheManager.clearCache()
