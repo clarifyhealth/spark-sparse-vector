@@ -7,13 +7,22 @@ import org.apache.spark.sql.{QueryTest, Row}
 
 class GetByIndexTest extends QueryTest with SparkSessionTestWrapper {
 
-  ignore("get by index") {
+  test("get by index") {
     spark.sharedState.cacheManager.clearCache()
 
     val data = List(
-      Row(new SparseVector(3, Array(0, 2), Array(0.1, 0.2)), new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
-      Row(new SparseVector(3, Array(0), Array(0.1)), new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
-      Row(new SparseVector(3, Array(0, 1), Array(0.1, 0.1)), new SparseVector(3, Array(0, 2), Array(0.1, 0.5)))
+      Row(
+        new SparseVector(3, Array(0, 2), Array(0.1, 0.2)),
+        new SparseVector(3, Array(0, 2), Array(0.1, 0.2))
+      ),
+      Row(
+        new SparseVector(3, Array(0), Array(0.1)),
+        new SparseVector(3, Array(0, 2), Array(0.1, 0.2))
+      ),
+      Row(
+        new SparseVector(3, Array(0, 1), Array(0.1, 0.1)),
+        new SparseVector(3, Array(0, 2), Array(0.1, 0.5))
+      )
     )
 
     val fields = List(
@@ -41,9 +50,15 @@ class GetByIndexTest extends QueryTest with SparkSessionTestWrapper {
     checkAnswer(
       out_df.selectExpr("result"),
       Seq(
-        Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.4))),
-        Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.2))),
-        Row(new SparseVector(3, Array(0, 1, 2), Array(0.2, 0.1, 0.5)))
+        Row(
+          0.2
+        ),
+        Row(
+          0.0
+        ),
+        Row(
+          0.0
+        )
       )
     )
     assert(3 == out_df.count())
