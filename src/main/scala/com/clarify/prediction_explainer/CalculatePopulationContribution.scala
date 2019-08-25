@@ -2,27 +2,38 @@ package com.clarify.sparse_vectors
 
 import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF3
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+
+import scala.collection.mutable
+
+case class FeatureListItem(feature_index: Int, feature_name: String, base_feature_name: String) extends Serializable
 
 class CalculatePopulationContribution
   extends UDF3[
     SparseVector,
     SparseVector,
-    Seq[(Int, String, String)],
+    scala.collection.mutable.WrappedArray[java.lang.Object],
     SparseVector
   ] {
 
   override def call(
                      v1: SparseVector,
                      v2: SparseVector,
-                     feature_list: Seq[(Int, String, String)]
+                     feature_list_native: scala.collection.mutable.WrappedArray[java.lang.Object]
                    ): SparseVector = {
+    val feature_list = feature_list_native.asInstanceOf[mutable.WrappedArray[GenericRowWithSchema]]
+      .toSeq
+      .map(x => FeatureListItem(
+        feature_index = x(0).asInstanceOf[Int],
+        feature_name = x(1).asInstanceOf[String],
+        base_feature_name = x(2).asInstanceOf[String]))
     sparse_vector_calculate_population_contribution_log_odds(v1, v2, feature_list)
   }
 
   def sparse_vector_calculate_population_contribution_log_odds(
                                                                 ccg_log_odds_vector: SparseVector,
                                                                 pop_log_odds_vector: SparseVector,
-                                                                feature_list: Seq[(Int, String, String)]
+                                                                feature_list: Seq[FeatureListItem]
                                                               ): SparseVector = {
     // Calculates the population log odds for a ccg
     // if x1 and x2 are one hot encoded values of the same feature
@@ -52,24 +63,26 @@ class CalculatePopulationContribution
       val index = pop_log_odds_vector.indices(j)
       if (ccg_log_odds_vector.indices.contains(index) == false) {
         // feature is not already in the ccg vector
-        val (feature_index, feature_name, ohe_feature_name) = feature_list.filter(x => x._1 == index).head
-        if (feature_name == ohe_feature_name) { // not an OHE
+        val feature_item = feature_list.filter(x => x.feature_index == index).head
+        if (feature_item.feature_name == feature_item.base_feature_name) { // not an OHE
           values(pop_log_odds_vector.indices(j)) = pop_log_odds_vector.values(j)
         }
       }
     }
 
-    return Vectors.sparse(ccg_log_odds_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
+    Vectors.sparse(ccg_log_odds_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 
-  def get_population_log_odds_for_feature(pop_log_odds_vector: SparseVector, feature_list: Seq[(Int, String, String)], index: Int): Double = {
+  def get_population_log_odds_for_feature(pop_log_odds_vector: SparseVector,
+                                          feature_list: Seq[FeatureListItem], index: Int): Double = {
+    print(feature_list.getClass)
     // find the corresponding entry in feature_list for this feature
-    val (_, _, ohe_feature_name) = feature_list.filter(x => x._1 == index).head
+    val feature_item = feature_list.filter(x => x.feature_index == index).head
     // get OHE (one hot encoded) feature name. In case of OHE this is the feature name for all OHE values.
     //    otherwise it is the same as the feature name
     // find all features related to this ohe feature
     val related_feature_indices =
-    feature_list.filter(x => x._3 == ohe_feature_name).map(x => x._1)
+    feature_list.filter(x => x.base_feature_name == feature_item.base_feature_name).map(x => x.feature_index)
 
     // calculate the population log odds by adding Bjxj of all the related features
     var population_log_odds: Double = 0

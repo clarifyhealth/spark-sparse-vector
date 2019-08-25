@@ -10,5 +10,4 @@ trait SparkSessionTestWrapper {
       .appName("spark test example")
       .getOrCreate()
   }
-
 }
