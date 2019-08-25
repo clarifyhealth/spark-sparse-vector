@@ -16,13 +16,6 @@ object Helpers {
     return default_value
   }
 
-  def get_feature_name(
-                        feature_list: Seq[FeatureListItem],
-                        index: Int
-  ): String = {
-    feature_list.filter(x => x.feature_index == index).head.feature_name
-  }
-
   def remove_zeros(
     values: scala.collection.mutable.Map[Int, Double]
   ): scala.collection.mutable.Map[Int, Double] = {

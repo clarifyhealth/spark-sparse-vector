@@ -101,6 +101,6 @@ class CalculateRelativeContribution
     // multiply all values with one_plus_eBX_over_one_plus_eBx
     for ((k, v) <- values) values(k) = values(k) * one_plus_eBX_over_one_plus_eBx
 
-    return Vectors.sparse(row_log_odds_contribution_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
+    Vectors.sparse(row_log_odds_contribution_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

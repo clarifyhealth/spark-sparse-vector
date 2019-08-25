@@ -3,8 +3,6 @@ package com.clarify.sparse_vectors
 import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF4
 
-case class FeatureListItem(feature_index: Int, feature_name: String, base_feature_name: String) extends Serializable
-
 class CalculatePopulationContribution
   extends UDF4[
     SparseVector,

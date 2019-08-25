@@ -1,10 +1,8 @@
 package com.clarify.sparse_vectors
 
 import org.apache.spark.ml.linalg.SparseVector
-import org.apache.spark.sql.api.java.UDF7
-import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+import org.apache.spark.sql.api.java.UDF8
 
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 case class FeatureImpactItem(
@@ -16,10 +14,11 @@ case class FeatureImpactItem(
                             ) extends Serializable
 
 class CalculateFeatureImpactFromSparseVectors
-    extends UDF7[
+  extends UDF8[
       Double,
       Double,
-      scala.collection.mutable.WrappedArray[java.lang.Object],
+    Seq[String],
+    Seq[String],
       SparseVector,
       SparseVector,
       SparseVector,
@@ -30,25 +29,22 @@ class CalculateFeatureImpactFromSparseVectors
   override def call(
                      outcome: Double,
                      pop_outcome: Double,
-                     feature_list_native: scala.collection.mutable.WrappedArray[java.lang.Object],
+                     feature_list: Seq[String],
+                     ohe_feature_list: Seq[String],
                      pop_contribution: SparseVector,
                      ccg_level_contribution: SparseVector,
                      features: SparseVector,
                      feature_relative_contribution_exp_ohe: SparseVector
                    ): Array[FeatureImpactItem] = {
-    // spark can't serialize custom classes so we have to convert here
-    val feature_list = feature_list_native.asInstanceOf[mutable.WrappedArray[GenericRowWithSchema]]
-      .map(x => FeatureListItem(
-        feature_index = x(0).asInstanceOf[Int],
-        feature_name = x(1).asInstanceOf[String],
-        base_feature_name = x(2).asInstanceOf[String]))
-    get_feature_impact_from_sparse_vectors(outcome, pop_outcome,feature_list, pop_contribution, ccg_level_contribution,features, feature_relative_contribution_exp_ohe)
+    get_feature_impact_from_sparse_vectors(outcome, pop_outcome, feature_list, ohe_feature_list,
+      pop_contribution, ccg_level_contribution, features, feature_relative_contribution_exp_ohe)
   }
 
   def get_feature_impact_from_sparse_vectors(
                                               outcome: Double,
                                               pop_outcome: Double,
-                                              feature_list: Seq[FeatureListItem],
+                                              feature_list: Seq[String],
+                                              ohe_feature_list: Seq[String],
                                               pop_contribution: SparseVector,
                                               ccg_level_contribution: SparseVector,
                                               features: SparseVector,
@@ -62,7 +58,7 @@ class CalculateFeatureImpactFromSparseVectors
     // first calculate contribution for features in v1
     for (i <- 0 until (feature_relative_contribution_exp_ohe.indices.size)) {
       result += (FeatureImpactItem(
-        Helpers.get_feature_name(feature_list, feature_relative_contribution_exp_ohe.indices(i)),
+        feature_list(feature_relative_contribution_exp_ohe.indices(i)),
         Helpers.sparse_vector_get_float_by_index(pop_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
         Helpers.sparse_vector_get_float_by_index(ccg_level_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
         Helpers.sparse_vector_get_float_by_index(features, feature_relative_contribution_exp_ohe.indices(i), 0),

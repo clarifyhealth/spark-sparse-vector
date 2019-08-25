@@ -1,6 +1,6 @@
 package com.clarify.prediction_explainer
 
-import com.clarify.sparse_vectors.{CalculateFeatureImpactFromSparseVectors, FeatureImpactItem, FeatureListItem, SparkSessionTestWrapper}
+import com.clarify.sparse_vectors.{CalculateFeatureImpactFromSparseVectors, FeatureImpactItem, SparkSessionTestWrapper}
 import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.sql.QueryTest
 
@@ -16,12 +16,10 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
     val population_log_odds_vector = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))
     val features = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))
     val feature_relative_contribution_exp_ohe = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))
-    val feature_list: Seq[FeatureListItem] = Seq(
-      FeatureListItem(0, "foo", "foo"),
-      FeatureListItem(1, "bar", "bar")
-    )
+    val feature_list: Seq[String] = Seq("foo", "bar")
+    val ohe_feature_list: Seq[String] = Seq("foo", "bar")
     val contribution = new CalculateFeatureImpactFromSparseVectors()
-      .get_feature_impact_from_sparse_vectors(0.0, 0.0, feature_list, population_log_odds_vector,
+      .get_feature_impact_from_sparse_vectors(0.0, 0.0, feature_list, ohe_feature_list, population_log_odds_vector,
         row_log_odds_contribution_vector, features, feature_relative_contribution_exp_ohe)
     println(contribution)
     println(contribution.size)
@@ -41,7 +39,8 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
       (
         0.0,
         0.0,
-        Seq((0, "foo", "foo"), (1, "bar", "foo"), (2, "zoo", "zoo")),
+        Seq("foo", "bar", "zoo"),
+        Seq("foo", "foo", "zoo"),
         new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
         new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
         new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
@@ -50,7 +49,8 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
       (
         0.0,
         0.0,
-        Seq((0, "foo", "foo"), (1, "bar", "foo"), (2, "zoo", "zoo")),
+        Seq("foo", "bar", "zoo"),
+        Seq("foo", "foo", "zoo"),
         new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
         new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
         new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
@@ -61,6 +61,7 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
       "outcome",
       "pop_outcome",
       "feature_list",
+      "ohe_feature_list",
       "population_log_odds_vector",
       "row_log_odds_contribution_vector",
       "features",
@@ -77,7 +78,7 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
     spark.udf.register("get_feature_impact_from_sparse_vectors", add_function)
 
     val out_df = spark.sql(
-      "select get_feature_impact_from_sparse_vectors(outcome, pop_outcome, feature_list, population_log_odds_vector,row_log_odds_contribution_vector,features,feature_relative_contribution_exp_ohe) as result from my_table2"
+      "select get_feature_impact_from_sparse_vectors(outcome, pop_outcome, feature_list, ohe_feature_list, population_log_odds_vector,row_log_odds_contribution_vector,features,feature_relative_contribution_exp_ohe) as result from my_table2"
     )
 
     out_df.show(truncate = false)
