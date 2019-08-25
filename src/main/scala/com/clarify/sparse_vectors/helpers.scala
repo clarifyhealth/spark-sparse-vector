@@ -8,12 +8,12 @@ object Helpers {
       index_to_find: Int,
       default_value: Double
   ): Double = {
-    for (i <- 0 until (v1.indices.size)) {
+    for (i <- v1.indices.indices) {
       val index = v1.indices(i)
       if (index == index_to_find)
         return v1.values(i)
     }
-    return default_value
+    default_value
   }
 
   def remove_zeros(

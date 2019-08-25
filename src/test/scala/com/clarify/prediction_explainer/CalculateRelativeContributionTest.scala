@@ -10,7 +10,7 @@ class CalculateRelativeContributionTest extends QueryTest with SparkSessionTestW
 
   import spark2.implicits._
 
-  test("get population log odds for simple feature") {
+  test("simple logit") {
     val row_log_odds_contribution_vector = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))
     val population_log_odds_vector = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))
     val row_log_odds = 0.1
@@ -19,6 +19,22 @@ class CalculateRelativeContributionTest extends QueryTest with SparkSessionTestW
     val result: SparseVector = new CalculateRelativeContribution()
       .sparse_calculate_relative_contribution(
         "logit",
+        row_log_odds_contribution_vector,
+        population_log_odds_vector,
+        row_log_odds,
+        pop_log_odds)
+    assert(result == new SparseVector(2, Array(0, 1), Array(1.0, 1.0)))
+  }
+
+  test("simple log") {
+    val row_log_odds_contribution_vector = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))
+    val population_log_odds_vector = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))
+    val row_log_odds = 0.1
+    val pop_log_odds = 0.1
+
+    val result: SparseVector = new CalculateRelativeContribution()
+      .sparse_calculate_relative_contribution(
+        "log",
         row_log_odds_contribution_vector,
         population_log_odds_vector,
         row_log_odds,
