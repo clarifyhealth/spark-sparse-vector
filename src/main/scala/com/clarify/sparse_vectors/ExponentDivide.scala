@@ -27,10 +27,17 @@ class ExponentDivide
       }
       values(index) = Math.exp(v1.values(i)) / Math.exp(division_factor)
     }
+    // now add when value in v1 is zero
     for (j <- v2.indices.indices) {
       val index = v2.indices(j)
       if (!v1.indices.contains(v2.indices(j))) {
         values(index) = 1 / Math.exp(v2.values(j))
+      }
+    }
+    // now find values where both v1 and v2 are zero and set those to 1
+    for (z <- 0 until v1.size) {
+      if (!values.exists(_._1 == z)) {
+        values(z) = 1
       }
     }
     Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]

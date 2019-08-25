@@ -21,7 +21,9 @@ class AddTest extends QueryTest with SparkSessionTestWrapper {
       Row(new SparseVector(3, Array(0), Array(0.1)), new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
       Row(new SparseVector(3, Array(0,1), Array(0.1, 0.1)), new SparseVector(3, Array(0, 2), Array(0.1, 0.5)))
     )
-
+    // [0.1, 0, 0.2 ] + [0.1, 0, 0.2 ] = [0.2, 0. 0.4 ]
+    // [0.1, 0, 0 ] + [0.1, 0, 0.2 ] = [0.2, 0, 0.2]
+    // [0.1, 0.1, 0] + [0.1, 0, 0.5] = [0.2, 0.1, 0.5]
     val fields = List(
       StructField("v1", VectorType, nullable = false),
       StructField("v2", VectorType, nullable = false))

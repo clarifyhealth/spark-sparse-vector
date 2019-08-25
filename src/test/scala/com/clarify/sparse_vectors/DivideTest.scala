@@ -25,9 +25,12 @@ class DivideTest extends QueryTest with SparkSessionTestWrapper {
       ),
       Row(
         new SparseVector(3, Array(0, 1), Array(6, 16)), new SparseVector(3, Array(0), Array(2))
-        // [6,16,0] / [2, 0, 0] = [3, Infinity ]
+
       )
     )
+    // [6,0,16] / [3, 0 , 2] = [2,0,8]
+    // [8, 0,0 ] / [2, 0, 3] = [4, 0, 0]
+    // [6,16,0] / [2, 0, 0] = [3, Infinity ]
 
     val fields = List(
       StructField("v1", VectorType, nullable = false),

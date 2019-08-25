@@ -11,7 +11,7 @@ class ExponentDivideTest extends QueryTest with SparkSessionTestWrapper {
     val v1 = new SparseVector(3, Array(0), Array(0.2))
     val v2 = new SparseVector(3, Array(0), Array(0.1))
     val v3 = new ExponentDivide().sparse_vector_exponent_divide(v1, v2)
-    assert(v3 == new SparseVector(3, Array(0), Array(1.1051709180756475)))
+    assert(v3 == new SparseVector(3, Array(0, 1, 2), Array(1.1051709180756475, 1, 1)))
   }
   test("exponent divide") {
     spark.sharedState.cacheManager.clearCache()
@@ -21,6 +21,9 @@ class ExponentDivideTest extends QueryTest with SparkSessionTestWrapper {
       Row(new SparseVector(3, Array(0), Array(0.1)), new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
       Row(new SparseVector(3, Array(0, 1), Array(0.1, 0.1)), new SparseVector(3, Array(0, 2), Array(0.1, 0.5)))
     )
+    // e^[0.1, 0, 0.2] / e^[0.1, 0, 0.2 ] = [1.1, 1, 1.22] / [1.1, 1, 1.22] = [1, 1, 1]
+    // e^[0.1, 0, 0] / e^[0.1, 0, 0.2 ] = [1.1, 1, 1] / [1.1, 1, 1.22] = [1, 1, 0.82]
+    // e^[0.1, 0.1, 0] / e^[0.1, 0, 0.5 ] = [1.1, 1.1, 1] / [1.1, 1, 1.65] = [1, 1.1, 0.61]
 
     val fields = List(
       StructField("v1", VectorType, nullable = false),
@@ -47,8 +50,8 @@ class ExponentDivideTest extends QueryTest with SparkSessionTestWrapper {
     checkAnswer(
       out_df.selectExpr("result"),
       Seq(
-        Row(new SparseVector(3, Array(0, 2), Array(1.0, 0.8187307530779818))),
-        Row(new SparseVector(3, Array(0, 2), Array(1.0, 1.0))),
+        Row(new SparseVector(3, Array(0, 1, 2), Array(1.0, 1.0, 1.0))),
+        Row(new SparseVector(3, Array(0, 1, 2), Array(1.0, 1.0, 0.8187307530779818))),
         Row(new SparseVector(3, Array(0, 1, 2), Array(1.0, 1.1051709180756477, 0.6065306597126334)))
       )
     )
