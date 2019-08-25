@@ -1,6 +1,6 @@
 package com.clarify.prediction_explainer
 
-import com.clarify.sparse_vectors.{CalculatePopulationContribution, CalculateRelativeContributionLogit, SparkSessionTestWrapper}
+import com.clarify.sparse_vectors.{CalculateRelativeContributionLogit, SparkSessionTestWrapper}
 import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.sql.{QueryTest, Row}
 
@@ -28,30 +28,34 @@ class CalculateRelativeContributionLogitTest extends QueryTest with SparkSession
     spark.sharedState.cacheManager.clearCache()
     val data = Seq(
       (
-        new SparseVector(3, Array(0, 1, 2), Array(0.2, 0.3, 0.4)),
-        new SparseVector(3, Array(0, 1, 2), Array(0.3, 0.4, 0.5)),
-        Seq((0, "foo", "foo"), (1, "bar", "foo"), (2, "zoo", "zoo"))
+        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
+        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
+        0.1,
+        0.1
       ),
       (
-        new SparseVector(3, Array(0, 2), Array(0.2, 0.4)),
-        new SparseVector(3, Array(0, 1, 2), Array(0.3, 0.4, 0.5)),
-        Seq((0, "foo", "foo"), (1, "bar", "foo"), (2, "zoo", "zoo"))
+        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
+        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)),
+        0.1,
+        0.1
       )
     ).toDF()
-    val df = data.toDF("v1", "v2", "feature_list")
-    // df.withColumn("feature_list", df.col("feature_list").cast("array<struct<_1:int,_2:string,_3:string>>"))
+    val df = data.toDF("row_log_odds_contribution_vector",
+      "population_log_odds_vector",
+      "row_log_odds",
+      "pop_log_odds")
 
     df.printSchema()
     df.createOrReplaceTempView("my_table2")
 
     df.show()
 
-    val add_function = new CalculatePopulationContribution().call _
+    val add_function = new CalculateRelativeContributionLogit().call _
 
-    spark.udf.register("sparse_vector_calculate_population_contribution_log_odds", add_function)
+    spark.udf.register("sparse_calculate_relative_contribution_logit", add_function)
 
     val out_df = spark.sql(
-      "select sparse_vector_calculate_population_contribution_log_odds(v1, v2, feature_list) as result from my_table2"
+      "select sparse_calculate_relative_contribution_logit(row_log_odds_contribution_vector, population_log_odds_vector, row_log_odds, pop_log_odds) as result from my_table2"
     )
 
     out_df.show()
@@ -59,8 +63,8 @@ class CalculateRelativeContributionLogitTest extends QueryTest with SparkSession
     checkAnswer(
       out_df.selectExpr("result"),
       Seq(
-        Row(new SparseVector(3, Array(0, 1, 2), Array(0.7, 0.7, 0.5))),
-        Row(new SparseVector(3, Array(0, 2), Array(0.7, 0.5)))
+        Row(new SparseVector(2, Array(0, 1), Array(1.0, 1.0))),
+        Row(new SparseVector(2, Array(0, 1), Array(1.0, 1.0)))
       )
     )
     assert(2 == out_df.count())
