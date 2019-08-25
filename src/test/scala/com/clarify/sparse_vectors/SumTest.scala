@@ -17,9 +17,10 @@ class SumTest extends QueryTest with SparkSessionTestWrapper {
 
     val data = List(
       Row(new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
-      Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.3)))
+      Row(new SparseVector(3, Array(0, 1), Array(0.2, 0.3)))
     )
-
+    // [0.1, 0, 0.2] = 0.3
+    // [0.2, 0.3, 0 ] = 0.5
     val fields = List(
       StructField("v1", VectorType, nullable = false)
     )
