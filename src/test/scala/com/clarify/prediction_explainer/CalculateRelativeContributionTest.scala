@@ -1,10 +1,10 @@
 package com.clarify.prediction_explainer
 
-import com.clarify.sparse_vectors.{CalculateRelativeContributionLogit, SparkSessionTestWrapper}
+import com.clarify.sparse_vectors.{CalculateRelativeContribution, SparkSessionTestWrapper}
 import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.sql.{QueryTest, Row}
 
-class CalculateRelativeContributionLogitTest extends QueryTest with SparkSessionTestWrapper {
+class CalculateRelativeContributionTest extends QueryTest with SparkSessionTestWrapper {
 
   val spark2 = spark
 
@@ -16,8 +16,10 @@ class CalculateRelativeContributionLogitTest extends QueryTest with SparkSession
     val row_log_odds = 0.1
     val pop_log_odds = 0.1
 
-    val result: SparseVector = new CalculateRelativeContributionLogit()
-      .sparse_calculate_relative_contribution_logit(row_log_odds_contribution_vector,
+    val result: SparseVector = new CalculateRelativeContribution()
+      .sparse_calculate_relative_contribution(
+        "logit",
+        row_log_odds_contribution_vector,
         population_log_odds_vector,
         row_log_odds,
         pop_log_odds)
@@ -50,12 +52,12 @@ class CalculateRelativeContributionLogitTest extends QueryTest with SparkSession
 
     df.show()
 
-    val add_function = new CalculateRelativeContributionLogit().call _
+    val add_function = new CalculateRelativeContribution().call _
 
-    spark.udf.register("sparse_calculate_relative_contribution_logit", add_function)
+    spark.udf.register("sparse_calculate_relative_contribution", add_function)
 
     val out_df = spark.sql(
-      "select sparse_calculate_relative_contribution_logit(row_log_odds_contribution_vector, population_log_odds_vector, row_log_odds, pop_log_odds) as result from my_table2"
+      "select sparse_calculate_relative_contribution('logit', row_log_odds_contribution_vector, population_log_odds_vector, row_log_odds, pop_log_odds) as result from my_table2"
     )
 
     out_df.show()
