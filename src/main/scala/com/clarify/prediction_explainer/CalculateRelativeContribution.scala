@@ -1,6 +1,5 @@
 package com.clarify.sparse_vectors
 
-import com.sun.javaws.exceptions.InvalidArgumentException
 import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF5
 
@@ -40,7 +39,7 @@ class CalculateRelativeContribution
         row_log_odds,
         pop_log_odds
       )
-      case _ => throw new InvalidArgumentException(Array("link function is not supported"))
+      case _ => throw new IllegalArgumentException(s"link function [$link] is not supported")
     }
   }
 
