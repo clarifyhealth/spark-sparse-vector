@@ -17,16 +17,16 @@ class Divide
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
     // Add values from v1
-    for (i <- 0 until (v1.indices.size)) {
+    for (i <- v1.indices.indices) {
       val index = v1.indices(i)
       var division_factor: Double = 0
-      for (j <- 0 until (v2.indices.size)) {
+      for (j <- v2.indices.indices) {
         if (v2.indices(j) == v1.indices(i)) {
           division_factor = v2.values(j)
         }
       }
       values(index) = v1.values(i) / division_factor
     }
-    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
+    Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

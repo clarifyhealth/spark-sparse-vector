@@ -14,10 +14,9 @@ class Sum extends UDF2[SparseVector, Double, Double] {
       initial_value: Double
   ): Double = {
       var sum: Double = initial_value
-    for (i <- 0 until (v1.indices.size)) {
-      val index = v1.indices(i)
-      sum = sum + v1.values(i)
+    for (i <- v1.indices.indices) {
+      sum += v1.values(i)
     }
-    return sum
+    sum
   }
 }

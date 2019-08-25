@@ -12,6 +12,6 @@ class SparseToDense extends UDF1[SparseVector, DenseVector] {
   def sparse_vector_to_dense(
       v1: SparseVector
   ): DenseVector = {
-    return v1.toDense
+    v1.toDense
   }
 }

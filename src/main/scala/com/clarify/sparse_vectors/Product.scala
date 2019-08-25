@@ -13,10 +13,9 @@ class Product extends UDF1[SparseVector, Double] {
       v1: SparseVector
   ): Double = {
       var product: Double = 1
-    for (i <- 0 until (v1.indices.size)) {
-      val index = v1.indices(i)
+    for (i <- v1.indices.indices) {
       product = product * v1.values(i)
     }
-    return product
+    product
   }
 }

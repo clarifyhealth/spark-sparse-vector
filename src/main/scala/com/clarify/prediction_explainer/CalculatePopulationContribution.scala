@@ -1,5 +1,6 @@
-package com.clarify.sparse_vectors
+package com.clarify.prediction_explainer
 
+import com.clarify.sparse_vectors.Helpers
 import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF4
 
@@ -47,7 +48,7 @@ class CalculatePopulationContribution
       scala.collection.mutable.Map[Int, Double]()
 
     // first calculate contribution for features in v1
-    for (i <- 0 until (ccg_log_odds_vector.indices.size)) {
+    for (i <- ccg_log_odds_vector.indices.indices) {
       // find the appropriate index on the other side
       val index = ccg_log_odds_vector.indices(i)
 
@@ -60,9 +61,9 @@ class CalculatePopulationContribution
     }
     // now add population contribution for features that are not in the ccg vector
     //    except for the OHE features since they are summed up above
-    for (j <- 0 until (pop_log_odds_vector.indices.size)) {
+    for (j <- pop_log_odds_vector.indices.indices) {
       val index = pop_log_odds_vector.indices(j)
-      if (ccg_log_odds_vector.indices.contains(index) == false) {
+      if (!ccg_log_odds_vector.indices.contains(index)) {
         // feature is not already in the ccg vector
         val feature_name = feature_list(index)
         val ohe_feature_name = ohe_feature_list(index)
@@ -92,7 +93,7 @@ class CalculatePopulationContribution
 
     // calculate the population log odds by adding Bjxj of all the related features
     var population_log_odds: Double = 0
-    for (j <- 0 until (pop_log_odds_vector.indices.size)) {
+    for (j <- pop_log_odds_vector.indices.indices) {
       if (related_feature_indices.contains(pop_log_odds_vector.indices(j))) {
         population_log_odds = population_log_odds + pop_log_odds_vector.values(j)
       }

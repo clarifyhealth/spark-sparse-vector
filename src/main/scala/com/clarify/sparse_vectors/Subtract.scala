@@ -13,19 +13,19 @@ class Subtract extends UDF2[SparseVector, SparseVector, SparseVector] {
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
     // Add values from v1
-    for (i <- 0 until (v1.indices.size)) {
+    for (i <- v1.indices.indices) {
       val index = v1.indices(i)
       values(index) =
         if (values.contains(index)) values(index) + v1.values(i)
         else v1.values(i)
     }
     // Add values from v2
-    for (i <- 0 until (v2.indices.size)) {
+    for (i <- v2.indices.indices) {
       val index = v2.indices(i)
       values(index) =
         if (values.contains(index)) values(index) - v2.values(i)
         else 0 - v2.values(i)
     }
-    return Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
+    Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }

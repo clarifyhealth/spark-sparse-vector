@@ -1,5 +1,6 @@
-package com.clarify.sparse_vectors
+package com.clarify.prediction_explainer
 
+import com.clarify.sparse_vectors.Helpers
 import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.sql.api.java.UDF8
 
@@ -53,17 +54,17 @@ class CalculateFeatureImpactFromSparseVectors
     // Gets feature impact by choosing values from each vector with the same index
 
     var result = ListBuffer[FeatureImpactItem]()
-    result += (FeatureImpactItem("mean_prediction", pop_outcome, outcome, 0.0, 0.0))
+    result += FeatureImpactItem("mean_prediction", pop_outcome, outcome, 0.0, 0.0)
 
     // first calculate contribution for features in v1
-    for (i <- 0 until (feature_relative_contribution_exp_ohe.indices.size)) {
-      result += (FeatureImpactItem(
+    for (i <- feature_relative_contribution_exp_ohe.indices.indices) {
+      result += FeatureImpactItem(
         feature_list(feature_relative_contribution_exp_ohe.indices(i)),
         Helpers.sparse_vector_get_float_by_index(pop_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
         Helpers.sparse_vector_get_float_by_index(ccg_level_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
         Helpers.sparse_vector_get_float_by_index(features, feature_relative_contribution_exp_ohe.indices(i), 0),
         feature_relative_contribution_exp_ohe.values(i)
-      ))
+      )
     }
 
     result.toArray

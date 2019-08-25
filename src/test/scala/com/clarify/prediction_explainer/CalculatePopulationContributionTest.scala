@@ -1,12 +1,12 @@
 package com.clarify.prediction_explainer
 
-import com.clarify.sparse_vectors.{CalculatePopulationContribution, SparkSessionTestWrapper}
+import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.ml.linalg.SparseVector
-import org.apache.spark.sql.{QueryTest, Row}
+import org.apache.spark.sql.{QueryTest, Row, SparkSession}
 
 class CalculatePopulationContributionTest extends QueryTest with SparkSessionTestWrapper {
 
-  val spark2 = spark
+  val spark2: SparkSession = spark
 
   import spark2.implicits._
 
@@ -14,9 +14,9 @@ class CalculatePopulationContributionTest extends QueryTest with SparkSessionTes
     val ohe_feature_list: Array[String] = Array("foo", "bar")
 
     println(ohe_feature_list.zipWithIndex.toSeq)
-    val result = new CalculatePopulationContribution()
+    val result: Seq[Int] = new CalculatePopulationContribution()
       .get_related_indices(ohe_feature_list, "bar")
-    assert(result.toSeq == Array(1).toSeq)
+    assert(result == Array(1).toSeq)
   }
   test("get population log odds for simple feature") {
     val population_log_odds_vector = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))

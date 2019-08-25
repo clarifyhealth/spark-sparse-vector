@@ -1,12 +1,12 @@
 package com.clarify.prediction_explainer
 
-import com.clarify.sparse_vectors.{CalculateFeatureImpactFromSparseVectors, FeatureImpactItem, SparkSessionTestWrapper}
+import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.ml.linalg.SparseVector
-import org.apache.spark.sql.QueryTest
+import org.apache.spark.sql.{QueryTest, SparkSession}
 
 class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSessionTestWrapper {
 
-  val spark2 = spark
+  val spark2: SparkSession = spark
 
   import spark2.implicits._
 
@@ -22,7 +22,7 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
       .get_feature_impact_from_sparse_vectors(0.0, 0.0, feature_list, ohe_feature_list, population_log_odds_vector,
         row_log_odds_contribution_vector, features, feature_relative_contribution_exp_ohe)
     println(contribution)
-    println(contribution.size)
+    println(contribution.length)
     println("result class")
     println(contribution.getClass)
     val expected = Array(
@@ -86,13 +86,11 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
     out_df.printSchema()
 
     val expected = Seq(
-      (
-        Seq(
-          ("mean_prediction", 0.0, 0.0, 0.0, 0.0),
-          ("foo", 0.1, 0.1, 0.1, 0.1),
-          ("bar", 0.2, 0.2, 0.2, 0.2)
-        )
-        ),
+      Seq(
+        ("mean_prediction", 0.0, 0.0, 0.0, 0.0),
+        ("foo", 0.1, 0.1, 0.1, 0.1),
+        ("bar", 0.2, 0.2, 0.2, 0.2)
+      ),
       Seq(
         ("mean_prediction", 0.0, 0.0, 0.0, 0.0),
         ("foo", 0.1, 0.1, 0.1, 0.1),

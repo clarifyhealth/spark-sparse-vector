@@ -1,5 +1,6 @@
-package com.clarify.sparse_vectors
+package com.clarify.prediction_explainer
 
+import com.clarify.sparse_vectors.Helpers
 import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.api.java.UDF5
 
@@ -17,13 +18,12 @@ class CalculateRelativeContribution
   }
 
   /**
-   * For each element x(i) in v1 and y(i) in v2, return e^x(i)/e^y(i) * (pop_log_odds/row_log_odds)^(1/n)
+   * For each element x(i) in v1 and y(i) in v2, return e^x(i)/e^y(i) * (pop_log_odds/row_log_odds) to (1/n)
    *
-   *
-   * @param row_log_odds_contribution_vector
-   * @param population_log_odds_vector
-   * @param row_log_odds
-   * @param pop_log_odds
+   * @param row_log_odds_contribution_vector row_log_odds_contribution_vector
+   * @param population_log_odds_vector       population_log_odds_vector
+   * @param row_log_odds                     row_log_odds
+   * @param pop_log_odds                     pop_log_odds
    * @return
    */
   def sparse_calculate_relative_contribution(link: String,
@@ -44,13 +44,12 @@ class CalculateRelativeContribution
   }
 
   /**
-   * For each element x(i) in v1 and y(i) in v2, return e^x(i)/e^y(i) * (pop_log_odds/row_log_odds)^(1/n)
+   * For each element x(i) in v1 and y(i) in v2, return e^x(i)/e^y(i) * (pop_log_odds/row_log_odds) to (1/n)
    *
-   *
-   * @param row_log_odds_contribution_vector
-   * @param population_log_odds_vector
-   * @param row_log_odds
-   * @param pop_log_odds
+   * @param row_log_odds_contribution_vector row_log_odds_contribution_vector
+   * @param population_log_odds_vector       population_log_odds_vector
+   * @param row_log_odds                     row_log_odds
+   * @param pop_log_odds                     pop_log_odds
    * @return
    */
   def sparse_calculate_relative_contribution_logit(row_log_odds_contribution_vector: SparseVector,
@@ -69,10 +68,10 @@ class CalculateRelativeContribution
       scala.collection.mutable.Map[Int, Double]()
 
     // first calculate eBx / eBX for feature that are set in v1
-    for (i <- 0 until (row_log_odds_contribution_vector.indices.size)) {
+    for (i <- row_log_odds_contribution_vector.indices.indices) {
       // find the appropriate index on the other side
       val index = row_log_odds_contribution_vector.indices(i)
-      var division_factor: Double = Helpers.sparse_vector_get_float_by_index(population_log_odds_vector, index, 0)
+      val division_factor: Double = Helpers.sparse_vector_get_float_by_index(population_log_odds_vector, index, 0)
       // do the exponent divide
       val eBx: Double = Math.exp(row_log_odds_contribution_vector.values(i))
       val eBX: Double = Math.exp(division_factor)
@@ -80,8 +79,8 @@ class CalculateRelativeContribution
       values(row_log_odds_contribution_vector.indices(i)) = eBx_over_eBX
     }
     // secondly, calculate 1 / eBX for features that are not set in v1
-    for (j <- 0 until (population_log_odds_vector.indices.size)) {
-      if (row_log_odds_contribution_vector.indices.contains(population_log_odds_vector.indices(j)) == false) {
+    for (j <- population_log_odds_vector.indices.indices) {
+      if (!row_log_odds_contribution_vector.indices.contains(population_log_odds_vector.indices(j))) {
         val eBx: Double = 1
         val eBX: Double = Math.exp(population_log_odds_vector.values(j))
         val eBx_over_eBX = eBx / eBX
@@ -97,9 +96,9 @@ class CalculateRelativeContribution
     val number_features: Double = values.size
     val one_plus_e_sum_BX: Double = 1 + Math.exp(pop_log_odds)
     val one_plus_e_sum_Bx: Double = 1 + Math.exp(row_log_odds)
-    val one_plus_eBX_over_one_plus_eBx: Double = Math.pow((one_plus_e_sum_BX / one_plus_e_sum_Bx), (1 / number_features))
+    val one_plus_eBX_over_one_plus_eBx: Double = Math.pow(one_plus_e_sum_BX / one_plus_e_sum_Bx, 1 / number_features)
     // multiply all values with one_plus_eBX_over_one_plus_eBx
-    for ((k, v) <- values) values(k) = values(k) * one_plus_eBX_over_one_plus_eBx
+    for ((k, _) <- values) values(k) = values(k) * one_plus_eBX_over_one_plus_eBx
 
     Vectors.sparse(row_log_odds_contribution_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }

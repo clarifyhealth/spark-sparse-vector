@@ -15,7 +15,7 @@ class Exponent extends UDF1[SparseVector, SparseVector] {
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
     // Add values from v1
-    for (i <- 0 until v1.indices.length) {
+    for (i <- v1.indices.indices) {
       val index = v1.indices(i)
       values(index) = Math.exp(v1.values(i))
     }

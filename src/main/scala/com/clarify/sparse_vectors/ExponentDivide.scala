@@ -17,19 +17,19 @@ class ExponentDivide
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
     // Add values from v1
-    for (i <- 0 until (v1.indices.size)) {
+    for (i <- v1.indices.indices) {
       val index = v1.indices(i)
       var division_factor: Double = 0
-      for (j <- 0 until (v2.indices.size)) {
+      for (j <- v2.indices.indices) {
         if (v2.indices(j) == v1.indices(i)) {
           division_factor = v2.values(j)
         }
       }
       values(index) = Math.exp(v1.values(i)) / Math.exp(division_factor)
     }
-    for (j <- 0 until (v2.indices.size)) {
+    for (j <- v2.indices.indices) {
       val index = v2.indices(j)
-      if (v1.indices.contains(v2.indices(j)) == false) {
+      if (!v1.indices.contains(v2.indices(j))) {
         values(index) = 1 / Math.exp(v2.values(j))
       }
     }

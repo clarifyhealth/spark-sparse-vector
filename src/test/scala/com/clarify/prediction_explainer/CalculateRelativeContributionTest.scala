@@ -1,12 +1,12 @@
 package com.clarify.prediction_explainer
 
-import com.clarify.sparse_vectors.{CalculateRelativeContribution, SparkSessionTestWrapper}
+import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.ml.linalg.SparseVector
-import org.apache.spark.sql.{QueryTest, Row}
+import org.apache.spark.sql.{QueryTest, Row, SparkSession}
 
 class CalculateRelativeContributionTest extends QueryTest with SparkSessionTestWrapper {
 
-  val spark2 = spark
+  val spark2: SparkSession = spark
 
   import spark2.implicits._
 
