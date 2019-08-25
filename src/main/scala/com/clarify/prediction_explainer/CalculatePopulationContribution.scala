@@ -21,8 +21,8 @@ class CalculatePopulationContribution
                      v2: SparseVector,
                      feature_list_native: scala.collection.mutable.WrappedArray[java.lang.Object]
                    ): SparseVector = {
+    // spark can't serialize custom classes so we have to convert here
     val feature_list = feature_list_native.asInstanceOf[mutable.WrappedArray[GenericRowWithSchema]]
-      .toSeq
       .map(x => FeatureListItem(
         feature_index = x(0).asInstanceOf[Int],
         feature_name = x(1).asInstanceOf[String],
@@ -46,6 +46,11 @@ class CalculatePopulationContribution
     //        [0.1, 0.2, 0.3] means B1X1 = 0.1, B2X2 = 0.2, B3X3 = 0.3
     // :param feature_list: list of feature indices (feature_index, feature_name, ohe_feature_name)
 
+    require(pop_log_odds_vector.size == feature_list.size,
+      "pop_log_odds_vector is not the same size as feature_list")
+    require(ccg_log_odds_vector.size <= pop_log_odds_vector.size,
+      "ccg_log_odds_vector is longer than pop_log_odds_vector")
+
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
 
@@ -54,7 +59,7 @@ class CalculatePopulationContribution
       // find the appropriate index on the other side
       val index = ccg_log_odds_vector.indices(i)
 
-      var population_log_odds: Double = get_population_log_odds_for_feature(pop_log_odds_vector, feature_list, index)
+      val population_log_odds: Double = get_population_log_odds_for_feature(pop_log_odds_vector, feature_list, index)
       values(ccg_log_odds_vector.indices(i)) = population_log_odds
     }
     // now add population contribution for features that are not in the ccg vector
@@ -75,7 +80,9 @@ class CalculatePopulationContribution
 
   def get_population_log_odds_for_feature(pop_log_odds_vector: SparseVector,
                                           feature_list: Seq[FeatureListItem], index: Int): Double = {
-    print(feature_list.getClass)
+    require(pop_log_odds_vector.size == feature_list.size,
+      "pop_log_odds_vector is not the same size as feature_list")
+
     // find the corresponding entry in feature_list for this feature
     val feature_item = feature_list.filter(x => x.feature_index == index).head
     // get OHE (one hot encoded) feature name. In case of OHE this is the feature name for all OHE values.
