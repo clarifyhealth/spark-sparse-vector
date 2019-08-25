@@ -14,16 +14,16 @@ class CalculatePopulationContribution
   ] {
 
   override def call(
-                     v1: SparseVector,
-                     v2: SparseVector,
+                     row_log_odds_vector: SparseVector,
+                     pop_log_odds_vector: SparseVector,
                      feature_list: Seq[String],
                      ohe_feature_list: Seq[String]
                    ): SparseVector = {
-    sparse_vector_calculate_population_contribution_log_odds(v1, v2, feature_list, ohe_feature_list)
+    sparse_vector_calculate_population_contribution_log_odds(row_log_odds_vector, pop_log_odds_vector, feature_list, ohe_feature_list)
   }
 
   def sparse_vector_calculate_population_contribution_log_odds(
-                                                                ccg_log_odds_vector: SparseVector,
+                                                                row_log_odds_vector: SparseVector,
                                                                 pop_log_odds_vector: SparseVector,
                                                                 feature_list: Seq[String],
                                                                 ohe_feature_list: Seq[String]
@@ -41,39 +41,40 @@ class CalculatePopulationContribution
 
     require(pop_log_odds_vector.size == feature_list.size,
       "pop_log_odds_vector is not the same size as feature_list")
-    require(ccg_log_odds_vector.size <= pop_log_odds_vector.size,
-      "ccg_log_odds_vector is longer than pop_log_odds_vector")
+    require(row_log_odds_vector.size == pop_log_odds_vector.size,
+      "ccg_log_odds_vector is not the same size as pop_log_odds_vector")
 
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
 
     // first calculate contribution for features in v1
-    for (i <- ccg_log_odds_vector.indices.indices) {
+    for (i <- row_log_odds_vector.indices.indices) {
       // find the appropriate index on the other side
-      val index = ccg_log_odds_vector.indices(i)
+      val index = row_log_odds_vector.indices(i)
 
       val population_log_odds: Double = get_population_log_odds_for_feature(
         pop_log_odds_vector,
         feature_list,
         ohe_feature_list,
         index)
-      values(ccg_log_odds_vector.indices(i)) = population_log_odds
+      values(row_log_odds_vector.indices(i)) = population_log_odds
     }
     // now add population contribution for features that are not in the ccg vector
     //    except for the OHE features since they are summed up above
     for (j <- pop_log_odds_vector.indices.indices) {
       val index = pop_log_odds_vector.indices(j)
-      if (!ccg_log_odds_vector.indices.contains(index)) {
+      if (!row_log_odds_vector.indices.contains(index)) {
         // feature is not already in the ccg vector
         val feature_name = feature_list(index)
         val ohe_feature_name = ohe_feature_list(index)
+        println(s"feature_name: $feature_name, ohe_feature_name: $ohe_feature_name index:$index")
         if (feature_name == ohe_feature_name) { // not an OHE
           values(pop_log_odds_vector.indices(j)) = pop_log_odds_vector.values(j)
         }
       }
     }
 
-    Vectors.sparse(ccg_log_odds_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
+    Vectors.sparse(row_log_odds_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 
   def get_population_log_odds_for_feature(pop_log_odds_vector: SparseVector,
@@ -101,7 +102,13 @@ class CalculatePopulationContribution
     population_log_odds
   }
 
-
+  /**
+   * Returns index of name in list
+   *
+   * @param ohe_feature_list list
+   * @param ohe_feature_name name to find in list
+   * @return 0 based index
+   */
   def get_related_indices(ohe_feature_list: Seq[String], ohe_feature_name: String): Seq[Int] = {
     ohe_feature_list.zipWithIndex
       .filter(x => x._1 == ohe_feature_name).map(x => x._2)
