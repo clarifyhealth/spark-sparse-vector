@@ -10,16 +10,18 @@ class ExponentTest extends QueryTest with SparkSessionTestWrapper {
   test("exponent simple") {
     val v1 = new SparseVector(3, Array(0), Array(0.1))
     val v3 = new Exponent().sparse_vector_exponent(v1)
-    assert(v3 == new SparseVector(3, Array(0), Array(1.1051709180756477)))
+    // e^[0.1, 0, 0] = [1.1, 1, 1 ]
+    assert(v3 == new SparseVector(3, Array(0, 1, 2), Array(1.1051709180756477, 1, 1)))
   }
   test("exponent") {
     spark.sharedState.cacheManager.clearCache()
 
     val data = List(
       Row(new SparseVector(3, Array(0, 2), Array(0.1, 0.2))),
-      Row(new SparseVector(3, Array(0, 2), Array(0.2, 0.1)))
+      Row(new SparseVector(3, Array(0, 1), Array(0.2, 0.1)))
     )
-
+    // e^[0.1, 0, 0.2] = [1.1, 1, 1.22]
+    // e^[0.2, 0.1, 0] = [1.22, 1.1, 1]
     val fields = List(
       StructField("v1", VectorType, nullable = false)
     )
@@ -45,8 +47,8 @@ class ExponentTest extends QueryTest with SparkSessionTestWrapper {
     checkAnswer(
       out_df.selectExpr("result"),
       Seq(
-        Row(new SparseVector(3, Array(0, 2), Array(1.1051709180756477, 1.2214027581601699))),
-        Row(new SparseVector(3, Array(0, 2), Array(1.2214027581601699, 1.1051709180756477)))
+        Row(new SparseVector(3, Array(0, 1, 2), Array(1.1051709180756477, 1.0, 1.2214027581601699))),
+        Row(new SparseVector(3, Array(0, 1, 2), Array(1.2214027581601699, 1.1051709180756477, 1.0)))
       )
     )
     assert(2 == out_df.count())

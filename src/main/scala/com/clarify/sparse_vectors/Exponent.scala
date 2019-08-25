@@ -19,6 +19,12 @@ class Exponent extends UDF1[SparseVector, SparseVector] {
       val index = v1.indices(i)
       values(index) = Math.exp(v1.values(i))
     }
+    // now find values where both v1 and v2 are zero and set those to 1
+    for (z <- 0 until v1.size) {
+      if (!values.exists(_._1 == z)) {
+        values(z) = 1
+      }
+    }
     Vectors.sparse(v1.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
   }
 }
