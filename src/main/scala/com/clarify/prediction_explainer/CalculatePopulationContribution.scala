@@ -67,7 +67,6 @@ class CalculatePopulationContribution
         // feature is not already in the ccg vector
         val feature_name = feature_list(index)
         val ohe_feature_name = ohe_feature_list(index)
-        println(s"feature_name: $feature_name, ohe_feature_name: $ohe_feature_name index:$index")
         if (feature_name == ohe_feature_name) { // not an OHE
           values(pop_log_odds_vector.indices(j)) = pop_log_odds_vector.values(j)
         }
