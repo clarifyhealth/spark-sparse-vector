@@ -19,8 +19,10 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
     val feature_list: Seq[String] = Seq("foo", "bar")
     val ohe_feature_list: Seq[String] = Seq("foo", "bar")
     val contribution = new CalculateFeatureImpactFromSparseVectors()
-      .get_feature_impact_from_sparse_vectors(0.0, 0.0, feature_list, ohe_feature_list, population_log_odds_vector,
-        row_log_odds_contribution_vector, features, feature_relative_contribution_exp_ohe)
+      .get_feature_impact_from_sparse_vectors(0.0, 0.0,
+        feature_list, ohe_feature_list,
+        row_log_odds_contribution_vector, population_log_odds_vector,
+        features, feature_relative_contribution_exp_ohe)
     println(contribution)
     println(contribution.length)
     println("result class")
@@ -83,8 +85,8 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
         |pop_outcome,
         |feature_list,
         |ohe_feature_list,
-        |population_log_odds_contribution_vector,
         |row_log_odds_contribution_vector,
+        |population_log_odds_contribution_vector,
         |features,
         |feature_relative_contribution_exp_ohe
         |) as result from my_table2""".stripMargin

@@ -37,20 +37,15 @@ class CalculateFeatureImpactFromSparseVectors
                      features: SparseVector,
                      feature_relative_contribution_exp_ohe: SparseVector
                    ): Array[FeatureImpactItem] = {
-    get_feature_impact_from_sparse_vectors(row_outcome, pop_outcome, feature_list, ohe_feature_list,
-      pop_contribution, ccg_level_contribution, features, feature_relative_contribution_exp_ohe)
+    get_feature_impact_from_sparse_vectors(row_outcome, pop_outcome, feature_list, ohe_feature_list, ccg_level_contribution, pop_contribution, features, feature_relative_contribution_exp_ohe)
   }
 
   def get_feature_impact_from_sparse_vectors(
-                                              row_outcome: Double,
-                                              pop_outcome: Double,
-                                              feature_list: Seq[String],
-                                              ohe_feature_list: Seq[String],
-                                              pop_contribution: SparseVector,
-                                              ccg_level_contribution: SparseVector,
+                                              row_outcome: Double, pop_outcome: Double,
+                                              feature_list: Seq[String], ohe_feature_list: Seq[String],
+                                              row_level_contribution: SparseVector, pop_contribution: SparseVector,
                                               features: SparseVector,
-                                              feature_relative_contribution_exp_ohe: SparseVector
-                                            ): Array[FeatureImpactItem] = {
+                                              feature_relative_contribution_exp_ohe: SparseVector): Array[FeatureImpactItem] = {
     // Gets feature impact by choosing values from each vector with the same index
 
     var result = ListBuffer[FeatureImpactItem]()
@@ -61,7 +56,7 @@ class CalculateFeatureImpactFromSparseVectors
       result += FeatureImpactItem(
         feature_list(feature_relative_contribution_exp_ohe.indices(i)),
         Helpers.sparse_vector_get_float_by_index(pop_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
-        Helpers.sparse_vector_get_float_by_index(ccg_level_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
+        Helpers.sparse_vector_get_float_by_index(row_level_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
         Helpers.sparse_vector_get_float_by_index(features, feature_relative_contribution_exp_ohe.indices(i), 0),
         feature_relative_contribution_exp_ohe.values(i)
       )
