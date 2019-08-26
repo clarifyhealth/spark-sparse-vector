@@ -16,19 +16,19 @@ case class FeatureImpactItem(
 
 class CalculateFeatureImpactFromSparseVectors
   extends UDF8[
-      Double,
-      Double,
+    Double,
+    Double,
     Seq[String],
     Seq[String],
-      SparseVector,
-      SparseVector,
-      SparseVector,
-      SparseVector,
-      Array[FeatureImpactItem]
-    ] {
+    SparseVector,
+    SparseVector,
+    SparseVector,
+    SparseVector,
+    Array[FeatureImpactItem]
+  ] {
 
   override def call(
-                     outcome: Double,
+                     row_outcome: Double,
                      pop_outcome: Double,
                      feature_list: Seq[String],
                      ohe_feature_list: Seq[String],
@@ -37,12 +37,12 @@ class CalculateFeatureImpactFromSparseVectors
                      features: SparseVector,
                      feature_relative_contribution_exp_ohe: SparseVector
                    ): Array[FeatureImpactItem] = {
-    get_feature_impact_from_sparse_vectors(outcome, pop_outcome, feature_list, ohe_feature_list,
+    get_feature_impact_from_sparse_vectors(row_outcome, pop_outcome, feature_list, ohe_feature_list,
       pop_contribution, ccg_level_contribution, features, feature_relative_contribution_exp_ohe)
   }
 
   def get_feature_impact_from_sparse_vectors(
-                                              outcome: Double,
+                                              row_outcome: Double,
                                               pop_outcome: Double,
                                               feature_list: Seq[String],
                                               ohe_feature_list: Seq[String],
@@ -54,7 +54,7 @@ class CalculateFeatureImpactFromSparseVectors
     // Gets feature impact by choosing values from each vector with the same index
 
     var result = ListBuffer[FeatureImpactItem]()
-    result += FeatureImpactItem("mean_prediction", pop_outcome, outcome, 0.0, 0.0)
+    result += FeatureImpactItem("mean_prediction", pop_outcome, row_outcome, 0.0, 0.0)
 
     // first calculate contribution for features in v1
     for (i <- feature_relative_contribution_exp_ohe.indices.indices) {
