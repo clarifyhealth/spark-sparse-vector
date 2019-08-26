@@ -4,7 +4,7 @@ import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.sql.{QueryTest, SparkSession}
 
-class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSessionTestWrapper {
+class CalculateFeatureContributionFromSparseVectorsTest extends QueryTest with SparkSessionTestWrapper {
 
   val spark2: SparkSession = spark
 
@@ -18,8 +18,8 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
     val feature_relative_contribution_exp_ohe = new SparseVector(2, Array(0, 1), Array(0.1, 0.2))
     val feature_list: Seq[String] = Seq("foo", "bar")
     val ohe_feature_list: Seq[String] = Seq("foo", "bar")
-    val contribution = new CalculateFeatureImpactFromSparseVectors()
-      .get_feature_impact_from_sparse_vectors(0.0, 0.0,
+    val contribution = new CalculateFeatureContributionFromSparseVectors()
+      .get_feature_contribution_from_sparse_vectors(0.0, 0.0,
         feature_list, ohe_feature_list,
         row_log_odds_contribution_vector, population_log_odds_vector,
         features, feature_relative_contribution_exp_ohe)
@@ -28,9 +28,9 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
     println("result class")
     println(contribution.getClass)
     val expected = Array(
-      FeatureImpactItem("mean_prediction", 0.0, 0.0, 0.0, 0.0),
-      FeatureImpactItem("foo", 0.1, 0.1, 0.1, 0.1),
-      FeatureImpactItem("bar", 0.2, 0.2, 0.2, 0.2))
+      FeatureContributionItem("mean_prediction", 0.0, 0.0, 0.0, 0.0),
+      FeatureContributionItem("foo", 0.1, 0.1, 0.1, 0.1),
+      FeatureContributionItem("bar", 0.2, 0.2, 0.2, 0.2))
     println("expect class")
     println(expected.getClass)
     assert(contribution.toSeq == expected.toSeq)
@@ -75,12 +75,12 @@ class CalculateFeatureImpactFromSparseVectorsTest extends QueryTest with SparkSe
 
     df.show()
 
-    val add_function = new CalculateFeatureImpactFromSparseVectors().call _
+    val add_function = new CalculateFeatureContributionFromSparseVectors().call _
 
-    spark.udf.register("get_feature_impact_from_sparse_vectors", add_function)
+    spark.udf.register("get_feature_contribution_from_sparse_vectors", add_function)
 
     val out_df = spark.sql(
-      """select get_feature_impact_from_sparse_vectors(
+      """select get_feature_contribution_from_sparse_vectors(
         |row_outcome,
         |pop_outcome,
         |feature_list,

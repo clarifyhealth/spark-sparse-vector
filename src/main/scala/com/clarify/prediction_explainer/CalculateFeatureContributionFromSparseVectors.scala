@@ -6,7 +6,7 @@ import org.apache.spark.sql.api.java.UDF8
 
 import scala.collection.mutable.ListBuffer
 
-case class FeatureImpactItem(
+case class FeatureContributionItem(
                               feature_name: String,
                               pop_contribution: Double,
                               row_contribution: Double,
@@ -14,7 +14,7 @@ case class FeatureImpactItem(
                               relative_contribution: Double
                             ) extends Serializable
 
-class CalculateFeatureImpactFromSparseVectors
+class CalculateFeatureContributionFromSparseVectors
   extends UDF8[
     Double,
     Double,
@@ -24,7 +24,7 @@ class CalculateFeatureImpactFromSparseVectors
     SparseVector,
     SparseVector,
     SparseVector,
-    Array[FeatureImpactItem]
+    Array[FeatureContributionItem]
   ] {
 
   override def call(
@@ -33,27 +33,30 @@ class CalculateFeatureImpactFromSparseVectors
                      feature_list: Seq[String],
                      ohe_feature_list: Seq[String],
                      pop_contribution: SparseVector,
-                     ccg_level_contribution: SparseVector,
+                     row_level_contribution: SparseVector,
                      features: SparseVector,
                      feature_relative_contribution_exp_ohe: SparseVector
-                   ): Array[FeatureImpactItem] = {
-    get_feature_impact_from_sparse_vectors(row_outcome, pop_outcome, feature_list, ohe_feature_list, ccg_level_contribution, pop_contribution, features, feature_relative_contribution_exp_ohe)
+                   ): Array[FeatureContributionItem] = {
+    get_feature_contribution_from_sparse_vectors(row_outcome, pop_outcome,
+      feature_list, ohe_feature_list,
+      row_level_contribution, pop_contribution,
+      features, feature_relative_contribution_exp_ohe)
   }
 
-  def get_feature_impact_from_sparse_vectors(
-                                              row_outcome: Double, pop_outcome: Double,
-                                              feature_list: Seq[String], ohe_feature_list: Seq[String],
-                                              row_level_contribution: SparseVector, pop_contribution: SparseVector,
-                                              features: SparseVector,
-                                              feature_relative_contribution_exp_ohe: SparseVector): Array[FeatureImpactItem] = {
+  def get_feature_contribution_from_sparse_vectors(
+                                                    row_outcome: Double, pop_outcome: Double,
+                                                    feature_list: Seq[String], ohe_feature_list: Seq[String],
+                                                    row_level_contribution: SparseVector, pop_contribution: SparseVector,
+                                                    features: SparseVector,
+                                                    feature_relative_contribution_exp_ohe: SparseVector): Array[FeatureContributionItem] = {
     // Gets feature impact by choosing values from each vector with the same index
 
-    var result = ListBuffer[FeatureImpactItem]()
-    result += FeatureImpactItem("mean_prediction", pop_outcome, row_outcome, 0.0, 0.0)
+    var result = ListBuffer[FeatureContributionItem]()
+    result += FeatureContributionItem("mean_prediction", pop_outcome, row_outcome, 0.0, 0.0)
 
     // first calculate contribution for features in v1
     for (i <- feature_relative_contribution_exp_ohe.indices.indices) {
-      result += FeatureImpactItem(
+      result += FeatureContributionItem(
         feature_list(feature_relative_contribution_exp_ohe.indices(i)),
         Helpers.sparse_vector_get_float_by_index(pop_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
         Helpers.sparse_vector_get_float_by_index(row_level_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
