@@ -97,6 +97,31 @@ class CalculateRelativeContributionTest extends QueryTest with SparkSessionTestW
     assert(result == new SparseVector(3, Array(0, 1, 2),
       Array(Math.exp(0.1) / Math.exp(0.3), Math.exp(0.2) / Math.exp(0.6), 1 / Math.exp(0.7))))
   }
+  test("simple identity") {
+    val row_log_odds_contribution_vector = new SparseVector(3, Array(0, 1), Array(0.1, 0.2))
+    val population_log_odds_contribution_vector = new SparseVector(3, Array(0, 1, 2), Array(0.3, 0.6, 0.7))
+    val row_log_odds = 0.1
+    val pop_log_odds = 0.8
+
+    val result: SparseVector = new CalculateRelativeContribution()
+      .sparse_calculate_relative_contribution(
+        "identity",
+        row_log_odds_contribution_vector,
+        population_log_odds_contribution_vector,
+        row_log_odds,
+        pop_log_odds)
+
+    // row_log_odds_contribution_vector = [0.1, 0.2, 0], population_log_odds_contribution_vector= [0.3, 0.6, 0.7]
+    //  = [e^0.1/e^0.3, e^0.2/e^0.6, 1/e^0.7] = [1.1/1.35, 1.22/1.82, 1/2.01]
+    assert(result ==
+      new SparseVector(3, Array(0, 1, 2),
+        Array(
+          Math.log(Math.exp(0.1) / Math.exp(0.3)),
+          Math.log(Math.exp(0.2) / Math.exp(0.6)),
+          Math.log(1 / Math.exp(0.7)))
+      )
+    )
+  }
 
   test("calculate pop log odds data frame") {
     spark.sharedState.cacheManager.clearCache()
