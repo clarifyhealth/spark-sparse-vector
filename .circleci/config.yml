@@ -7,6 +7,13 @@ base_image: &base_image
               circleci/openjdk:8-jdk
 working_directory: &working_directory
                       ~/repo
+workspace_root: &workspace_root
+    ~/repo
+
+attach_workspace: &attach_workspace
+  attach_workspace:
+    at: *workspace_root
+
 orbs:
   aws-s3: circleci/aws-s3@1.0.0
 
@@ -48,6 +55,7 @@ jobs:
       - image: circleci/python:3.6.4
     steps:
       - *restore_repo
+      - *attach_workspace
       - aws-s3/copy:
           from: /home/circleci/repo/target/spark-sparse-vector-assembly-0.1.jar
           to: ${AWS_JAR_BUCKET}
