@@ -20,3 +20,12 @@ project/plugins/project/
 spark-sparse-vector.iml
 
 .metals/
+.bloop/
+
+src/test/scala/com/.DS_Store
+.DS_Store
+src/**/.DS_Store
+
+.publish_jar.sh
+
+
