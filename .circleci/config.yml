@@ -7,6 +7,8 @@ base_image: &base_image
               circleci/openjdk:8-jdk
 working_directory: &working_directory
                       ~/repo
+orbs:
+  aws-cli: circleci/aws-cli@0.1.15
 
 default_config: &default_config
   working_directory: *working_directory
@@ -24,7 +26,7 @@ save_repo: &save_repo
   save_cache:
     key: *repo_cache_key
     paths:
-      - ./venv
+      - ~/.m2
 
 jobs:
   build:
@@ -40,11 +42,6 @@ jobs:
       - run: cat /dev/null | sbt test:compile
       - *save_repo
 
-      - save_cache:
-          paths:
-            - ~/.m2
-          key: v1-dependencies--{{ checksum "build.sbt" }}
-
       # run tests!
       - run: cat /dev/null | sbt test:test
 
@@ -56,9 +53,6 @@ jobs:
       - run:
           name: upload to s3
           command: |
-            apt-get update
-            apt-get install -y sbt python-pip git
-            pip install awscli --upgrade
             aws s3 cp ./target/spark-sparse-vector-assembly-0.1.jar s3://workbenches-emr-misc/extrajars/
 
 workflows:
