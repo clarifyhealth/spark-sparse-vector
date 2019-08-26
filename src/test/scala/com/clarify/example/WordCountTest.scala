@@ -1,13 +1,12 @@
 package com.clarify.example
 
-import org.apache.spark.sql.test.SharedSparkSession
+import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.sql.{QueryTest, Row}
-import com.clarify.sparse_vectors.SparkSessionTestWrapper
 
 class WordCountTest extends QueryTest with SparkSessionTestWrapper {
 
-  ignore("word count") {
+  test("word count") {
     spark.sharedState.cacheManager.clearCache()
     val data = List(Row("Hello this is my favourite test"),
       Row("This is cool"),
