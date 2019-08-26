@@ -8,7 +8,7 @@ base_image: &base_image
 working_directory: &working_directory
                       ~/repo
 workspace_root: &workspace_root
-    ~/repo
+    /tmp/workspace
 
 attach_workspace: &attach_workspace
   attach_workspace:
@@ -48,6 +48,10 @@ jobs:
       - *restore_repo
       - run: cat /dev/null | sbt clean assembly
       - *save_repo
+      - persist_to_workspace:
+          root: *workspace_root
+          paths:
+            - target/
 
   deploy:
     <<: *default_config
@@ -57,7 +61,7 @@ jobs:
       - *restore_repo
       - *attach_workspace
       - aws-s3/copy:
-          from: /home/circleci/repo/target/spark-sparse-vector-assembly-0.1.jar
+          from: /tmp/workspace/spark-sparse-vector-assembly-0.1.jar
           to: ${AWS_JAR_BUCKET}
 
 workflows:
