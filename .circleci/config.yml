@@ -53,7 +53,7 @@ jobs:
       - run:
           name: upload to s3
           command: |
-            aws s3 cp ./target/spark-sparse-vector-assembly-0.1.jar AWS_JAR_BUCKET
+            aws s3 cp ./target/spark-sparse-vector-assembly-0.1.jar ${AWS_JAR_BUCKET}
 
 workflows:
   version: 2
