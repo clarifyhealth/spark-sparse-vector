@@ -78,7 +78,7 @@ class CalculateRelativeContribution
     for (i <- row_log_odds_contribution_vector.indices.indices) {
       // find the appropriate index on the other side
       val index = row_log_odds_contribution_vector.indices(i)
-      val division_factor: Double = Helpers.sparse_vector_get_float_by_index(
+      val division_factor: Double = Helpers.sparse_vector_get_double_by_index(
         population_log_odds_contribution_vector, index, 0)
       // do the exponent divide
       val eBx: Double = Math.exp(row_log_odds_contribution_vector.values(i))
@@ -139,7 +139,8 @@ class CalculateRelativeContribution
     for (i <- row_log_odds_contribution_vector.indices.indices) {
       // find the appropriate index on the other side
       val index = row_log_odds_contribution_vector.indices(i)
-      val division_factor: Double = Helpers.sparse_vector_get_float_by_index(population_log_odds_contribution_vector, index, 0)
+      val division_factor: Double = Helpers.sparse_vector_get_double_by_index(
+        population_log_odds_contribution_vector, index, 0)
       // do the exponent divide
       val eBx: Double = Math.exp(row_log_odds_contribution_vector.values(i))
       val eBX: Double = Math.exp(division_factor)

@@ -28,9 +28,9 @@ class CalculateFeatureContributionFromSparseVectorsTest extends QueryTest with S
     println("result class")
     println(contribution.getClass)
     val expected = Array(
-      FeatureContributionItem("mean_prediction", 0.0, 0.0, 0.0, 0.0),
-      FeatureContributionItem("foo", 0.1, 0.1, 0.1, 0.1),
-      FeatureContributionItem("bar", 0.2, 0.2, 0.2, 0.2))
+      FeatureContributionItem("mean_prediction", 0.0f, 0.0f, 0.0f, 0.0f),
+      FeatureContributionItem("foo", 0.1f, 0.1f, 0.1f, 0.1f),
+      FeatureContributionItem("bar", 0.2f, 0.2f, 0.2f, 0.2f))
     println("expect class")
     println(expected.getClass)
     assert(contribution.toSeq == expected.toSeq)
@@ -98,14 +98,14 @@ class CalculateFeatureContributionFromSparseVectorsTest extends QueryTest with S
 
     val expected = Seq(
       Seq(
-        ("mean_prediction", 0.3, 0.2, 0.0, 0.0),
-        ("male_ohe", 0.1, 0.1, 0.0, 0.1),
-        ("female_ohe", 0.2, 0.2, 1.0, 0.2)
+        ("mean_prediction", 0.3f, 0.2f, 0.0f, 0.0f),
+        ("male_ohe", 0.1f, 0.1f, 0.0f, 0.1f),
+        ("female_ohe", 0.2f, 0.2f, 1.0f, 0.2f)
       ),
       Seq(
-        ("mean_prediction", 0.3, 0.4, 0.0, 0.0),
-        ("male_ohe", 0.1, 0.1, 1.0, 0.1),
-        ("female_ohe", 0.2, 0.2, 0.0, 0.2))
+        ("mean_prediction", 0.3f, 0.4f, 0.0f, 0.0f),
+        ("male_ohe", 0.1f, 0.1f, 1.0f, 0.1f),
+        ("female_ohe", 0.2f, 0.2f, 0.0f, 0.2f))
     ).toDF(
       "result")
 

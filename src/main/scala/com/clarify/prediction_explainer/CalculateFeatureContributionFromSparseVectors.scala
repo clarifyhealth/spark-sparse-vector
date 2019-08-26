@@ -7,11 +7,11 @@ import org.apache.spark.sql.api.java.UDF8
 import scala.collection.mutable.ListBuffer
 
 case class FeatureContributionItem(
-                              feature_name: String,
-                              pop_contribution: Double,
-                              row_contribution: Double,
-                              value: Double,
-                              relative_contribution: Double
+                                    feature_name: String,
+                                    pop_contribution: Float,
+                                    row_contribution: Float,
+                                    value: Float,
+                                    relative_contribution: Float
                             ) extends Serializable
 
 class CalculateFeatureContributionFromSparseVectors
@@ -52,7 +52,7 @@ class CalculateFeatureContributionFromSparseVectors
     // Gets feature impact by choosing values from each vector with the same index
 
     var result = ListBuffer[FeatureContributionItem]()
-    result += FeatureContributionItem("mean_prediction", pop_outcome, row_outcome, 0.0, 0.0)
+    result += FeatureContributionItem("mean_prediction", pop_outcome.toFloat, row_outcome.toFloat, 0.0f, 0.0f)
 
     // first calculate contribution for features in v1
     for (i <- feature_relative_contribution_exp_ohe.indices.indices) {
@@ -61,7 +61,7 @@ class CalculateFeatureContributionFromSparseVectors
         Helpers.sparse_vector_get_float_by_index(pop_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
         Helpers.sparse_vector_get_float_by_index(row_level_contribution, feature_relative_contribution_exp_ohe.indices(i), 1),
         Helpers.sparse_vector_get_float_by_index(features, feature_relative_contribution_exp_ohe.indices(i), 0),
-        feature_relative_contribution_exp_ohe.values(i)
+        feature_relative_contribution_exp_ohe.values(i).toFloat
       )
     }
 
