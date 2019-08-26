@@ -116,9 +116,9 @@ class CalculateRelativeContributionTest extends QueryTest with SparkSessionTestW
     assert(result ==
       new SparseVector(3, Array(0, 1, 2),
         Array(
-          Math.log(Math.exp(0.1) / Math.exp(0.3)),
-          Math.log(Math.exp(0.2) / Math.exp(0.6)),
-          Math.log(1 / Math.exp(0.7)))
+          0.1 - 0.3,
+          0.2 - 0.6,
+          0 - 0.7)
       )
     )
   }

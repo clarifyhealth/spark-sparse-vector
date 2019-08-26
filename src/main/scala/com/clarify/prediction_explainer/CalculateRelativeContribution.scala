@@ -179,7 +179,7 @@ class CalculateRelativeContribution
                                                       pop_log_odds: Double
                                                      ): SparseVector = {
     //     For each element x(i) in v1 and y(i) in v2,
-    //     return log(e^x(i)/e^y(i))
+    //     return Bx - BX
     // :param v1: current row's log odds vector
     //        [ 0.1, 0.2, 0.3 ] means B1x1 = 0.1, B2x2 = 0.2, B2x2 = 0.3
     // :param v2: population log odds vector
@@ -195,18 +195,18 @@ class CalculateRelativeContribution
       val division_factor: Double = Helpers.sparse_vector_get_double_by_index(
         population_log_odds_contribution_vector, index, 0)
       // do the exponent divide
-      val eBx: Double = Math.exp(row_log_odds_contribution_vector.values(i))
-      val eBX: Double = Math.exp(division_factor)
-      val eBx_over_eBX: Double = eBx / eBX
-      values(row_log_odds_contribution_vector.indices(i)) = Math.log(eBx_over_eBX)
+      val Bx: Double = row_log_odds_contribution_vector.values(i)
+      val BX: Double = division_factor
+      val eBx_minus_eBX: Double = Bx - BX
+      values(row_log_odds_contribution_vector.indices(i)) = eBx_minus_eBX
     }
     // secondly, calculate 1 / eBX for features that are not set in v1
     for (j <- population_log_odds_contribution_vector.indices.indices) {
       if (!row_log_odds_contribution_vector.indices.contains(population_log_odds_contribution_vector.indices(j))) {
-        val eBx: Double = 1
-        val eBX: Double = Math.exp(population_log_odds_contribution_vector.values(j))
-        val eBx_over_eBX = eBx / eBX
-        values(population_log_odds_contribution_vector.indices(j)) = Math.log(eBx_over_eBX)
+        val Bx: Double = 0
+        val BX: Double = population_log_odds_contribution_vector.values(j)
+        val eBx_minus_eBX = Bx - BX
+        values(population_log_odds_contribution_vector.indices(j)) = eBx_minus_eBX
       }
     }
     Vectors.sparse(row_log_odds_contribution_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
