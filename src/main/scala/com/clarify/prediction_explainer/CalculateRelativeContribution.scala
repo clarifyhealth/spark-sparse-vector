@@ -197,16 +197,16 @@ class CalculateRelativeContribution
       // do the exponent divide
       val Bx: Double = row_log_odds_contribution_vector.values(i)
       val BX: Double = division_factor
-      val eBx_minus_eBX: Double = Bx - BX
-      values(row_log_odds_contribution_vector.indices(i)) = eBx_minus_eBX
+      val Bx_minus_BX: Double = Bx - BX
+      values(row_log_odds_contribution_vector.indices(i)) = Bx_minus_BX
     }
     // secondly, calculate 1 / eBX for features that are not set in v1
     for (j <- population_log_odds_contribution_vector.indices.indices) {
       if (!row_log_odds_contribution_vector.indices.contains(population_log_odds_contribution_vector.indices(j))) {
         val Bx: Double = 0
         val BX: Double = population_log_odds_contribution_vector.values(j)
-        val eBx_minus_eBX = Bx - BX
-        values(population_log_odds_contribution_vector.indices(j)) = eBx_minus_eBX
+        val Bx_minus_BX = Bx - BX
+        values(population_log_odds_contribution_vector.indices(j)) = Bx_minus_BX
       }
     }
     Vectors.sparse(row_log_odds_contribution_vector.size, Helpers.remove_zeros(values).toSeq).asInstanceOf[SparseVector]
