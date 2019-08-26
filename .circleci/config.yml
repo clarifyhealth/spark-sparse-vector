@@ -3,19 +3,32 @@
 # Check https://circleci.com/docs/2.0/sample-config/ for more details
 #
 version: 2
+base_image: &base_image
+              circleci/openjdk:8-jdk
+working_directory: &working_directory
+                      ~/repo
+
+default_config: &default_config
+  working_directory: *working_directory
+  docker:
+    - image: *base_image
+
+repo_cache_key: &repo_cache_key
+                  v1-dependencies-{{ checksum "build.sbt" }}
+
+restore_repo: &restore_repo
+  restore_cache:
+    key: *repo_cache_key
+
+save_repo: &save_repo
+  save_cache:
+    key: *repo_cache_key
+    paths:
+      - ./venv
+
 jobs:
   build:
-    docker:
-      # specify the version you desire here
-      - image: circleci/openjdk:8-jdk
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
-
-    working_directory: ~/repo
-
+    <<: *default_config
     environment:
       # Customize the JVM maximum heap limit
       JVM_OPTS: -Xmx3200m
@@ -23,15 +36,9 @@ jobs:
 
     steps:
       - checkout
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "build.sbt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-
+      - *restore_repo
       - run: cat /dev/null | sbt test:compile
+      - *save_repo
 
       - save_cache:
           paths:
@@ -40,3 +47,14 @@ jobs:
 
       # run tests!
       - run: cat /dev/null | sbt test:test
+
+  package:
+    <<: *default_config
+    steps:
+      - checkout
+      - *restore_repo
+      - run:
+          name: upload to s3
+          command: |
+            pip install awscli --upgrade
+            aws s3 cp ./target/spark-sparse-vector-assembly-0.1.jar s3://workbenches-emr-misc/extrajars/
