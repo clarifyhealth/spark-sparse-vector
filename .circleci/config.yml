@@ -2,20 +2,42 @@
 #
 # Check https://circleci.com/docs/2.0/sample-config/ for more details
 #
-version: 2
+version: 2.1
+base_image: &base_image
+              circleci/openjdk:8-jdk
+working_directory: &working_directory
+                      ~/repo
+workspace_root: &workspace_root
+    /tmp/workspace
+
+attach_workspace: &attach_workspace
+  attach_workspace:
+    at: *workspace_root
+
+orbs:
+  aws-s3: circleci/aws-s3@1.0.0
+
+default_config: &default_config
+  working_directory: *working_directory
+  docker:
+    - image: *base_image
+
+repo_cache_key: &repo_cache_key
+                  v1-dependencies-{{ checksum "build.sbt" }}
+
+restore_repo: &restore_repo
+  restore_cache:
+    key: *repo_cache_key
+
+save_repo: &save_repo
+  save_cache:
+    key: *repo_cache_key
+    paths:
+      - ~/.m2
+
 jobs:
   build:
-    docker:
-      # specify the version you desire here
-      - image: circleci/openjdk:8-jdk
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
-
-    working_directory: ~/repo
-
+    <<: *default_config
     environment:
       # Customize the JVM maximum heap limit
       JVM_OPTS: -Xmx3200m
@@ -23,20 +45,33 @@ jobs:
 
     steps:
       - checkout
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "build.sbt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-
-      - run: cat /dev/null | sbt test:compile
-
-      - save_cache:
+      - *restore_repo
+      - run: |
+          sbt clean assembly
+      - *save_repo
+      - persist_to_workspace:
+          root: .
           paths:
-            - ~/.m2
-          key: v1-dependencies--{{ checksum "build.sbt" }}
+            - target/spark-sparse-vector-assembly-0.1.jar
 
-      # run tests!
-      - run: cat /dev/null | sbt test:test
+  deploy:
+    <<: *default_config
+    docker:
+      - image: circleci/python:3.6.4
+    steps:
+      - *attach_workspace
+      - aws-s3/copy:
+          from: /tmp/workspace/target/spark-sparse-vector-assembly-0.1.jar
+          to: ${AWS_JAR_BUCKET}
+
+workflows:
+  version: 2
+  build-test-upload-untagged:
+    jobs:
+      - build:
+          context: aws
+
+      - deploy:
+          context: aws
+          requires:
+            - build
