@@ -46,7 +46,7 @@ jobs:
     steps:
       - checkout
       - *restore_repo
-      - run: cat /dev/null | sbt clean assembly
+      - run: cat /dev/null | sbt clean assembly | mkdir -p /tmp/workspace
       - *save_repo
       - persist_to_workspace:
           root: *workspace_root
@@ -61,7 +61,7 @@ jobs:
       - *restore_repo
       - *attach_workspace
       - aws-s3/copy:
-          from: /tmp/workspace/spark-sparse-vector-assembly-0.1.jar
+          from: /tmp/workspace/target/spark-sparse-vector-assembly-0.1.jar
           to: ${AWS_JAR_BUCKET}
 
 workflows:
