@@ -2,7 +2,7 @@
 #
 # Check https://circleci.com/docs/2.0/sample-config/ for more details
 #
-version: 2
+version: 2.1
 base_image: &base_image
               circleci/openjdk:8-jdk
 working_directory: &working_directory
