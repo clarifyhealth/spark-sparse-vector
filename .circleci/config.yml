@@ -55,7 +55,7 @@ jobs:
           command: |
             sbt clean assembly
       - aws-s3/copy:
-          from: {*working_directory}/target/spark-sparse-vector-assembly-0.1.jar
+          from: /home/circleci/repo/target/spark-sparse-vector-assembly-0.1.jar
           to: AWS_JAR_BUCKET
 
 workflows:
