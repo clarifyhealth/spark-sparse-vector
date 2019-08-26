@@ -1,16 +1,21 @@
 package com.clarify.sparse_vectors
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector}
+
+import org.apache.spark.ml.linalg.{SparseVector, Vector}
 import org.apache.spark.sql.api.java.UDF1
 
-class DenseToSparse extends UDF1[DenseVector, SparseVector] {
+class DenseToSparse extends UDF1[Vector, SparseVector] {
 
-  override def call(v1: DenseVector): SparseVector = {
+  override def call(v1: Vector): SparseVector = {
     dense_vector_to_sparse(v1)
   }
 
   def dense_vector_to_sparse(
-      v1: DenseVector
+                              v1: Vector
   ): SparseVector = {
-    v1.toSparse
+    if (v1.isInstanceOf[SparseVector]) {
+      v1.asInstanceOf[SparseVector]
+    } else {
+      v1.toSparse
+    }
   }
 }
