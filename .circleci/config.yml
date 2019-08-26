@@ -8,7 +8,7 @@ base_image: &base_image
 working_directory: &working_directory
                       ~/repo
 orbs:
-  aws-cli: circleci/aws-cli@0.1.15
+  aws-s3: circleci/aws-s3@1.0.0
 
 default_config: &default_config
   working_directory: *working_directory
@@ -37,13 +37,6 @@ jobs:
       TERM: dumb
 
     steps:
-      - run:
-          name: Get Binaries
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y python-pip
-            sudo pip install awscli
-            sudo apt-get clean && sudo apt-get autoclean
       - checkout
       - *restore_repo
       - run: cat /dev/null | sbt test:compile
@@ -60,7 +53,10 @@ jobs:
       - run:
           name: upload to s3
           command: |
-            aws s3 cp ./target/spark-sparse-vector-assembly-0.1.jar s3://workbenches-emr-misc/extrajars/
+            sbt clean assembly
+      - aws-s3/copy:
+          from: {*working_directory}/target/spark-sparse-vector-assembly-0.1.jar
+          to: AWS_JAR_BUCKET
 
 workflows:
   version: 2
