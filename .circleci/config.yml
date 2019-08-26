@@ -56,6 +56,8 @@ jobs:
       - run:
           name: upload to s3
           command: |
+            apt-get update
+            apt-get install -y sbt python-pip git
             pip install awscli --upgrade
             aws s3 cp ./target/spark-sparse-vector-assembly-0.1.jar s3://workbenches-emr-misc/extrajars/
 
