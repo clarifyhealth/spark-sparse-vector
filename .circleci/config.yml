@@ -40,9 +40,10 @@ jobs:
       - run:
           name: Get Binaries
           command: |
+            sudo apt-get update
             sudo apt-get install -y python-pip
             sudo pip install awscli
-            sudp apt-get clean && sudo apt-get autoclean
+            sudo apt-get clean && sudo apt-get autoclean
       - checkout
       - *restore_repo
       - run: cat /dev/null | sbt test:compile
