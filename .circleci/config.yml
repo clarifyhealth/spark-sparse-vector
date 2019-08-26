@@ -37,6 +37,12 @@ jobs:
       TERM: dumb
 
     steps:
+      - run:
+          name: Get Binaries
+          command: |
+            sudo apt-get install -y python-pip
+            sudo pip install awscli
+            sudp apt-get clean && sudo apt-get autoclean
       - checkout
       - *restore_repo
       - run: cat /dev/null | sbt test:compile
@@ -45,7 +51,7 @@ jobs:
       # run tests!
       - run: cat /dev/null | sbt test:test
 
-  package:
+  deploy:
     <<: *default_config
     steps:
       - checkout
@@ -62,7 +68,7 @@ workflows:
       - build:
           context: aws
 
-      - package:
+      - deploy:
           context: aws
           requires:
             - build
