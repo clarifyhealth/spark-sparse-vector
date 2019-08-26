@@ -48,8 +48,6 @@ jobs:
       - *restore_repo
       - run: |
           sbt clean assembly
-          mkdir -p /tmp/workspace
-          cp target/spark-sparse-vector-assembly-0.1.jar /tmp/workspace
       - *save_repo
       - persist_to_workspace:
           root: .
