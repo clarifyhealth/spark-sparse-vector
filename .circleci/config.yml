@@ -58,3 +58,15 @@ jobs:
           command: |
             pip install awscli --upgrade
             aws s3 cp ./target/spark-sparse-vector-assembly-0.1.jar s3://workbenches-emr-misc/extrajars/
+
+workflows:
+  version: 2
+  build-test-upload-untagged:
+    jobs:
+      - build:
+          context: aws
+
+      - package:
+          context: aws
+          requires:
+            - build
