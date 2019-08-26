@@ -7,8 +7,6 @@ base_image: &base_image
               circleci/openjdk:8-jdk
 working_directory: &working_directory
                       ~/repo
-orbs:
-  aws-s3: circleci/aws-s3@1.0.0
 
 default_config: &default_config
   working_directory: *working_directory
@@ -39,24 +37,23 @@ jobs:
     steps:
       - checkout
       - *restore_repo
-      - run: cat /dev/null | sbt test:compile
+      - run: cat /dev/null | sbt clean assembly
       - *save_repo
-
-      # run tests!
-      - run: cat /dev/null | sbt test:test
 
   deploy:
     <<: *default_config
     steps:
-      - checkout
-      - *restore_repo
+      - run:
+          name: Get Binaries
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python-pip
+            sudo pip install awscli
+            sudo apt-get clean && sudo apt-get autoclean
       - run:
           name: upload to s3
           command: |
-            sbt clean assembly
-      - aws-s3/copy:
-          from: /home/circleci/repo/target/spark-sparse-vector-assembly-0.1.jar
-          to: AWS_JAR_BUCKET
+            aws s3 cp ./target/spark-sparse-vector-assembly-0.1.jar AWS_JAR_BUCKET
 
 workflows:
   version: 2
