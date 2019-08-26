@@ -61,7 +61,6 @@ jobs:
     docker:
       - image: circleci/python:3.6.4
     steps:
-      - *restore_repo
       - *attach_workspace
       - aws-s3/copy:
           from: /tmp/workspace/target/spark-sparse-vector-assembly-0.1.jar
