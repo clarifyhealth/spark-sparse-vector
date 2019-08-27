@@ -14,7 +14,7 @@ class Multiply
       v1: SparseVector,
       v2: SparseVector
   ): SparseVector = {
-    require(v1.size == v2.size)
+    require(v1.size == v2.size, s"v1.size ${v1.size} != v2.size ${v2.size}")
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
     // Add values from v1
