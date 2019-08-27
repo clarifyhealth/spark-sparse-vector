@@ -19,7 +19,8 @@ class CalculatePopulationContribution
                      feature_list: Seq[String],
                      ohe_feature_list: Seq[String]
                    ): SparseVector = {
-    sparse_vector_calculate_population_contribution_log_odds(row_log_odds_vector, pop_log_odds_vector, feature_list, ohe_feature_list)
+    sparse_vector_calculate_population_contribution_log_odds(row_log_odds_vector, pop_log_odds_vector,
+      feature_list, ohe_feature_list)
   }
 
   def sparse_vector_calculate_population_contribution_log_odds(
@@ -40,9 +41,11 @@ class CalculatePopulationContribution
     // :param feature_list: list of feature indices (feature_index, feature_name, ohe_feature_name)
 
     require(pop_log_odds_vector.size == feature_list.size,
-      "pop_log_odds_vector is not the same size as feature_list")
+      s"pop_log_odds_vector.size ${pop_log_odds_vector.size} != feature_list.size ${feature_list.size}")
     require(row_log_odds_vector.size == pop_log_odds_vector.size,
-      "ccg_log_odds_vector is not the same size as pop_log_odds_vector")
+      s"row_log_odds_vector.size ${row_log_odds_vector.size} != pop_log_odds_vector.size ${pop_log_odds_vector.size}")
+    require(feature_list.size == ohe_feature_list.size,
+      s"feature_list.size ${feature_list.size} != ohe_feature_list.size ${ohe_feature_list.size}")
 
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()
@@ -81,7 +84,7 @@ class CalculatePopulationContribution
                                           ohe_feature_list: Seq[String],
                                           index: Int): Double = {
     require(pop_log_odds_vector.size == feature_list.size,
-      "pop_log_odds_vector is not the same size as feature_list")
+      s"pop_log_odds_vector.size ${pop_log_odds_vector.size} != feature_list.size ${feature_list.size}")
 
     // find the corresponding entry in feature_list for this feature
     val ohe_feature_name: String = ohe_feature_list(index)

@@ -12,11 +12,11 @@ class SparseToDense extends UDF1[Vector, DenseVector] {
   def sparse_vector_to_dense(
                               v1: Vector
   ): DenseVector = {
-    if (v1.isInstanceOf[DenseVector]) {
-      v1.asInstanceOf[DenseVector]
-    }
-    else {
-      v1.toDense
+    v1 match {
+      case vector: DenseVector =>
+        vector
+      case _ =>
+        v1.toDense
     }
   }
 }

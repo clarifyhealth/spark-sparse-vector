@@ -34,7 +34,8 @@ class CalculateRelativeContribution
                                              row_log_odds: Double,
                                              pop_log_odds: Double
                                             ): SparseVector = {
-
+    require(row_log_odds_contribution_vector.size == population_log_odds_contribution_vector.size,
+      s"row_log_odds_contribution_vector.size ${row_log_odds_contribution_vector.size} != population_log_odds_contribution_vector.size ${population_log_odds_contribution_vector.size}")
     link match {
       case "logit" => sparse_calculate_relative_contribution_logit(row_log_odds_contribution_vector,
         population_log_odds_contribution_vector,
