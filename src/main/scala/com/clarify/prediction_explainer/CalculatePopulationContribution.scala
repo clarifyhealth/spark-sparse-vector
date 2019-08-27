@@ -39,10 +39,9 @@ class CalculatePopulationContribution
     //        [0.1, 0.2, 0.3] means B1X1 = 0.1, B2X2 = 0.2, B3X3 = 0.3
     // :param feature_list: list of feature indices (feature_index, feature_name, ohe_feature_name)
 
-    require(pop_log_odds_vector.size == feature_list.size,
-      "pop_log_odds_vector is not the same size as feature_list")
-    require(row_log_odds_vector.size == pop_log_odds_vector.size,
-      "ccg_log_odds_vector is not the same size as pop_log_odds_vector")
+    require(pop_log_odds_vector.size == feature_list.size)
+    require(row_log_odds_vector.size == pop_log_odds_vector.size)
+    require(feature_list.size == ohe_feature_list.size)
 
     val values: scala.collection.mutable.Map[Int, Double] =
       scala.collection.mutable.Map[Int, Double]()

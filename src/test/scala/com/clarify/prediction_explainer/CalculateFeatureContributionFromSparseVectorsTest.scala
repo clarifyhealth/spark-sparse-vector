@@ -43,20 +43,20 @@ class CalculateFeatureContributionFromSparseVectorsTest extends QueryTest with S
         0.3, // pop_outcome
         Seq("male_ohe", "female_ohe", "age"), // feature_list
         Seq("gender", "gender", "age"), // ohe_feature_list
-        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)), // population_log_odds_contribution_vector
-        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)), // row_log_odds_contribution_vector
-        new SparseVector(2, Array(0, 1), Array(0, 1)), // features
-        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)) // feature_relative_contribution_exp_ohe
+        new SparseVector(3, Array(0, 1, 2), Array(0.1, 0.2, 0.3)), // population_log_odds_contribution_vector
+        new SparseVector(3, Array(0, 1), Array(0.1, 0.2)), // row_log_odds_contribution_vector
+        new SparseVector(3, Array(0, 1, 2), Array(0, 1, 1)), // features
+        new SparseVector(3, Array(0, 1, 2), Array(0.1, 0.2, 0.3)) // feature_relative_contribution_exp_ohe
       ),
       (
         0.4,
         0.3,
         Seq("male_ohe", "female_ohe", "age"), // feature_list
         Seq("gender", "gender", "age"), // ohe_feature_list
-        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)), // population_log_odds_contribution_vector
-        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)), // row_log_odds_contribution_vector
-        new SparseVector(2, Array(0, 1), Array(1, 0)), // features
-        new SparseVector(2, Array(0, 1), Array(0.1, 0.2)) // feature_relative_contribution_exp_ohe
+        new SparseVector(3, Array(0, 1, 2), Array(0.1, 0.2, 0.3)), // population_log_odds_contribution_vector
+        new SparseVector(3, Array(0, 1), Array(0.1, 0.2)), // row_log_odds_contribution_vector
+        new SparseVector(3, Array(0, 1, 2), Array(1, 0, 0)), // features
+        new SparseVector(3, Array(0, 1, 2), Array(0.1, 0.2, 0.3)) // feature_relative_contribution_exp_ohe
       )
     ).toDF()
     val df = data.toDF(
@@ -100,12 +100,15 @@ class CalculateFeatureContributionFromSparseVectorsTest extends QueryTest with S
       Seq(
         ("mean_prediction", 0.3f, 0.2f, 0.0f, 0.0f),
         ("male_ohe", 0.1f, 0.1f, 0.0f, 0.1f),
-        ("female_ohe", 0.2f, 0.2f, 1.0f, 0.2f)
+        ("female_ohe", 0.2f, 0.2f, 1.0f, 0.2f),
+        ("age", 1.0f, 0.3f, 1.0f, 0.3f)
       ),
       Seq(
         ("mean_prediction", 0.3f, 0.4f, 0.0f, 0.0f),
         ("male_ohe", 0.1f, 0.1f, 1.0f, 0.1f),
-        ("female_ohe", 0.2f, 0.2f, 0.0f, 0.2f))
+        ("female_ohe", 0.2f, 0.2f, 0.0f, 0.2f),
+        ("age", 1.0f, 0.3f, 0.0f, 0.3f)
+      )
     ).toDF(
       "result")
 

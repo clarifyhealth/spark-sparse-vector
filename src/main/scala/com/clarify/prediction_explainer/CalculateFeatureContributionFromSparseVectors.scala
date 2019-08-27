@@ -12,7 +12,7 @@ case class FeatureContributionItem(
                                     row_contribution: Float,
                                     value: Float,
                                     relative_contribution: Float
-                            ) extends Serializable
+                                  ) extends Serializable
 
 class CalculateFeatureContributionFromSparseVectors
   extends UDF8[
@@ -50,6 +50,16 @@ class CalculateFeatureContributionFromSparseVectors
                                                     features: SparseVector,
                                                     feature_relative_contribution_exp_ohe: SparseVector): Array[FeatureContributionItem] = {
     // Gets feature impact by choosing values from each vector with the same index
+    require(feature_list.size == ohe_feature_list.size,
+      s"feature_list.size ${feature_list.size} != ohe_feature_list.size ${ohe_feature_list.size}")
+    require(feature_list.size == row_level_contribution.size,
+      s"feature_list.size ${feature_list.size} != row_level_contribution.size ${row_level_contribution.size}")
+    require(feature_list.size == pop_contribution.size,
+      s"feature_list.size ${feature_list.size} != pop_contribution.size ${pop_contribution.size}")
+    require(feature_list.size == features.size,
+      s"feature_list.size ${feature_list.size} != features.size ${features.size}")
+    require(feature_list.size == feature_relative_contribution_exp_ohe.size,
+      s"feature_list.size ${feature_list.size} != feature_relative_contribution_exp_ohe.size ${feature_relative_contribution_exp_ohe.size}")
 
     var result = ListBuffer[FeatureContributionItem]()
     result += FeatureContributionItem("mean_prediction", pop_outcome.toFloat, row_outcome.toFloat, 0.0f, 0.0f)
