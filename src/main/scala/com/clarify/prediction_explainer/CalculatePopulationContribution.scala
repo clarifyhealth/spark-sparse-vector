@@ -79,8 +79,7 @@ class CalculatePopulationContribution
                                           feature_list: Seq[String],
                                           ohe_feature_list: Seq[String],
                                           index: Int): Double = {
-    require(pop_log_odds_vector.size == feature_list.size,
-      "pop_log_odds_vector is not the same size as feature_list")
+    require(pop_log_odds_vector.size == feature_list.size)
 
     // find the corresponding entry in feature_list for this feature
     val ohe_feature_name: String = ohe_feature_list(index)
