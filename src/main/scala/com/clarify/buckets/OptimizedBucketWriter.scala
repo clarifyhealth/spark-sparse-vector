@@ -123,4 +123,10 @@ object OptimizedBucketWriter {
     val result_df = sql_ctx.table(raw_table_name)
     result_df
   }
+
+  def checkpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): DataFrame = {
+    saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+    readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+  }
+
 }
