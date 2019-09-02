@@ -71,12 +71,16 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
       view = "my_table_multiple", numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
+    val tables = spark.catalog.listTables()
+    tables.foreach(t => println(t.name))
+
     spark.catalog.dropTempView("my_table_multiple")
     // now test reading from it
-    val result_df: DataFrame = spark.read.parquet(location)
+    val result_df = OptimizedBucketWriter.readAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = "my_table_multiple2", numBuckets = 10, location = location, bucketColumns = bucket_columns)
     result_df.show()
 
     assert(result_df.count() == df.count())
+    spark.sql(s"DESCRIBE EXTENDED my_table_multiple2").show(numRows = 1000, truncate = false)
   }
-
 }
