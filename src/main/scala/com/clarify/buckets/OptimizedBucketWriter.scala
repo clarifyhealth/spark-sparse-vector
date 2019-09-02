@@ -28,7 +28,7 @@ class OptimizedBucketWriter {
     df
   }
 
-  def saveAsBucketWithPartitioning(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumn: String): DataFrame = {
+  def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumn: String): DataFrame = {
 
     val df: DataFrame = sql_ctx.table(view)
 
@@ -52,4 +52,35 @@ class OptimizedBucketWriter {
     df
   }
 
+  def quoteIdentifier(name: String): String = {
+    // Escapes back-ticks within the identifier name with double-back-ticks, and then quote the
+    // identifier with back-ticks.
+    "`" + name.replace("`", "``") + "`"
+  }
+
+  def saveAsBucketWithPartitionsMultiple(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: Array[String]): DataFrame = {
+
+    val df: DataFrame = sql_ctx.table(view)
+
+    df
+      .withColumn("bucket",
+        pmod(
+          hash(
+            col(bucketColumns(0)),
+            col(bucketColumns(1))
+          ),
+          lit(numBuckets)
+        )
+      )
+      .repartition(numBuckets, col("bucket"))
+      .write
+      .format("parquet")
+      .partitionBy("bucket")
+      .bucketBy(numBuckets, bucketColumns(0), bucketColumns(1))
+      .sortBy(bucketColumns(0), bucketColumns(1))
+      .option("path", location)
+      .saveAsTable(s"temp_$view")
+
+    df
+  }
 }
