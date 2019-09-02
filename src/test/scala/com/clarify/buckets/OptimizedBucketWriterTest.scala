@@ -28,8 +28,10 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     val location = Files.createTempDirectory("parquet").toFile.toString
     new OptimizedBucketWriter().saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = "my_table", numBuckets = 10, location = location, "id")
+      view = "my_table", numBuckets = 10, location = location, bucketColumns = Array("id"))
     println(s"Wrote output to: $location")
+
+    spark.catalog.dropTempView("my_table")
 
     // now test reading from it
     val result_df: DataFrame = spark.read.parquet(location)
@@ -57,10 +59,11 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     df.createOrReplaceTempView("my_table_multiple")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    new OptimizedBucketWriter().saveAsBucketWithPartitionsMultiple(sql_ctx = spark.sqlContext,
+    new OptimizedBucketWriter().saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
       view = "my_table_multiple", numBuckets = 10, location = location, bucketColumns = Array("id", "v2"))
     println(s"Wrote output to: $location")
 
+    spark.catalog.dropTempView("my_table_multiple")
     // now test reading from it
     val result_df: DataFrame = spark.read.parquet(location)
     result_df.show()
