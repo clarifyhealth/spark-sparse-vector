@@ -3,7 +3,7 @@ package com.clarify.buckets
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
-class OptimizedBucketWriter {
+object OptimizedBucketWriter {
 
   def saveAsBucket(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumn: String): DataFrame = {
 
