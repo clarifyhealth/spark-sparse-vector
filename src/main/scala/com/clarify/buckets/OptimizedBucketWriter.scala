@@ -45,6 +45,9 @@ object OptimizedBucketWriter {
     val df: DataFrame = sql_ctx.table(view)
 
     // this is a total hack for now
+    val table_name = s"temp_$view"
+    sql_ctx.sql(s"DROP TABLE IF EXISTS default.$table_name")
+
     if (bucketColumns.size() == 1) {
       df
         .withColumn("bucket",
@@ -62,7 +65,7 @@ object OptimizedBucketWriter {
         .bucketBy(numBuckets, bucketColumns.get(0))
         .sortBy(bucketColumns.get(0))
         .option("path", location)
-        .saveAsTable(s"temp_$view")
+        .saveAsTable(table_name)
     }
     else if (bucketColumns.size() == 2) {
       df
@@ -82,7 +85,7 @@ object OptimizedBucketWriter {
         .bucketBy(numBuckets, bucketColumns.get(0), bucketColumns.get(1))
         .sortBy(bucketColumns.get(0), bucketColumns.get(1))
         .option("path", location)
-        .saveAsTable(s"temp_$view")
+        .saveAsTable(table_name)
     }
 
     df
