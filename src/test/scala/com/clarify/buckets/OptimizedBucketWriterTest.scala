@@ -1,6 +1,7 @@
 package com.clarify.buckets
 
 import java.nio.file.Files
+import java.util
 
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
@@ -26,9 +27,12 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     df.createOrReplaceTempView("my_table")
 
+    val bucket_columns = new util.ArrayList[String]()
+    bucket_columns.add("id")
+
     val location = Files.createTempDirectory("parquet").toFile.toString
     OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = "my_table", numBuckets = 10, location = location, bucketColumns = Array("id"))
+      view = "my_table", numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
     spark.catalog.dropTempView("my_table")
@@ -58,9 +62,13 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     df.createOrReplaceTempView("my_table_multiple")
 
+    val bucket_columns = new util.ArrayList[String]()
+    bucket_columns.add("id")
+    bucket_columns.add("v2")
+
     val location = Files.createTempDirectory("parquet").toFile.toString
     OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = "my_table_multiple", numBuckets = 10, location = location, bucketColumns = Array("id", "v2"))
+      view = "my_table_multiple", numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
     spark.catalog.dropTempView("my_table_multiple")

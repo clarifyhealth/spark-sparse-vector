@@ -1,5 +1,7 @@
 package com.clarify.buckets
 
+import java.util
+
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
@@ -34,19 +36,19 @@ object OptimizedBucketWriter {
     "`" + name.replace("`", "``") + "`"
   }
 
-  def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: Array[String]): DataFrame = {
+  def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): DataFrame = {
 
-    require(bucketColumns.length == 1 || bucketColumns.length == 2, s"bucketColumns length, ${bucketColumns.length} , is not supported")
+    require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
 
     val df: DataFrame = sql_ctx.table(view)
 
     // this is a total hack for now
-    if (bucketColumns.length == 1) {
+    if (bucketColumns.size() == 1) {
       df
         .withColumn("bucket",
           pmod(
             hash(
-              col(bucketColumns(0))
+              col(bucketColumns.get(0))
             ),
             lit(numBuckets)
           )
@@ -55,18 +57,18 @@ object OptimizedBucketWriter {
         .write
         .format("parquet")
         .partitionBy("bucket")
-        .bucketBy(numBuckets, bucketColumns(0))
-        .sortBy(bucketColumns(0))
+        .bucketBy(numBuckets, bucketColumns.get(0))
+        .sortBy(bucketColumns.get(0))
         .option("path", location)
         .saveAsTable(s"temp_$view")
     }
-    else if (bucketColumns.length == 2) {
+    else if (bucketColumns.size() == 2) {
       df
         .withColumn("bucket",
           pmod(
             hash(
-              col(bucketColumns(0)),
-              col(bucketColumns(1))
+              col(bucketColumns.get(0)),
+              col(bucketColumns.get(1))
             ),
             lit(numBuckets)
           )
@@ -75,8 +77,8 @@ object OptimizedBucketWriter {
         .write
         .format("parquet")
         .partitionBy("bucket")
-        .bucketBy(numBuckets, bucketColumns(0), bucketColumns(1))
-        .sortBy(bucketColumns(0), bucketColumns(1))
+        .bucketBy(numBuckets, bucketColumns.get(0), bucketColumns.get(1))
+        .sortBy(bucketColumns.get(0), bucketColumns.get(1))
         .option("path", location)
         .saveAsTable(s"temp_$view")
     }
