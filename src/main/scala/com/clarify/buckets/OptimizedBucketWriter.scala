@@ -68,6 +68,7 @@ object OptimizedBucketWriter {
       val unique_buckets = my_df.select(col("bucket")).distinct().count()
       println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
       my_df
+        .cache()
         .write
         .format("parquet")
         .partitionBy("bucket")
@@ -94,6 +95,7 @@ object OptimizedBucketWriter {
       val unique_buckets = my_df.select(col("bucket")).distinct().count()
       println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
       my_df
+        .cache()
         .write
         .format("parquet")
         .partitionBy("bucket")
