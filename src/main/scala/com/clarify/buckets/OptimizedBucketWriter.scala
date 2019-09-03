@@ -38,10 +38,13 @@ object OptimizedBucketWriter {
     "`" + name.replace("`", "``") + "`"
   }
 
-  def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): DataFrame = {
+  def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                                 location: String, bucketColumns: util.ArrayList[String]): DataFrame = {
 
-    require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
+    require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
+      s"bucketColumns length, ${bucketColumns.size()} , is not supported")
 
+    println(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
     val df: DataFrame = sql_ctx.table(view)
 
     // this is a total hack for now

@@ -24,12 +24,12 @@ object PartitionDiagnostics {
   }
 
   private def _mapPartition(index: Int, iterator: Iterator[Row], sampling_mod: Int) = {
-    if (iterator.isEmpty) Iterator(Row(index, 0d, ""))
+    if (iterator.isEmpty) Iterator(Row(index, 0d, "empty"))
     else if ((index % sampling_mod) == 0) {
       val first_item = iterator.next()(0).toString
       val countItems = iterator.size.toDouble + 1 // +1 to account for the first element we read
       Iterator(Row(index, countItems, first_item))
     }
-    else Iterator(Row(index, -1d, "fall-through"))
+    else Iterator(Row(index, -1d, "skipped"))
   }
 }
