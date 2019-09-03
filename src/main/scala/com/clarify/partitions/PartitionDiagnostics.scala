@@ -25,12 +25,9 @@ object PartitionDiagnostics {
     df
   }
 
-  def getEmptyPartitions(sql_ctx: SQLContext, view: String, result_view: String, max_samples: Int): DataFrame = {
+  def getEmptyPartitions(sql_ctx: SQLContext, view: String, result_view: String): DataFrame = {
     val loaded_df: DataFrame = sql_ctx.table(view)
-    val num_partitions = loaded_df.rdd.getNumPartitions
-    val sampling_fraction: Float = Math.min(max_samples.toFloat / num_partitions, 1f)
-    val sampling_mod: Int = (1 / sampling_fraction).toInt
-    val my_rdd: RDD[Row] = loaded_df.rdd.mapPartitionsWithIndex((index, iterator) => _mapPartitionEmpty(index, iterator, sampling_mod))
+    val my_rdd: RDD[Row] = loaded_df.rdd.mapPartitionsWithIndex(_mapPartitionEmpty)
     val aStruct = new StructType(
       Array(
         StructField("partition_id", IntegerType, nullable = false),
@@ -54,7 +51,7 @@ object PartitionDiagnostics {
     else Iterator(Row(index, -1d, "not sampled"))
   }
 
-  private def _mapPartitionEmpty(index: Int, iterator: Iterator[Row], sampling_mod: Int) = {
+  private def _mapPartitionEmpty(index: Int, iterator: Iterator[Row]) = {
     if (iterator.isEmpty) Iterator(Row(index, 0d, "empty"))
     else Iterator(Row(index, 1d, "not empty"))
   }
