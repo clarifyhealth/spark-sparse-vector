@@ -4,7 +4,8 @@ import java.nio.file.Files
 import java.util
 
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
-import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.functions.{col, hash, lit, pmod}
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, QueryTest, Row}
 
 class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
@@ -119,5 +120,78 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     assert(result_df.count() == df.count())
     spark.sql(s"DESCRIBE EXTENDED my_table_multiple").show(numRows = 1000, truncate = false)
+  }
+
+  test("calculate bucket") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val data = List(
+      Row(82995L, 28668527357L),
+      Row(83021L, 2388667058L),
+      Row(83038L, 12444295974L),
+      Row(83093L, 605438428L)
+    )
+    val fields = List(
+      StructField("memberuid", LongType, nullable = false),
+      StructField("claimuid", LongType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+
+    val numBuckets = 8000
+    val my_df: DataFrame = df
+      .withColumn("buckethash",
+        hash(
+          col("memberuid")
+        )
+      )
+      .withColumn("bucket",
+        pmod(
+          hash(
+            col("memberuid")
+          ),
+          lit(numBuckets)
+        )
+      )
+
+    my_df.show()
+  }
+  test("calculate bucket two fields") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val data = List(
+      Row(82995L, 28668527357L),
+      Row(83021L, 2388667058L),
+      Row(83038L, 12444295974L),
+      Row(83093L, 605438428L)
+    )
+    val fields = List(
+      StructField("memberuid", LongType, nullable = false),
+      StructField("claimuid", LongType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+
+    val numBuckets = 8000
+    val my_df: DataFrame = df
+      .withColumn("buckethash",
+        hash(
+          col("memberuid"),
+          col("claimuid")
+        )
+      )
+      .withColumn("bucket",
+        pmod(
+          hash(
+            col("memberuid"),
+            col("claimuid")
+          ),
+          lit(numBuckets)
+        )
+      )
+
+    my_df.show()
   }
 }
