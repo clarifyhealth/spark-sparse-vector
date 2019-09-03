@@ -42,7 +42,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     df.createOrReplaceTempView("my_table")
 
     val result_df: DataFrame = PartitionDiagnostics.getPartitionsAndCount(df.sqlContext,
-      "my_table", "my_table_partitions")
+      "my_table", "my_table_partitions", 0.3f)
 
     result_df.show(numRows = 1000)
 
@@ -82,7 +82,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     df.createOrReplaceTempView(my_table)
 
     val before_df: DataFrame = PartitionDiagnostics.getPartitionsAndCount(df.sqlContext,
-      my_table, my_table + "_partitions")
+      my_table, my_table + "_partitions", 0.3f)
 
     println("Before writing to buckets")
     before_df.show(numRows = 1000)
@@ -97,7 +97,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     println(s"Wrote output to: $location")
 
     val result_df: DataFrame = PartitionDiagnostics.getPartitionsAndCount(df.sqlContext,
-      my_table, my_table + "_partitions")
+      my_table, my_table + "_partitions", 0.3f)
 
     println("After reading from buckets")
     result_df.show(numRows = 1000)
