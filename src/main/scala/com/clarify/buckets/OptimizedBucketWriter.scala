@@ -110,7 +110,7 @@ object OptimizedBucketWriter {
     sql_ctx.sql(s"DROP TABLE IF EXISTS default.$raw_table_name")
     val bucket_by_text = getSeqString(bucketColumns).mkString(",")
     // have to use CREATE TABLE syntax since that supports bucketing
-    var text = s"CREATE TABLE IF NOT EXISTS $raw_table_name ("
+    var text = s"CREATE TABLE $raw_table_name ("
     text += columns.map(column => s"\n${column(0)} ${column(1)}").mkString(",")
     text += ")\n"
     text +=
