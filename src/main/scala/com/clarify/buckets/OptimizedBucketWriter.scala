@@ -2,6 +2,7 @@ package com.clarify.buckets
 
 import java.util
 
+import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
@@ -44,6 +45,7 @@ object OptimizedBucketWriter {
     require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
       s"bucketColumns length, ${bucketColumns.size()} , is not supported")
 
+    val logger = Logger.getLogger(getClass.getName)
     println(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
     val df: DataFrame = sql_ctx.table(view)
 
@@ -75,7 +77,7 @@ object OptimizedBucketWriter {
         .saveAsTable(table_name)
     }
     else if (bucketColumns.size() == 2) {
-      val my_df = df
+      val my_df: DataFrame = df
         .withColumn("bucket",
           pmod(
             hash(
@@ -86,6 +88,8 @@ object OptimizedBucketWriter {
           )
         )
         .repartition(numBuckets, col("bucket"))
+
+      my_df.select("bucket", bucketColumns.get(0), bucketColumns.get(1)).show(numRows = 1000)
 
       val unique_buckets = my_df.select(col("bucket")).distinct().count()
       println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
@@ -109,6 +113,7 @@ object OptimizedBucketWriter {
   def readAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): DataFrame = {
 
     require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
+    val logger = Logger.getLogger(getClass.getName)
     // get schema from parquet file without loading data from it
     val df = sql_ctx.read.format("parquet")
       .load(location)
