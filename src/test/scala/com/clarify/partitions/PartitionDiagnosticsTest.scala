@@ -42,11 +42,50 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     df.createOrReplaceTempView("my_table")
 
     val result_df: DataFrame = PartitionDiagnostics.getPartitionsAndCount(df.sqlContext,
-      "my_table", "my_table_partitions", 0.3f)
+      "my_table", "my_table_partitions", 1f)
 
     result_df.show(numRows = 1000)
 
     assert(result_df.select(sum(col("size"))).collect()(0)(0) == 14.0)
+  }
+
+  test("get partitions with sampling fraction") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val data = List(
+      Row(1, "foo"),
+      Row(2, "bar"),
+      Row(3, "zoo"),
+      Row(4, "zoo"),
+      Row(5, "zoo"),
+      Row(6, "zoo"),
+      Row(7, "zoo"),
+      Row(8, "zoo"),
+      Row(9, "zoo"),
+      Row(10, "zoo"),
+      Row(11, "zoo"),
+      Row(12, "zoo"),
+      Row(13, "zoo"),
+      Row(14, "zoo"),
+      Row(15, "zoo")
+    )
+    val fields = List(
+      StructField("id", IntegerType, nullable = false),
+      StructField("v2", StringType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    var df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+    df = df.repartition(5, col("id"))
+
+    df.createOrReplaceTempView("my_table")
+
+    val result_df: DataFrame = PartitionDiagnostics.getPartitionsAndCount(df.sqlContext,
+      "my_table", "my_table_partitions", 0.3f)
+
+    result_df.show(numRows = 1000)
+
+    assert(result_df.count() == 5)
   }
 
   test("bucket and get partitions") {
@@ -82,7 +121,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     df.createOrReplaceTempView(my_table)
 
     val before_df: DataFrame = PartitionDiagnostics.getPartitionsAndCount(df.sqlContext,
-      my_table, my_table + "_partitions", 0.3f)
+      my_table, my_table + "_partitions", 1f)
 
     println("Before writing to buckets")
     before_df.show(numRows = 1000)
@@ -97,7 +136,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     println(s"Wrote output to: $location")
 
     val result_df: DataFrame = PartitionDiagnostics.getPartitionsAndCount(df.sqlContext,
-      my_table, my_table + "_partitions", 0.3f)
+      my_table, my_table + "_partitions", 1f)
 
     println("After reading from buckets")
     result_df.show(numRows = 1000)
