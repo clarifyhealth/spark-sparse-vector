@@ -25,7 +25,7 @@ object PartitionDiagnostics {
 
   private def _mapPartition(index: Int, iterator: Iterator[Row]) = {
     if (iterator.isEmpty) Iterator(Row(index, 0d, ""))
-    else if (index > 0) {
+    else if (index > -1) {
       val first_item = iterator.next()(0).toString
       val countItems = iterator.size.toDouble + 1 // +1 to account for the first element we read
       Iterator(Row(index, countItems, first_item))
