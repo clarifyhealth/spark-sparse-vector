@@ -52,7 +52,7 @@ object OptimizedBucketWriter {
     sql_ctx.sql(s"DROP TABLE IF EXISTS default.$table_name")
 
     if (bucketColumns.size() == 1) {
-      df
+      val my_df = df
         .withColumn("bucket",
           pmod(
             hash(
@@ -62,6 +62,10 @@ object OptimizedBucketWriter {
           )
         )
         .repartition(numBuckets, col("bucket"))
+
+      val unique_buckets = my_df.select(col("bucket")).distinct().count()
+      println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+      my_df
         .write
         .format("parquet")
         .partitionBy("bucket")
@@ -71,7 +75,7 @@ object OptimizedBucketWriter {
         .saveAsTable(table_name)
     }
     else if (bucketColumns.size() == 2) {
-      df
+      val my_df = df
         .withColumn("bucket",
           pmod(
             hash(
@@ -82,6 +86,10 @@ object OptimizedBucketWriter {
           )
         )
         .repartition(numBuckets, col("bucket"))
+
+      val unique_buckets = my_df.select(col("bucket")).distinct().count()
+      println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+      my_df
         .write
         .format("parquet")
         .partitionBy("bucket")

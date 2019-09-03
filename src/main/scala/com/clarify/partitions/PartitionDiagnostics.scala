@@ -6,8 +6,10 @@ import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
 object PartitionDiagnostics {
 
-  def getPartitionsAndCount(sql_ctx: SQLContext, view: String, result_view: String, sampling_fraction: Float): DataFrame = {
+  def getPartitionsAndCount(sql_ctx: SQLContext, view: String, result_view: String, max_samples: Int): DataFrame = {
     val loaded_df: DataFrame = sql_ctx.table(view)
+    val num_partitions = loaded_df.rdd.getNumPartitions
+    val sampling_fraction: Float = Math.min(max_samples.toFloat / num_partitions, 1f)
     val sampling_mod: Int = (1 / sampling_fraction).toInt
     val my_rdd: RDD[Row] = loaded_df.rdd.mapPartitionsWithIndex((index, iterator) => _mapPartition(index, iterator, sampling_mod))
     val aStruct = new StructType(
@@ -30,6 +32,6 @@ object PartitionDiagnostics {
       val countItems = iterator.size.toDouble + 1 // +1 to account for the first element we read
       Iterator(Row(index, countItems, first_item))
     }
-    else Iterator(Row(index, -1d, "skipped"))
+    else Iterator(Row(index, -1d, "not sampled"))
   }
 }
