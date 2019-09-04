@@ -11,42 +11,13 @@ import scala.collection.JavaConverters
 
 object OptimizedBucketWriter {
 
-  def saveAsBucket(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumn: String): DataFrame = {
-
-    val df: DataFrame = sql_ctx.table(view)
-
-    df
-      .withColumn("bucket",
-        pmod(
-          hash(
-            col(bucketColumn)),
-          lit(numBuckets)
-        )
-      )
-      .repartition(numBuckets, col("bucket"))
-      .write
-      .format("parquet")
-      .bucketBy(numBuckets, bucketColumn)
-      .sortBy(bucketColumn)
-      .option("path", location)
-      .saveAsTable("table_name")
-
-    df
-  }
-
-  def quoteIdentifier(name: String): String = {
-    // Escapes back-ticks within the identifier name with double-back-ticks, and then quote the
-    // identifier with back-ticks.
-    "`" + name.replace("`", "``") + "`"
-  }
-
   def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                  location: String, bucketColumns: util.ArrayList[String]): Boolean = {
-    println(s"saveAsBucketWithPartitions: free memory before: ${MemoryDiagnostics.print_free_memory()}")
+    println(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.get_free_memory()}")
 
     try {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
-        s"bucketColumns length, ${bucketColumns.size()} , is not supported")
+        s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
       val logger = Logger.getLogger(getClass.getName)
       println(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
@@ -89,17 +60,20 @@ object OptimizedBucketWriter {
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
       else if (bucketColumns.size() == 2) {
-        var my_df: DataFrame = df
-          .withColumn("bucket",
-            pmod(
-              hash(
-                col(bucketColumns.get(0)),
-                col(bucketColumns.get(1))
-              ),
-              lit(numBuckets)
+        var my_df = df
+        if (!df.columns.contains("bucket")) {
+          my_df = df
+            .withColumn("bucket",
+              pmod(
+                hash(
+                  col(bucketColumns.get(0)),
+                  col(bucketColumns.get(1))
+                ),
+                lit(numBuckets)
+              )
             )
-          )
-          .repartition(numBuckets, col("bucket"))
+            .repartition(numBuckets, col("bucket"))
+        }
 
         // my_df.select("bucket", bucketColumns.get(0), bucketColumns.get(1)).show(numRows = 1000)
 
@@ -119,7 +93,7 @@ object OptimizedBucketWriter {
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
-      println(s"saveAsBucketWithPartitions: free memory after: ${MemoryDiagnostics.print_free_memory()}")
+      println(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.get_free_memory()}")
 
       true
     }
@@ -136,7 +110,7 @@ object OptimizedBucketWriter {
 
   def readAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
-    println(s"readAsBucketWithPartitions: free memory before: ${MemoryDiagnostics.print_free_memory()}")
+    println(s"readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.get_free_memory()}")
 
     require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
     println(s"readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
@@ -173,7 +147,7 @@ object OptimizedBucketWriter {
       val result_df = sql_ctx.table(raw_table_name)
       result_df.createOrReplaceTempView(view)
       // sql_ctx.sql(s"SELECT * FROM $view").explain(extended = true)
-      println(s"readAsBucketWithPartitions: free memory after: ${MemoryDiagnostics.print_free_memory()}")
+      println(s"readAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.get_free_memory()}")
 
       true
     }
