@@ -57,6 +57,7 @@ object OptimizedBucketWriter {
           .saveAsTable(table_name)
 
         my_df.unpersist(true)
+        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
       else if (bucketColumns.size() == 2) {
@@ -90,6 +91,7 @@ object OptimizedBucketWriter {
           .saveAsTable(table_name)
 
         my_df.unpersist(true)
+        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
@@ -143,6 +145,7 @@ object OptimizedBucketWriter {
             """
       println(text)
       sql_ctx.sql(text)
+      sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
       // sql_ctx.sql(s"DESCRIBE EXTENDED $raw_table_name").show(numRows = 1000)
       val result_df = sql_ctx.table(raw_table_name)
       result_df.createOrReplaceTempView(view)
