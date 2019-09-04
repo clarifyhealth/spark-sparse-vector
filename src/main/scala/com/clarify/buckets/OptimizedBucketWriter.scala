@@ -256,7 +256,7 @@ object OptimizedBucketWriter {
     try {
       // sql_ctx.sql(s"DROP VIEW IF EXISTS default.$temp_view") // done with view
       // drop the raw table if it exists
-      val raw_table_name = s"$view"
+      val raw_table_name = s"${view}_raw_buckets"
       sql_ctx.sql(s"DROP TABLE IF EXISTS default.$raw_table_name")
       //sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
       val bucket_by_text = getSeqString(bucketColumns).mkString(",")
@@ -274,7 +274,10 @@ object OptimizedBucketWriter {
             """
       println(text)
       sql_ctx.sql(text)
-      // val result_df = sql_ctx.table(raw_table_name)
+      sql_ctx.sql(s"DESCRIBE EXTENDED $raw_table_name").show(numRows = 1000)
+      val result_df = sql_ctx.table(raw_table_name)
+      result_df.createOrReplaceTempView(view)
+      sql_ctx.sql(s"SELECT * FROM $view").explain(extended = true)
       println("readAsBucketWithPartitions: after")
       _list_free_memory
 
@@ -311,8 +314,9 @@ object OptimizedBucketWriter {
     val columns = _getColumnSchema(sql_ctx, temp_view)
     sql_ctx.sql(s"DROP VIEW $temp_view") // done with view
     readAsBucketWithPartitions2(sql_ctx, view, numBuckets, location, bucketColumns, columns)
-    val df2 = sql_ctx.read.parquet(location)
-    df2.createOrReplaceTempView(view)
+    //    val df2 = sql_ctx.read.parquet(location)
+    //    df2.createOrReplaceTempView(view)
+    sql_ctx.sql(s"DESCRIBE EXTENDED $view").show(numRows = 1000)
     true
   }
 
