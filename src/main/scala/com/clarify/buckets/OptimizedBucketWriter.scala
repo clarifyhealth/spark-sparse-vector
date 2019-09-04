@@ -310,7 +310,7 @@ object OptimizedBucketWriter {
     df.createOrReplaceTempView(temp_view)
     val columns = _getColumnSchema(sql_ctx, temp_view)
     sql_ctx.sql(s"DROP VIEW $temp_view") // done with view
-
+    readAsBucketWithPartitions2(sql_ctx, view, numBuckets, location, bucketColumns, columns)
     val df2 = sql_ctx.read.parquet(location)
     df2.createOrReplaceTempView(view)
     true
