@@ -86,7 +86,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     spark.sql(s"DESCRIBE EXTENDED my_table_multiple2").show(numRows = 1000, truncate = false)
   }
 
-  ignore("checkpoint") {
+  test("checkpoint") {
     spark.sharedState.cacheManager.clearCache()
 
     val data = List(

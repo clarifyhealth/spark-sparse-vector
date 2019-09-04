@@ -2,6 +2,7 @@ package com.clarify.buckets
 
 import java.util
 
+import com.clarify.memory.MemoryDiagnostics
 import org.apache.log4j.Logger
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{DataFrame, SQLContext}
@@ -41,8 +42,7 @@ object OptimizedBucketWriter {
 
   def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                  location: String, bucketColumns: util.ArrayList[String]): Boolean = {
-    println("saveAsBucketWithPartitions: before")
-    _list_free_memory()
+    println(s"saveAsBucketWithPartitions: free memory before: ${MemoryDiagnostics.print_free_memory()}")
 
     try {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
@@ -119,9 +119,7 @@ object OptimizedBucketWriter {
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
-      println("saveAsBucketWithPartitions: after")
-      _list_free_memory()
-      // sql_ctx.tableNames().foreach(println)
+      println(s"saveAsBucketWithPartitions: free memory after: ${MemoryDiagnostics.print_free_memory()}")
 
       true
     }
@@ -138,8 +136,7 @@ object OptimizedBucketWriter {
 
   def readAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
-    println("readAsBucketWithPartitions: before")
-    _list_free_memory
+    println(s"readAsBucketWithPartitions: free memory before: ${MemoryDiagnostics.print_free_memory()}")
 
     require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
     println(s"readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
@@ -151,11 +148,6 @@ object OptimizedBucketWriter {
     df.createOrReplaceTempView(temp_view)
     val columns = _getColumnSchema(sql_ctx, temp_view)
     sql_ctx.sql(s"DROP VIEW $temp_view") // done with view
-    readAsBucketWithPartitionsWithSchema(sql_ctx, view, numBuckets, location, bucketColumns, columns)
-  }
-
-  private def readAsBucketWithPartitionsWithSchema(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String,
-                                                   bucketColumns: util.ArrayList[String], columns: Array[Array[Any]]) = {
     try {
       // sql_ctx.sql(s"DROP VIEW IF EXISTS default.$temp_view") // done with view
       // drop the raw table if it exists
@@ -181,8 +173,7 @@ object OptimizedBucketWriter {
       val result_df = sql_ctx.table(raw_table_name)
       result_df.createOrReplaceTempView(view)
       // sql_ctx.sql(s"SELECT * FROM $view").explain(extended = true)
-      println("readAsBucketWithPartitions: after")
-      _list_free_memory
+      println(s"readAsBucketWithPartitions: free memory after: ${MemoryDiagnostics.print_free_memory()}")
 
       true
     }
@@ -217,24 +208,6 @@ object OptimizedBucketWriter {
     rdd.cache()
     sql_ctx.createDataFrame(rdd, df.schema).createOrReplaceTempView(view)
     true
-    //    saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
-    //    readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
   }
 
-  def _list_free_memory(): Unit = {
-    // memory info
-    val mb = 1024 * 1024
-    val runtime = Runtime.getRuntime
-    println("** Used Memory:  " + (runtime.totalMemory - runtime.freeMemory) / mb)
-    println("** Free Memory:  " + runtime.freeMemory / mb)
-    println("** Total Memory: " + runtime.totalMemory / mb)
-    println("** Max Memory:   " + runtime.maxMemory / mb)
-  }
-
-  def _get_free_memory(): Long = {
-    // memory info
-    val mb = 1024 * 1024
-    val runtime = Runtime.getRuntime
-    runtime.freeMemory
-  }
 }
