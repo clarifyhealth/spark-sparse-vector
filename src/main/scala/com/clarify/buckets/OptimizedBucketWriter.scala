@@ -104,7 +104,7 @@ object OptimizedBucketWriter {
     }
     catch {
       case e: SparkException =>
-        val cause = e.getCause()
+        val cause = e.getCause
         println(s"readAsBucketWithPartitions: Got SparkException: $cause")
         throw cause
       case unknown: Throwable =>
@@ -164,7 +164,7 @@ object OptimizedBucketWriter {
     }
     catch {
       case e: SparkException =>
-        val cause = e.getCause()
+        val cause = e.getCause
         println(s"readAsBucketWithPartitions: Got SparkException: $cause")
         throw cause
       case unknown: Throwable =>
@@ -187,8 +187,14 @@ object OptimizedBucketWriter {
   def checkpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                      location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
-    saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
-    readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+    if (!sql_ctx.table(view).take(1).isEmpty) {
+      saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+      readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+    }
+    else {
+      println(s"$view was empty so did not bucket it")
+      false
+    }
   }
 
   def checkpointBucketWithPartitionsInMemory(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
