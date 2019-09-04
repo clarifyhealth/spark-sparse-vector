@@ -4,6 +4,7 @@ import java.util
 
 import com.clarify.memory.MemoryDiagnostics
 import org.apache.log4j.Logger
+import org.apache.spark.SparkException
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
@@ -91,7 +92,9 @@ object OptimizedBucketWriter {
           .saveAsTable(table_name)
 
         my_df.unpersist(true)
+        println(s"REFRESH TABLE default.$table_name")
         sql_ctx.sql(s"REFRESH TABLE default.$table_name")
+        println(s"DROP TABLE default.$table_name")
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
@@ -100,6 +103,10 @@ object OptimizedBucketWriter {
       true
     }
     catch {
+      case e: SparkException =>
+        val cause = e.getCause()
+        println(s"readAsBucketWithPartitions: Got SparkException: $cause")
+        throw cause
       case unknown: Throwable =>
         println(s"saveAsBucketWithPartitions: Got some other kind of exception: $unknown")
         throw unknown
@@ -145,6 +152,7 @@ object OptimizedBucketWriter {
             """
       println(text)
       sql_ctx.sql(text)
+      println(s"REFRESH TABLE default.$raw_table_name")
       sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
       // sql_ctx.sql(s"DESCRIBE EXTENDED $raw_table_name").show(numRows = 1000)
       val result_df = sql_ctx.table(raw_table_name)
@@ -155,6 +163,10 @@ object OptimizedBucketWriter {
       true
     }
     catch {
+      case e: SparkException =>
+        val cause = e.getCause()
+        println(s"readAsBucketWithPartitions: Got SparkException: $cause")
+        throw cause
       case unknown: Throwable =>
         println(s"readAsBucketWithPartitions: Got some other kind of exception: $unknown")
         throw unknown
