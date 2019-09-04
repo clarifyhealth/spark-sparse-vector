@@ -88,7 +88,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     assert(result_df.count() == 5)
   }
 
-  test("bucket and get partitions") {
+  ignore("bucket and get partitions") {
     spark.sharedState.cacheManager.clearCache()
 
     val data = List(
@@ -143,7 +143,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
 
     assert(result_df.select(sum(col("size"))).collect()(0)(0) == 14.0)
   }
-  test("bucket and get empty partitions") {
+  ignore("bucket and get empty partitions") {
     spark.sharedState.cacheManager.clearCache()
 
     val data = List(
