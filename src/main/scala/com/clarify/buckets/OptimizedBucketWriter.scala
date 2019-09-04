@@ -302,8 +302,17 @@ object OptimizedBucketWriter {
                                      location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
     saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
-    val df = sql_ctx.read.parquet(location)
-    df.createOrReplaceTempView(view)
+    val logger = Logger.getLogger(getClass.getName)
+    // get schema from parquet file without loading data from it
+    val df = sql_ctx.read.format("parquet")
+      .load(location)
+    val temp_view = s"${view}_temp_bucket_reader"
+    df.createOrReplaceTempView(temp_view)
+    val columns = _getColumnSchema(sql_ctx, temp_view)
+    sql_ctx.sql(s"DROP VIEW $temp_view") // done with view
+
+    val df2 = sql_ctx.read.parquet(location)
+    df2.createOrReplaceTempView(view)
     true
   }
 
