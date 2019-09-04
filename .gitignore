@@ -29,3 +29,4 @@ src/**/.DS_Store
 .publish_jar.sh
 
 
+/metastore_db/

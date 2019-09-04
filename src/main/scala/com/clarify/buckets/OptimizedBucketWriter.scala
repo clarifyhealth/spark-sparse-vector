@@ -58,19 +58,23 @@ object OptimizedBucketWriter {
 
       if (bucketColumns.size() == 1) {
         var my_df = df
-          .withColumn("bucket",
-            pmod(
-              hash(
-                col(bucketColumns.get(0))
-              ),
-              lit(numBuckets)
+        if (!df.columns.contains("bucket")) {
+          my_df = df
+            .withColumn("bucket",
+              pmod(
+                hash(
+                  col(bucketColumns.get(0))
+                ),
+                lit(numBuckets)
+              )
             )
-          )
-          .repartition(numBuckets, col("bucket"))
+            .repartition(numBuckets, col("bucket"))
+        }
 
-        val unique_buckets = my_df.select(col("bucket")).distinct().count()
-        println(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
-        println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+
+        //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
+        //        println(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
+        //        println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
         my_df = my_df.cache()
         my_df
           .write
@@ -117,7 +121,7 @@ object OptimizedBucketWriter {
 
       println("saveAsBucketWithPartitions: after")
       _list_free_memory
-      sql_ctx.tableNames().foreach(println)
+      // sql_ctx.tableNames().foreach(println)
 
       true
     }
