@@ -48,6 +48,8 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
   test("save to buckets multiple") {
     spark.sharedState.cacheManager.clearCache()
 
+    val my_table = "my_table_multiple"
+
     val data = List(
       Row(1, "foo"),
       Row(2, "bar"),
@@ -61,7 +63,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
 
-    df.createOrReplaceTempView("my_table_multiple")
+    df.createOrReplaceTempView(my_table)
 
     val bucket_columns = new util.ArrayList[String]()
     bucket_columns.add("id")
@@ -69,24 +71,27 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     val location = Files.createTempDirectory("parquet").toFile.toString
     OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = "my_table_multiple", numBuckets = 10, location = location, bucketColumns = bucket_columns)
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
     val tables = spark.catalog.listTables()
     tables.foreach(t => println(t.name))
 
-    spark.catalog.dropTempView("my_table_multiple")
+    spark.catalog.dropTempView(my_table)
     // now test reading from it
-    val result_df = OptimizedBucketWriter.readAsBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = "my_table_multiple2", numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    OptimizedBucketWriter.readAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table + "2", numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    val result_df = spark.table(my_table + "2")
     result_df.show()
 
     assert(result_df.count() == df.count())
-    spark.sql(s"DESCRIBE EXTENDED my_table_multiple2").show(numRows = 1000, truncate = false)
+    spark.sql(s"DESCRIBE EXTENDED ${my_table}2").show(numRows = 1000, truncate = false)
   }
 
   test("checkpoint") {
     spark.sharedState.cacheManager.clearCache()
+
+    val my_table = "my_table_multiple"
 
     val data = List(
       Row(1, "foo"),
@@ -101,16 +106,18 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
 
-    df.createOrReplaceTempView("my_table_multiple")
+    df.createOrReplaceTempView(my_table)
 
     val bucket_columns = new util.ArrayList[String]()
     bucket_columns.add("id")
     bucket_columns.add("v2")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    val result_df = OptimizedBucketWriter.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = "my_table_multiple", numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    val result = OptimizedBucketWriter.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    assert(result)
     println(s"Wrote output to: $location")
+    val result_df = spark.table(my_table)
 
     val tables = spark.catalog.listTables()
     tables.foreach(t => println(t.name))
@@ -119,7 +126,31 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     result_df.show()
 
     assert(result_df.count() == df.count())
-    spark.sql(s"DESCRIBE EXTENDED my_table_multiple").show(numRows = 1000, truncate = false)
+    spark.sql(s"DESCRIBE EXTENDED $my_table").show(numRows = 1000, truncate = false)
+  }
+
+  test("checkpoint empty data frame") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val df: DataFrame = spark.emptyDataFrame
+
+    val my_table = "my_table_multiple"
+    df.createOrReplaceTempView(my_table)
+
+    val bucket_columns = new util.ArrayList[String]()
+    bucket_columns.add("id")
+    bucket_columns.add("v2")
+
+    val location = Files.createTempDirectory("parquet").toFile.toString
+    println("my view")
+    println(df.count())
+    println(df.take(1).isEmpty)
+    df.show()
+    println(spark.sqlContext.table(my_table) count())
+    println(spark.sqlContext.table(my_table).take(1).isEmpty)
+    val result = OptimizedBucketWriter.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    assert(!result)
   }
 
   test("calculate bucket") {
