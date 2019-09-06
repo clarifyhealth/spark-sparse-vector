@@ -11,10 +11,12 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters
+import scala.util.Random
 
 object OptimizedBucketWriter {
 
   val _LOGGER: Logger = LoggerFactory.getLogger(this.getClass.getName)
+
   def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                  location: String, bucketColumns: util.ArrayList[String]): Boolean = {
     _log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
@@ -26,9 +28,10 @@ object OptimizedBucketWriter {
       _log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
       val df: DataFrame = sql_ctx.table(view)
 
-      // this is a total hack for now
-      val table_name = s"temp_$view"
-      sql_ctx.sql(s"DROP TABLE IF EXISTS default.$table_name")
+      val original_table_name = s"temp_$view"
+      val rand = Random.alphanumeric.take(5).mkString("")
+      val new_table_name = s"temp_${view}_____$rand"
+
 
       if (bucketColumns.size() == 1) {
         var my_df = df
@@ -55,18 +58,19 @@ object OptimizedBucketWriter {
         //        _log(s"Finished caching df for $view")
         my_df
           .write
+          //.mode("overwrite")
           .format("parquet")
           .partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0))
           .sortBy(bucketColumns.get(0))
-          .option("path", location)
-          .saveAsTable(table_name)
+          //.option("path", location)
+          .saveAsTable(new_table_name)
 
         //        my_df.unpersist(true)
-        //        _log(s"REFRESH TABLE default.$table_name")
-        //        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
-        _log(s"DROP TABLE default.$table_name")
-        sql_ctx.sql(s"DROP TABLE default.$table_name")
+        //        _log(s"REFRESH TABLE default.$original_table_name")
+        //        sql_ctx.sql(s"REFRESH TABLE default.$original_table_name")
+        //        _log(s"DROP TABLE default.$original_table_name")
+        //        sql_ctx.sql(s"DROP TABLE default.$original_table_name")
       }
       else if (bucketColumns.size() == 2) {
         var my_df = df
@@ -94,21 +98,25 @@ object OptimizedBucketWriter {
         //        _log(s"Finished caching df for $view")
         my_df
           .write
+          //.mode("overwrite")
           .format("parquet")
           .partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0), bucketColumns.get(1))
           .sortBy(bucketColumns.get(0), bucketColumns.get(1))
-          .option("path", location)
-          .saveAsTable(table_name)
+          //          .option("path", location)
+          .saveAsTable(new_table_name)
 
         //        my_df.unpersist(true)
-        //        _log(s"REFRESH TABLE default.$table_name")
-        //        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
-        _log(s"DROP TABLE default.$table_name")
-        sql_ctx.sql(s"DROP TABLE default.$table_name")
+        //        _log(s"REFRESH TABLE default.$original_table_name")
+        //        sql_ctx.sql(s"REFRESH TABLE default.$original_table_name")
+        //        _log(s"DROP TABLE default.$original_table_name")
+        //        sql_ctx.sql(s"DROP TABLE default.$original_table_name")
+        // sql_ctx.sql(s"DROP TABLE IF EXISTS default.$original_table_name")
       }
 
       _log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+      val result_df = sql_ctx.table(new_table_name)
+      result_df.createOrReplaceTempView(view)
 
       true
     }
@@ -182,6 +190,35 @@ object OptimizedBucketWriter {
     }
   }
 
+  def readAsBucketWithPartitions2(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
+
+    _log(s"readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+
+    require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
+    _log(s"readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
+    val raw_table_name = s"temp_$view"
+    _log(s"REFRESH TABLE default.$raw_table_name")
+    try {
+      sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
+      // sql_ctx.sql(s"DESCRIBE EXTENDED $raw_table_name").show(numRows = 1000)
+      val result_df = sql_ctx.table(raw_table_name)
+      result_df.createOrReplaceTempView(view)
+      // sql_ctx.sql(s"SELECT * FROM $view").explain(extended = true)
+      _log(s"readAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+
+      true
+    }
+    catch {
+      case e: SparkException =>
+        val cause = e.getCause
+        _log(s"readAsBucketWithPartitions: Got SparkException: $cause")
+        throw cause
+      case unknown: Throwable =>
+        _log(s"readAsBucketWithPartitions: Got some other kind of exception: $unknown")
+        throw unknown
+    }
+  }
+
   private def _getColumnSchema(sql_ctx: SQLContext, temp_view: String) = {
     val df_schema = sql_ctx.sql(s"DESCRIBE $temp_view")
     _getColumnSchemaFromDataFrame(df_schema)
@@ -199,7 +236,7 @@ object OptimizedBucketWriter {
     _log(s"checkpointBucketWithPartitions for $view")
     if (!sql_ctx.table(view).isEmpty) {
       saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
-      readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+      // readAsBucketWithPartitions2(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
     }
     else {
       _log(s"$view was empty so did not bucket it")
@@ -240,6 +277,6 @@ object OptimizedBucketWriter {
   }
 
   def getCurrentDateTimeStamp: String = {
-    LocalDateTime.now.format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+    LocalDateTime.now.format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss.ms"))
   }
 }
