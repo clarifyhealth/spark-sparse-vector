@@ -17,7 +17,7 @@ object OptimizedBucketWriter {
   val _LOGGER: Logger = LoggerFactory.getLogger(this.getClass.getName)
   def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                  location: String, bucketColumns: util.ArrayList[String]): Boolean = {
-    _log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.get_free_memory()}")
+    _log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
 
     try {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
@@ -108,7 +108,7 @@ object OptimizedBucketWriter {
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
-      _log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.get_free_memory()}")
+      _log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
 
       true
     }
@@ -129,7 +129,7 @@ object OptimizedBucketWriter {
 
   def readAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
-    _log(s"readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.get_free_memory()}")
+    _log(s"readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
 
     require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
     _log(s"readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
@@ -167,7 +167,7 @@ object OptimizedBucketWriter {
       val result_df = sql_ctx.table(raw_table_name)
       result_df.createOrReplaceTempView(view)
       // sql_ctx.sql(s"SELECT * FROM $view").explain(extended = true)
-      _log(s"readAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.get_free_memory()}")
+      _log(s"readAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
 
       true
     }
