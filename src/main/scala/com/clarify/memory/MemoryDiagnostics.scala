@@ -12,9 +12,10 @@ object MemoryDiagnostics {
     println("** Max Memory (MB):   " + runtime.maxMemory / mb)
   }
 
+  val mb: Long = 1024 * 1024
   def print_free_memory(): Unit = {
     // memory info
-    val mb = 1024 * 1024
+
     val runtime = Runtime.getRuntime
     println("** Free Memory (MB):  " + runtime.freeMemory / mb)
   }
@@ -22,5 +23,10 @@ object MemoryDiagnostics {
   def get_free_memory(): Long = {
     val runtime = Runtime.getRuntime
     runtime.freeMemory
+  }
+
+  def getFreeMemoryMB: Long = {
+    val runtime = Runtime.getRuntime
+    runtime.freeMemory / mb
   }
 }
