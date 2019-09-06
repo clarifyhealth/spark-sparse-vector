@@ -31,7 +31,7 @@ object OptimizedBucketWriter {
       val original_table_name = s"temp_$view"
       val rand = Random.alphanumeric.take(5).mkString("")
       val new_table_name = s"temp_${view}_____$rand"
-
+      val tableNames: Array[String] = sql_ctx.tableNames()
 
       if (bucketColumns.size() == 1) {
         var my_df = df
@@ -47,6 +47,9 @@ object OptimizedBucketWriter {
               )
             )
             .repartition(numBuckets, col("bucket"))
+        }
+        else {
+          _log(s"Skipping adding bucket column since it exists $view")
         }
 
 
@@ -87,6 +90,8 @@ object OptimizedBucketWriter {
               )
             )
             .repartition(numBuckets, col("bucket"))
+        } else {
+          _log(s"Skipping adding bucket column since it exists $view")
         }
 
         // my_df.select("bucket", bucketColumns.get(0), bucketColumns.get(1)).show(numRows = 1000)
@@ -117,6 +122,11 @@ object OptimizedBucketWriter {
       _log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
       val result_df = sql_ctx.table(new_table_name)
       result_df.createOrReplaceTempView(view)
+
+      //      for (tableName <- tableNames.filter(t => t.startsWith(original_table_name))){
+      //        _log(s"DROP TABLE default.$tableName")
+      //        sql_ctx.sql(s"DROP TABLE default.$tableName")
+      //      }
 
       true
     }

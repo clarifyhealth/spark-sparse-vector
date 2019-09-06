@@ -107,6 +107,58 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     clear_tables(spark_session = spark)
   }
 
+  test("save to buckets multiple rows multiple times") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val my_table = "my_table_multiple"
+
+    val data = List(
+      Row(1, "foo"),
+      Row(2, "bar"),
+      Row(3, "zoo")
+    )
+    val fields = List(
+      StructField("id", IntegerType, nullable = false),
+      StructField("v2", StringType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+
+    df.createOrReplaceTempView(my_table)
+
+    val bucket_columns = new util.ArrayList[String]()
+    bucket_columns.add("id")
+    bucket_columns.add("v2")
+
+    val location = Files.createTempDirectory("parquet").toFile.toString
+    OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    println(s"Wrote output to: $location")
+
+    val tables = spark.catalog.listTables()
+    tables.foreach(t => println(t.name))
+
+    // now update the table
+    val mid_df: DataFrame = spark.sql(s"select *, 1 as foo from $my_table")
+    mid_df.createOrReplaceTempView(my_table)
+    // and save again
+    OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    println(s"Wrote output to: $location")
+
+    // now test reading from it
+    //    OptimizedBucketWriter.readAsBucketWithPartitions2(sql_ctx = spark.sqlContext,
+    //      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    val result_df = spark.table(my_table)
+    result_df.show()
+
+    assert(result_df.count() == df.count())
+    // spark.sql(s"DESCRIBE EXTENDED ${my_table}").show(numRows = 1000, truncate = false)
+
+    clear_tables(spark_session = spark)
+  }
+
   test("checkpoint") {
     spark.sharedState.cacheManager.clearCache()
 
