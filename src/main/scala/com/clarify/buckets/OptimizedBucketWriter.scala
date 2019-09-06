@@ -47,9 +47,28 @@ object OptimizedBucketWriter {
               )
             )
             .repartition(numBuckets, col("bucket"))
+
+          my_df
+            .write
+            //.mode("overwrite")
+            .format("parquet")
+            //.partitionBy("bucket")
+            .bucketBy(numBuckets, bucketColumns.get(0))
+            .sortBy(bucketColumns.get(0))
+            //.option("path", location)
+            .saveAsTable(new_table_name)
         }
         else {
           _log(s"Skipping adding bucket column since it exists $view")
+          my_df
+            .write
+            //.mode("overwrite")
+            .format("parquet")
+            //.partitionBy("bucket")
+            //.bucketBy(numBuckets, bucketColumns.get(0))
+            //.sortBy(bucketColumns.get(0))
+            //.option("path", location)
+            .saveAsTable(new_table_name)
         }
 
 
@@ -59,15 +78,7 @@ object OptimizedBucketWriter {
         //        _log(s"Caching df for $view")
         //        my_df = my_df.cache()
         //        _log(s"Finished caching df for $view")
-        my_df
-          .write
-          //.mode("overwrite")
-          .format("parquet")
-          .partitionBy("bucket")
-          .bucketBy(numBuckets, bucketColumns.get(0))
-          .sortBy(bucketColumns.get(0))
-          //.option("path", location)
-          .saveAsTable(new_table_name)
+
 
         //        my_df.unpersist(true)
         //        _log(s"REFRESH TABLE default.$original_table_name")
@@ -105,7 +116,7 @@ object OptimizedBucketWriter {
           .write
           //.mode("overwrite")
           .format("parquet")
-          .partitionBy("bucket")
+          //.partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0), bucketColumns.get(1))
           .sortBy(bucketColumns.get(0), bucketColumns.get(1))
           //          .option("path", location)
@@ -118,6 +129,9 @@ object OptimizedBucketWriter {
         //        sql_ctx.sql(s"DROP TABLE default.$original_table_name")
         // sql_ctx.sql(s"DROP TABLE IF EXISTS default.$original_table_name")
       }
+
+      sql_ctx.sql(s"REFRESH TABLE $new_table_name")
+      sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
 
       _log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
       val result_df = sql_ctx.table(new_table_name)
@@ -263,6 +277,8 @@ object OptimizedBucketWriter {
       df.write.parquet(location)
       val result_df = sql_ctx.read.parquet(location)
       result_df.createOrReplaceTempView(view)
+      sql_ctx.sql(s"REFRESH TABLE $view")
+      sql_ctx.sql(s"DESCRIBE EXTENDED $view").show(numRows = 1000)
       true
     }
     else {
