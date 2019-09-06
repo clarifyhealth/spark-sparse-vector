@@ -1,27 +1,29 @@
 package com.clarify.buckets
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util
 
 import com.clarify.memory.MemoryDiagnostics
-import org.apache.log4j.Logger
 import org.apache.spark.SparkException
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters
 
 object OptimizedBucketWriter {
 
+  val _LOGGER: Logger = LoggerFactory.getLogger(this.getClass.getName)
   def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                  location: String, bucketColumns: util.ArrayList[String]): Boolean = {
-    println(s"[Scala] saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.get_free_memory()}")
+    _log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.get_free_memory()}")
 
     try {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
-        s"[Scala] bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
+        s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
-      val logger = Logger.getLogger(getClass.getName)
-      println(s"[Scala] saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
+      _log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
       val df: DataFrame = sql_ctx.table(view)
 
       // this is a total hack for now
@@ -31,7 +33,7 @@ object OptimizedBucketWriter {
       if (bucketColumns.size() == 1) {
         var my_df = df
         if (!df.columns.contains("bucket")) {
-          println(s"[Scala] Adding bucket column to $view")
+          _log(s"Adding bucket column to $view")
           my_df = df
             .withColumn("bucket",
               pmod(
@@ -46,11 +48,11 @@ object OptimizedBucketWriter {
 
 
         //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
-        //        println(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
-        //        println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
-        //        println(s"[Scala] Caching df for $view")
+        //        _log(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
+        //        _log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+        //        _log(s"Caching df for $view")
         //        my_df = my_df.cache()
-        //        println(s"[Scala] Finished caching df for $view")
+        //        _log(s"Finished caching df for $view")
         my_df
           .write
           .format("parquet")
@@ -61,15 +63,15 @@ object OptimizedBucketWriter {
           .saveAsTable(table_name)
 
         //        my_df.unpersist(true)
-        //        println(s"[Scala] REFRESH TABLE default.$table_name")
+        //        _log(s"REFRESH TABLE default.$table_name")
         //        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
-        println(s"[Scala] DROP TABLE default.$table_name")
+        _log(s"DROP TABLE default.$table_name")
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
       else if (bucketColumns.size() == 2) {
         var my_df = df
         if (!df.columns.contains("bucket")) {
-          println(s"[Scala] Adding bucket column to $view")
+          _log(s"Adding bucket column to $view")
           my_df = df
             .withColumn("bucket",
               pmod(
@@ -86,10 +88,10 @@ object OptimizedBucketWriter {
         // my_df.select("bucket", bucketColumns.get(0), bucketColumns.get(1)).show(numRows = 1000)
 
         //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
-        //        println(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
-        //        println(s"[Scala] Caching df for $view")
+        //        _log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+        //        _log(s"Caching df for $view")
         //        my_df = my_df.cache()
-        //        println(s"[Scala] Finished caching df for $view")
+        //        _log(s"Finished caching df for $view")
         my_df
           .write
           .format("parquet")
@@ -100,23 +102,23 @@ object OptimizedBucketWriter {
           .saveAsTable(table_name)
 
         //        my_df.unpersist(true)
-        //        println(s"[Scala] REFRESH TABLE default.$table_name")
+        //        _log(s"REFRESH TABLE default.$table_name")
         //        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
-        println(s"[Scala] DROP TABLE default.$table_name")
+        _log(s"DROP TABLE default.$table_name")
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
-      println(s"[Scala] saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.get_free_memory()}")
+      _log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.get_free_memory()}")
 
       true
     }
     catch {
       case e: SparkException =>
         val cause = e.getCause
-        println(s"[Scala] readAsBucketWithPartitions: Got SparkException: $cause")
+        _log(s"readAsBucketWithPartitions: Got SparkException: $cause")
         throw cause
       case unknown: Throwable =>
-        println(s"[Scala] saveAsBucketWithPartitions: Got some other kind of exception: $unknown")
+        _log(s"saveAsBucketWithPartitions: Got some other kind of exception: $unknown")
         throw unknown
     }
   }
@@ -127,11 +129,10 @@ object OptimizedBucketWriter {
 
   def readAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
-    println(s"[Scala] readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.get_free_memory()}")
+    _log(s"readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.get_free_memory()}")
 
     require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
-    println(s"[Scala] readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
-    val logger = Logger.getLogger(getClass.getName)
+    _log(s"readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
     // get schema from parquet file without loading data from it
     val df = sql_ctx.read.format("parquet")
       .load(location)
@@ -158,25 +159,25 @@ object OptimizedBucketWriter {
             )
             CLUSTERED BY ($bucket_by_text) SORTED BY ($bucket_by_text) INTO $numBuckets BUCKETS
             """
-      println(text)
+      _log(text)
       sql_ctx.sql(text)
-      println(s"[Scala] REFRESH TABLE default.$raw_table_name")
+      _log(s"REFRESH TABLE default.$raw_table_name")
       sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
       // sql_ctx.sql(s"DESCRIBE EXTENDED $raw_table_name").show(numRows = 1000)
       val result_df = sql_ctx.table(raw_table_name)
       result_df.createOrReplaceTempView(view)
       // sql_ctx.sql(s"SELECT * FROM $view").explain(extended = true)
-      println(s"[Scala] readAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.get_free_memory()}")
+      _log(s"readAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.get_free_memory()}")
 
       true
     }
     catch {
       case e: SparkException =>
         val cause = e.getCause
-        println(s"[Scala] readAsBucketWithPartitions: Got SparkException: $cause")
+        _log(s"readAsBucketWithPartitions: Got SparkException: $cause")
         throw cause
       case unknown: Throwable =>
-        println(s"[Scala] readAsBucketWithPartitions: Got some other kind of exception: $unknown")
+        _log(s"readAsBucketWithPartitions: Got some other kind of exception: $unknown")
         throw unknown
     }
   }
@@ -195,12 +196,30 @@ object OptimizedBucketWriter {
   def checkpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                      location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
+    _log(s"checkpointBucketWithPartitions for $view")
     if (!sql_ctx.table(view).isEmpty) {
       saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
       readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
     }
     else {
-      println(s"[Scala] $view was empty so did not bucket it")
+      _log(s"$view was empty so did not bucket it")
+      false
+    }
+  }
+
+  def checkpointWithoutBuckets(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                               location: String, bucketColumns: util.ArrayList[String]): Boolean = {
+
+    _log(s"checkpointWithoutBuckets for $view")
+    if (!sql_ctx.table(view).isEmpty) {
+      val df = sql_ctx.table(view)
+      df.write.parquet(location)
+      val result_df = sql_ctx.read.parquet(location)
+      result_df.createOrReplaceTempView(view)
+      true
+    }
+    else {
+      _log(s"$view was empty so did not bucket it")
       false
     }
   }
@@ -213,4 +232,14 @@ object OptimizedBucketWriter {
     true
   }
 
+  def _log(message: String): Boolean = {
+    //    val logger = _LOGGER
+    //    logger.info(message)
+    println(s"$getCurrentDateTimeStamp [Scala] $message")
+    true
+  }
+
+  def getCurrentDateTimeStamp: String = {
+    LocalDateTime.now.format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+  }
 }
