@@ -8,6 +8,8 @@ class WordCountTest extends QueryTest with SparkSessionTestWrapper {
 
   test("word count") {
     spark.sharedState.cacheManager.clearCache()
+    spark.sparkContext.setJobGroup("grpid1", "grpdesc")
+    spark.sparkContext.setJobDescription("jobdesc1")
     val data = List(Row("Hello this is my favourite test"),
       Row("This is cool"),
       Row("Time for some performance test"),
