@@ -48,30 +48,20 @@ object OptimizedBucketWriter {
             )
             .repartition(numBuckets, col("bucket"))
 
-          my_df
-            .write
-            //.mode("overwrite")
-            .format("parquet")
-            //.partitionBy("bucket")
-            .bucketBy(numBuckets, bucketColumns.get(0))
-            .sortBy(bucketColumns.get(0))
-            //.option("path", location)
-            .saveAsTable(new_table_name)
         }
         else {
           _log(s"Skipping adding bucket column since it exists $view")
-          my_df
-            .write
-            //.mode("overwrite")
-            .format("parquet")
-            //.partitionBy("bucket")
-            //.bucketBy(numBuckets, bucketColumns.get(0))
-            //.sortBy(bucketColumns.get(0))
-            //.option("path", location)
-            .saveAsTable(new_table_name)
         }
 
-
+        my_df
+          .write
+          //.mode("overwrite")
+          .format("parquet")
+          //.partitionBy("bucket")
+          .bucketBy(numBuckets, bucketColumns.get(0))
+          .sortBy(bucketColumns.get(0))
+          //.option("path", location)
+          .saveAsTable(new_table_name)
         //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
         //        _log(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
         //        _log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
