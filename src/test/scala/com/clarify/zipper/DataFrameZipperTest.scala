@@ -84,7 +84,7 @@ class DataFrameZipperTest extends QueryTest with SparkSessionTestWrapper {
     val data3 = List(
       Row(1, "foo3"),
       Row(2, "bar3"),
-      Row(3, "zoo4")
+      Row(3, "zoo3")
     )
     val fields3 = List(
       StructField("id", IntegerType, nullable = false),
@@ -107,6 +107,14 @@ class DataFrameZipperTest extends QueryTest with SparkSessionTestWrapper {
 
     assert(result_df.count() == df1.count())
 
+    checkAnswer(
+      result_df,
+      Seq(
+        Row(1, "foo", "foo2", "foo3"),
+        Row(2, "bar", "bar2", "bar3"),
+        Row(3, "zoo", "zoo2", "zoo3")
+      )
+    )
     TestHelpers.clear_tables(spark_session = spark)
   }
 }

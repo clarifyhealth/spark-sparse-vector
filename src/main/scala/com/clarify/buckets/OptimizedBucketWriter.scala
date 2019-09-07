@@ -119,7 +119,7 @@ object OptimizedBucketWriter {
       }
 
       sql_ctx.sql(s"REFRESH TABLE $new_table_name")
-      sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
+      // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
 
       Helpers.log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
       val result_df = sql_ctx.table(new_table_name)
