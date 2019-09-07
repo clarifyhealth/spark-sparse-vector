@@ -3,28 +3,13 @@ package com.clarify.buckets
 import java.nio.file.Files
 import java.util
 
+import com.clarify.Helpers
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, QueryTest, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, QueryTest, Row}
 
 class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
-
-  def clear_tables(spark_session: SparkSession): Boolean = {
-
-    val tables = spark_session.catalog.listTables("default").collect()
-
-    for (table <- tables) {
-      print(s"clear_tables() dropping table/view: ${table.name}")
-
-      spark_session.sql(f"DROP TABLE IF EXISTS default.${table.name}")
-      spark_session.sql(f"DROP VIEW IF EXISTS default.${table.name}")
-      spark_session.sql(f"DROP VIEW IF EXISTS ${table.name}")
-    }
-
-    spark_session.catalog.clearCache()
-    true
-  }
 
   test("save to buckets") {
     spark.sharedState.cacheManager.clearCache()
@@ -60,7 +45,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     assert(result_df.count() == df.count())
 
-    clear_tables(spark_session = spark)
+    Helpers.clear_tables(spark_session = spark)
   }
 
   test("save to buckets multiple rows") {
@@ -104,7 +89,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     assert(result_df.count() == df.count())
     // spark.sql(s"DESCRIBE EXTENDED ${my_table}").show(numRows = 1000, truncate = false)
 
-    clear_tables(spark_session = spark)
+    Helpers.clear_tables(spark_session = spark)
   }
 
   test("save to buckets multiple rows multiple times") {
@@ -156,7 +141,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     assert(result_df.count() == df.count())
     // spark.sql(s"DESCRIBE EXTENDED ${my_table}").show(numRows = 1000, truncate = false)
 
-    clear_tables(spark_session = spark)
+    Helpers.clear_tables(spark_session = spark)
   }
 
   test("checkpoint") {
@@ -198,7 +183,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     assert(result_df.count() == df.count())
     spark.sql(s"DESCRIBE EXTENDED $my_table").show(numRows = 1000, truncate = false)
-    clear_tables(spark_session = spark)
+    Helpers.clear_tables(spark_session = spark)
   }
 
   test("checkpoint empty data frame") {
@@ -223,7 +208,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     val result = OptimizedBucketWriter.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
     assert(!result)
-    clear_tables(spark_session = spark)
+    Helpers.clear_tables(spark_session = spark)
   }
 
   test("calculate bucket") {

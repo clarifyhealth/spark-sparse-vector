@@ -1,5 +1,6 @@
 package com.clarify.zipper
 
+import com.clarify.Helpers
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, QueryTest, Row}
@@ -46,6 +47,7 @@ class DataFrameZipperTest extends QueryTest with SparkSessionTestWrapper {
 
     assert(result_df.count() == df1.count())
 
+    Helpers.clear_tables(spark_session = spark)
   }
 }
 

@@ -1,5 +1,8 @@
 package com.clarify.zipper
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
@@ -9,9 +12,10 @@ object DataFrameZipper {
 
     val a: DataFrame = sql_ctx.table(view1)
     val b: DataFrame = sql_ctx.table(view2)
-
+    _log(f"Zipping data frames: $view1 with $view2")
     val result_df: DataFrame = _zipDataFrames(a, b)
     result_df.createOrReplaceTempView(result_view)
+    _log(f"Finished zipping data frames: $view1 with $view2")
     true
   }
 
@@ -27,5 +31,16 @@ object DataFrameZipper {
     // Create new data frame
     val ab: DataFrame = a.sqlContext.createDataFrame(rows, schema)
     ab
+  }
+
+  def _log(message: String): Boolean = {
+    //    val logger = _LOGGER
+    //    logger.info(message)
+    println(s"$getCurrentDateTimeStamp [Scala] $message")
+    true
+  }
+
+  def getCurrentDateTimeStamp: String = {
+    LocalDateTime.now.format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss.ms"))
   }
 }
