@@ -4,13 +4,13 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util
 
+import com.clarify.Helpers
 import com.clarify.memory.MemoryDiagnostics
 import org.apache.spark.SparkException
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.JavaConverters
 import scala.util.Random
 
 object OptimizedBucketWriter {
@@ -28,10 +28,10 @@ object OptimizedBucketWriter {
       _log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
       val df: DataFrame = sql_ctx.table(view)
 
-      val original_table_name = s"temp_$view"
+      // val original_table_name = s"temp_$view"
       val rand = Random.alphanumeric.take(5).mkString("")
       val new_table_name = s"temp_${view}_____$rand"
-      val tableNames: Array[String] = sql_ctx.tableNames()
+      // val tableNames: Array[String] = sql_ctx.tableNames()
 
       if (bucketColumns.size() == 1) {
         var my_df = df
@@ -145,9 +145,6 @@ object OptimizedBucketWriter {
     }
   }
 
-  import java.util
-
-  def getSeqString(list: util.ArrayList[String]): Seq[String] = JavaConverters.asScalaIteratorConverter(list.listIterator()).asScala.toSeq
 
   def readAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
@@ -168,7 +165,7 @@ object OptimizedBucketWriter {
       val raw_table_name = s"${view}_raw_buckets"
       sql_ctx.sql(s"DROP TABLE IF EXISTS default.$raw_table_name")
       //sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
-      val bucket_by_text = getSeqString(bucketColumns).mkString(",")
+      val bucket_by_text = Helpers.getSeqString(bucketColumns).mkString(",")
       // have to use CREATE TABLE syntax since that supports bucketing
       var text = s"CREATE TABLE $raw_table_name ("
       text += columns.map(column => s"\n${column(0)} ${column(1)}").mkString(",")

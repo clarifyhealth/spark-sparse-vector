@@ -2,7 +2,7 @@ package com.clarify
 
 import org.apache.spark.sql.SparkSession
 
-object Helpers {
+object TestHelpers {
 
   def clear_tables(spark_session: SparkSession): Boolean = {
 

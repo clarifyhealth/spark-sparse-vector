@@ -3,7 +3,7 @@ package com.clarify.buckets
 import java.nio.file.Files
 import java.util
 
-import com.clarify.Helpers
+import com.clarify.TestHelpers
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.types._
@@ -45,7 +45,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     assert(result_df.count() == df.count())
 
-    Helpers.clear_tables(spark_session = spark)
+    TestHelpers.clear_tables(spark_session = spark)
   }
 
   test("save to buckets multiple rows") {
@@ -89,7 +89,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     assert(result_df.count() == df.count())
     // spark.sql(s"DESCRIBE EXTENDED ${my_table}").show(numRows = 1000, truncate = false)
 
-    Helpers.clear_tables(spark_session = spark)
+    TestHelpers.clear_tables(spark_session = spark)
   }
 
   test("save to buckets multiple rows multiple times") {
@@ -141,7 +141,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     assert(result_df.count() == df.count())
     // spark.sql(s"DESCRIBE EXTENDED ${my_table}").show(numRows = 1000, truncate = false)
 
-    Helpers.clear_tables(spark_session = spark)
+    TestHelpers.clear_tables(spark_session = spark)
   }
 
   test("checkpoint") {
@@ -183,7 +183,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     assert(result_df.count() == df.count())
     spark.sql(s"DESCRIBE EXTENDED $my_table").show(numRows = 1000, truncate = false)
-    Helpers.clear_tables(spark_session = spark)
+    TestHelpers.clear_tables(spark_session = spark)
   }
 
   test("checkpoint empty data frame") {
@@ -208,7 +208,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     val result = OptimizedBucketWriter.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
     assert(!result)
-    Helpers.clear_tables(spark_session = spark)
+    TestHelpers.clear_tables(spark_session = spark)
   }
 
   test("calculate bucket") {
