@@ -196,6 +196,30 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     val bucket_columns = new util.ArrayList[String]()
     bucket_columns.add("id")
+
+    val location = Files.createTempDirectory("parquet").toFile.toString
+    println("my view")
+    println(df.count())
+    println(df.take(1).isEmpty)
+    df.show()
+    println(spark.sqlContext.table(my_table) count())
+    println(spark.sqlContext.table(my_table).take(1).isEmpty)
+    val result = OptimizedBucketWriter.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    assert(!result)
+    TestHelpers.clear_tables(spark_session = spark)
+  }
+
+  test("checkpoint empty data frame two columns") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val df: DataFrame = spark.emptyDataFrame
+
+    val my_table = "my_table_empty"
+    df.createOrReplaceTempView(my_table)
+
+    val bucket_columns = new util.ArrayList[String]()
+    bucket_columns.add("id")
     bucket_columns.add("v2")
 
     val location = Files.createTempDirectory("parquet").toFile.toString

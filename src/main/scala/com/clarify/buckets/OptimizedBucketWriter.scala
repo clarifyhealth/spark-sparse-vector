@@ -6,7 +6,7 @@ import com.clarify.Helpers
 import com.clarify.memory.MemoryDiagnostics
 import org.apache.spark.SparkException
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
-import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.Random
@@ -191,13 +191,13 @@ object OptimizedBucketWriter {
 
   def __internalCheckpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                                location: String, bucketColumns: util.ArrayList[String]): Boolean = {
-    Helpers.log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+    Helpers.log(s"__internalCheckpointBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
 
     try {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
         s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
-      Helpers.log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
+      Helpers.log(s"__internalCheckpointBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
       val df: DataFrame = sql_ctx.table(view)
 
       // val original_table_name = s"temp_$view"
@@ -295,7 +295,7 @@ object OptimizedBucketWriter {
       sql_ctx.sql(s"REFRESH TABLE $new_table_name")
       // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
 
-      Helpers.log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+      Helpers.log(s"__internalCheckpointBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
       val result_df = sql_ctx.table(new_table_name)
       result_df.createOrReplaceTempView(view)
 
@@ -309,10 +309,20 @@ object OptimizedBucketWriter {
     catch {
       case e: SparkException =>
         val cause = e.getCause
-        Helpers.log(s"readAsBucketWithPartitions: Got SparkException: $cause")
+        Helpers.log(s"__internalCheckpointBucketWithPartitions: Got SparkException: $cause")
         throw cause
+      case e: AnalysisException =>
+        // we do this instead of checking if data frame is empty because the latter is expensive
+        if (e.message.startsWith(s"cannot resolve '`${bucketColumns.get(0)}`' given input columns")) {
+          Helpers.log(s"__internalCheckpointBucketWithPartitions: data frame passed in is empty. $e")
+          false
+        }
+        else {
+          Helpers.log(s"__internalCheckpointBucketWithPartitions: Got AnalysisException: $e")
+          throw e
+        }
       case unknown: Throwable =>
-        Helpers.log(s"saveAsBucketWithPartitions: Got some other kind of exception: $unknown")
+        Helpers.log(s"__internalCheckpointBucketWithPartitions: Got some other kind of exception: $unknown")
         throw unknown
     }
   }
@@ -321,13 +331,7 @@ object OptimizedBucketWriter {
                                      location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
     Helpers.log(s"checkpointBucketWithPartitions for $view")
-    if (!sql_ctx.table(view).isEmpty) {
-      __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
-    }
-    else {
-      Helpers.log(s"$view was empty so did not bucket it")
-      false
-    }
+    __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
   }
 
   def checkpointWithoutBuckets(sql_ctx: SQLContext, view: String, numBuckets: Int,
