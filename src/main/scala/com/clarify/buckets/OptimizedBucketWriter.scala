@@ -32,27 +32,17 @@ object OptimizedBucketWriter {
 
       if (bucketColumns.size() == 1) {
         var my_df = df
-        if (!df.columns.contains("bucket")) {
-          Helpers.log(s"Adding bucket column to $view")
-          my_df = df
-            .withColumn("bucket",
-              pmod(
-                hash(
-                  col(bucketColumns.get(0))
-                ),
-                lit(numBuckets)
-              )
+        my_df = df
+          .withColumn("bucket",
+            pmod(
+              hash(
+                col(bucketColumns.get(0))
+              ),
+              lit(numBuckets)
             )
-            .repartition(numBuckets, col("bucket"))
-        }
+          )
+          .repartition(numBuckets, col("bucket"))
 
-
-        //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
-        //        Helpers.log(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
-        //        Helpers.log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
-        //        Helpers.log(s"Caching df for $view")
-        //        my_df = my_df.cache()
-        //        Helpers.log(s"Finished caching df for $view")
         my_df
           .write
           .format("parquet")
@@ -62,36 +52,23 @@ object OptimizedBucketWriter {
           .option("path", location)
           .saveAsTable(table_name)
 
-        //        my_df.unpersist(true)
-        //        Helpers.log(s"REFRESH TABLE default.$table_name")
-        //        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
         Helpers.log(s"DROP TABLE default.$table_name")
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
       else if (bucketColumns.size() == 2) {
         var my_df = df
-        if (!df.columns.contains("bucket")) {
-          Helpers.log(s"Adding bucket column to $view")
-          my_df = df
-            .withColumn("bucket",
-              pmod(
-                hash(
-                  col(bucketColumns.get(0)),
-                  col(bucketColumns.get(1))
-                ),
-                lit(numBuckets)
-              )
+        my_df = df
+          .withColumn("bucket",
+            pmod(
+              hash(
+                col(bucketColumns.get(0)),
+                col(bucketColumns.get(1))
+              ),
+              lit(numBuckets)
             )
-            .repartition(numBuckets, col("bucket"))
-        }
+          )
+          .repartition(numBuckets, col("bucket"))
 
-        // my_df.select("bucket", bucketColumns.get(0), bucketColumns.get(1)).show(numRows = 1000)
-
-        //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
-        //        Helpers.log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
-        //        Helpers.log(s"Caching df for $view")
-        //        my_df = my_df.cache()
-        //        Helpers.log(s"Finished caching df for $view")
         my_df
           .write
           .format("parquet")
@@ -101,9 +78,6 @@ object OptimizedBucketWriter {
           .option("path", location)
           .saveAsTable(table_name)
 
-        //        my_df.unpersist(true)
-        //        Helpers.log(s"REFRESH TABLE default.$table_name")
-        //        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
         Helpers.log(s"DROP TABLE default.$table_name")
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
