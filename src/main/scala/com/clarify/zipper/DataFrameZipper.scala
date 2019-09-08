@@ -20,7 +20,8 @@ object DataFrameZipper {
   }
 
   def zipDataFramesList(sql_ctx: SQLContext, view1: String, views: util.ArrayList[String],
-                        result_view: String, column_index: Int): Boolean = {
+                        result_view: String, column_index: Int,
+                        chunk_number: Int, total_chunks: Int): Boolean = {
 
     val a: DataFrame = sql_ctx.table(view1)
     val len = views.size()
@@ -30,7 +31,7 @@ object DataFrameZipper {
     for (view_to_zip <- Helpers.getSeqString(views)) {
       i = i + 1
       val b: DataFrame = sql_ctx.table(view_to_zip)
-      Helpers.log(f"Zipping data frame $i of $len: $view1 with $view_to_zip")
+      Helpers.log(f"Zipping data frame $i of $len (chunk $chunk_number of $total_chunks): $view1 <- $view_to_zip")
 
       left_rdd = left_rdd.zip(b.rdd).map {
         case (rowLeft, rowRight) => Row.fromSeq(rowLeft.toSeq :+ rowRight(column_index))

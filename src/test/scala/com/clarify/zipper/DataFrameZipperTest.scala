@@ -99,7 +99,7 @@ class DataFrameZipperTest extends QueryTest with SparkSessionTestWrapper {
     views_to_zip.add(table3)
 
     //val result_table = "result_table"
-    DataFrameZipper.zipDataFramesList(df1.sqlContext, table1, views_to_zip, table1, 1)
+    DataFrameZipper.zipDataFramesList(df1.sqlContext, table1, views_to_zip, table1, 1, 1, 1)
 
     // now test reading from it
     val result_df: DataFrame = spark.table(table1)
