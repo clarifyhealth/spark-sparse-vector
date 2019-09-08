@@ -8,9 +8,9 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row}
 
 object StatsCalculator {
 
-  def create_statistics(loaded_df: DataFrame, normal_columns: List[(String, String)],
+  def create_statistics(loaded_df: DataFrame, normal_columns: Seq[(String, String)],
                         record_count: Int, sample_record_count: Int,
-                        columns_to_histogram: List[String],
+                        columns_to_histogram: Seq[String],
                         view: String): DataFrame = {
     //noinspection SpellCheckingInspection
     val statistics_schema = StructType(Array(
@@ -44,7 +44,7 @@ object StatsCalculator {
     val my_result_list: Seq[Row] = Seq()
     Helpers.log(f"Calculating histograms for $view columns: $columns_to_histogram")
     // this returns List[column_name, List[(value. value_count)]
-    val histogram_list_all_columns: List[(String, List[(String, Int)])] = _create_histogram_array(
+    val histogram_list_all_columns: Seq[(String, Seq[(String, Int)])] = _create_histogram_array(
       columns_to_histogram,
       loaded_df)
 
@@ -121,16 +121,16 @@ object StatsCalculator {
             stddev_samp(column_name)
               .cast("double"), 3)
             .alias("sample_stddev"),
-          lit(None).alias("top_value_1"),
-          lit(None).alias("top_value_percent_1"),
-          lit(None).alias("top_value_2"),
-          lit(None).alias("top_value_percent_2"),
-          lit(None).alias("top_value_3"),
-          lit(None).alias("top_value_percent_3"),
-          lit(None).alias("top_value_4"),
-          lit(None).alias("top_value_percent_4"),
-          lit(None).alias("top_value_5"),
-          lit(None).alias("top_value_percent_5")
+          lit(null).alias("top_value_1"),
+          lit(null).alias("top_value_percent_1"),
+          lit(null).alias("top_value_2"),
+          lit(null).alias("top_value_percent_2"),
+          lit(null).alias("top_value_3"),
+          lit(null).alias("top_value_percent_3"),
+          lit(null).alias("top_value_4"),
+          lit(null).alias("top_value_percent_4"),
+          lit(null).alias("top_value_5"),
+          lit(null).alias("top_value_percent_5")
         )
       }
       else {
@@ -140,43 +140,44 @@ object StatsCalculator {
           lit(data_type).alias("data_type"),
           lit(record_count).alias("total_count"),
           lit(sample_record_count).alias("sample_count"),
-          countDistinct(col(column_name)).alias("sample_count_distinct"),
-          round(
-            count(
-              when(
-                isnull(col(column_name)),
-                lit(1)
-              )
-            ) * 100 / sample_record_count, 3
-          ).alias("sample_percent_null"),
-          lit(null).cast("double").alias("sample_percent_zero"),
-          lit(null).cast("double").alias("sample_percent_less_than_zero"),
-          // now create the "five number summary":
-          // https://www.statisticshowto.datasciencecentral.com/how-to-find-a-five-number-summary-in-statistics/
-          lit(null).cast("double").alias("sample_min"),
-          // https://stackoverflow.com/questions/31432843/how-to-find-median-and-quantiles-using-spark
+          //          countDistinct(col(column_name))
+          //            .alias("sample_count_distinct"),
+          //          round(
+          //            count(
+          //              when(
+          //                isnull(col(column_name)),
+          //                lit(1)
+          //              )
+          //            ) * 100 / sample_record_count, 3
+          //          ).alias("sample_percent_null"),
+          //          lit(null).cast("double").alias("sample_percent_zero"),
+          //          lit(null).cast("double").alias("sample_percent_less_than_zero"),
+          //          // now create the "five number summary":
+          //          // https://www.statisticshowto.datasciencecentral.com/how-to-find-a-five-number-summary-in-statistics/
+          //          lit(null).cast("double").alias("sample_min"),
+          //          // https://stackoverflow.com/questions/31432843/how-to-find-median-and-quantiles-using-spark
           lit(null).cast("double").alias("sample_q_1"),
           lit(null).cast("double").alias("sample_median"),
           lit(null).cast("double").alias("sample_q_3"),
           lit(null).cast("double").alias("sample_max"),
           lit(null).cast("double").alias("sample_mean"),
           lit(null).cast("double").alias("sample_stddev"),
-          lit(None).alias("top_value_1"),
-          lit(None).alias("top_value_percent_1"),
-          lit(None).alias("top_value_2"),
-          lit(None).alias("top_value_percent_2"),
-          lit(None).alias("top_value_3"),
-          lit(None).alias("top_value_percent_3"),
-          lit(None).alias("top_value_4"),
-          lit(None).alias("top_value_percent_4"),
-          lit(None).alias("top_value_5"),
-          lit(None).alias("top_value_percent_5")
+          lit(null).alias("top_value_1"),
+          lit(null).alias("top_value_percent_1"),
+          lit(null).alias("top_value_2"),
+          lit(null).alias("top_value_percent_2"),
+          lit(null).alias("top_value_3"),
+          lit(null).alias("top_value_percent_3"),
+          lit(null).alias("top_value_4"),
+          lit(null).alias("top_value_percent_4"),
+          lit(null).alias("top_value_5"),
+          lit(null).alias("top_value_percent_5")
         )
       }
 
       // now fill in the histogram
       if (columns_to_histogram contains column_name) {
-        val histogram_array_tuple: (String, List[(String, Int)]) = histogram_list_all_columns.filter(x => x._1 == column_name).head
+        val histogram_array_tuple: (String, Seq[(String, Int)]) = histogram_list_all_columns.filter(x => x._1 == column_name).head
         val histogram_array: Seq[(String, Int)] = histogram_array_tuple._2
         var i: Int = 0
         for (histogram <- histogram_array) {
@@ -196,18 +197,18 @@ object StatsCalculator {
     result_statistics_df
   }
 
-  def _create_histogram_array(columns_to_histogram: List[String],
-                              loaded_df: DataFrame): List[(String, List[(String, Int)])] = {
-    val result: List[(String, List[(String, Int)])] = List()
+  def _create_histogram_array(columns_to_histogram: Seq[String],
+                              loaded_df: DataFrame): Seq[(String, Seq[(String, Int)])] = {
+    val result: Seq[(String, Seq[(String, Int)])] = List()
     for (column_name <- columns_to_histogram) {
       result +: _calculate_histogram_array_for_column(column_name, loaded_df)
     }
     result
   }
 
-  def create_histogram(loaded_df: DataFrame, normal_columns: List[String],
+  def create_histogram(loaded_df: DataFrame, normal_columns: Seq[String],
                        record_count: Int, sample_record_count: Int,
-                       columns_to_histogram: List[String]): DataFrame = {
+                       columns_to_histogram: Seq[String]): DataFrame = {
 
     val histogram_schema = StructType(
       Array(
@@ -226,7 +227,7 @@ object StatsCalculator {
   }
 
   def _calculate_histogram_array_for_column(column_name: String,
-                                            loaded_df: DataFrame): List[(String, Int)] = {
+                                            loaded_df: DataFrame): Seq[(String, Int)] = {
     val result_data_frame: DataFrame = loaded_df
       .select(column_name)
       .groupBy(column_name)
@@ -246,13 +247,13 @@ object StatsCalculator {
       )
       .select("result")
 
-    val histogram: List[(String, Int)] =
-      result_data_frame.collect()(0).asInstanceOf[List[(String, Int)]]
+    val histogram: Seq[(String, Int)] =
+      result_data_frame.collect()(0).asInstanceOf[Seq[(String, Int)]]
 
     histogram
   }
 
-  def _calculate_histogram_for_column(column_name: String, loaded_df: DataFrame): List[(String, Int)] = {
+  def _calculate_histogram_for_column(column_name: String, loaded_df: DataFrame): Seq[(String, Int)] = {
     var df_histogram: Dataset[Row] = loaded_df
       .select(column_name)
       .groupBy(column_name)
@@ -264,8 +265,8 @@ object StatsCalculator {
       concat_ws(":", col(f"{column_name}"), col("count").alias("value_count")))
     df_histogram = df_histogram.agg(concat_ws(",", collect_list("key_plus_value")).alias("result"))
 
-    val histogram: List[(String, Int)] =
-      df_histogram.collect()(0).asInstanceOf[List[(String, Int)]]
+    val histogram: Seq[(String, Int)] =
+      df_histogram.collect()(0).asInstanceOf[Seq[(String, Int)]]
     histogram
   }
 }
