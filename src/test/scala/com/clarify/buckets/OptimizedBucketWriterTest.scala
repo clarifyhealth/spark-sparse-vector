@@ -33,7 +33,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     bucket_columns.add("id")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+    OptimizedBucketWriter.__internalCheckpointBucketWithPartitions(sql_ctx = spark.sqlContext,
       view = "my_table", numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
@@ -73,7 +73,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     bucket_columns.add("v2")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+    OptimizedBucketWriter.__internalCheckpointBucketWithPartitions(sql_ctx = spark.sqlContext,
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
@@ -117,7 +117,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     bucket_columns.add("v2")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+    OptimizedBucketWriter.__internalCheckpointBucketWithPartitions(sql_ctx = spark.sqlContext,
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
@@ -128,7 +128,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     val mid_df: DataFrame = spark.sql(s"select *, 1 as foo from $my_table")
     mid_df.createOrReplaceTempView(my_table)
     // and save again
-    OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+    OptimizedBucketWriter.__internalCheckpointBucketWithPartitions(sql_ctx = spark.sqlContext,
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 

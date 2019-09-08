@@ -26,10 +26,9 @@ object OptimizedBucketWriter {
       Helpers.log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
       val df: DataFrame = sql_ctx.table(view)
 
-      // val original_table_name = s"temp_$view"
-      val rand = Random.alphanumeric.take(5).mkString("")
-      val new_table_name = s"temp_${view}_____$rand"
-      // val tableNames: Array[String] = sql_ctx.tableNames()
+      // this is a total hack for now
+      val table_name = s"temp_$view"
+      sql_ctx.sql(s"DROP TABLE IF EXISTS default.$table_name")
 
       if (bucketColumns.size() == 1) {
         var my_df = df
@@ -45,34 +44,29 @@ object OptimizedBucketWriter {
               )
             )
             .repartition(numBuckets, col("bucket"))
-
-        }
-        else {
-          Helpers.log(s"Skipping adding bucket column since it exists $view")
         }
 
+
+        //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
+        //        Helpers.log(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
+        //        Helpers.log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+        //        Helpers.log(s"Caching df for $view")
+        //        my_df = my_df.cache()
+        //        Helpers.log(s"Finished caching df for $view")
         my_df
           .write
-          //.mode("overwrite")
           .format("parquet")
-          //.partitionBy("bucket")
+          .partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0))
           .sortBy(bucketColumns.get(0))
-          //.option("path", location)
-          .saveAsTable(new_table_name)
-        //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
-        //        Helpers._log(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
-        //        Helpers._log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
-        //        Helpers._log(s"Caching df for $view")
-        //        my_df = my_df.cache()
-        //        Helpers._log(s"Finished caching df for $view")
-
+          .option("path", location)
+          .saveAsTable(table_name)
 
         //        my_df.unpersist(true)
-        //        Helpers._log(s"REFRESH TABLE default.$original_table_name")
-        //        sql_ctx.sql(s"REFRESH TABLE default.$original_table_name")
-        //        Helpers._log(s"DROP TABLE default.$original_table_name")
-        //        sql_ctx.sql(s"DROP TABLE default.$original_table_name")
+        //        Helpers.log(s"REFRESH TABLE default.$table_name")
+        //        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
+        Helpers.log(s"DROP TABLE default.$table_name")
+        sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
       else if (bucketColumns.size() == 2) {
         var my_df = df
@@ -89,46 +83,32 @@ object OptimizedBucketWriter {
               )
             )
             .repartition(numBuckets, col("bucket"))
-        } else {
-          Helpers.log(s"Skipping adding bucket column since it exists $view")
         }
 
         // my_df.select("bucket", bucketColumns.get(0), bucketColumns.get(1)).show(numRows = 1000)
 
         //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
-        //        Helpers._log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
-        //        Helpers._log(s"Caching df for $view")
+        //        Helpers.log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+        //        Helpers.log(s"Caching df for $view")
         //        my_df = my_df.cache()
-        //        Helpers._log(s"Finished caching df for $view")
+        //        Helpers.log(s"Finished caching df for $view")
         my_df
           .write
-          //.mode("overwrite")
           .format("parquet")
-          //.partitionBy("bucket")
+          .partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0), bucketColumns.get(1))
           .sortBy(bucketColumns.get(0), bucketColumns.get(1))
-          //          .option("path", location)
-          .saveAsTable(new_table_name)
+          .option("path", location)
+          .saveAsTable(table_name)
 
         //        my_df.unpersist(true)
-        //        Helpers._log(s"REFRESH TABLE default.$original_table_name")
-        //        sql_ctx.sql(s"REFRESH TABLE default.$original_table_name")
-        //        Helpers._log(s"DROP TABLE default.$original_table_name")
-        //        sql_ctx.sql(s"DROP TABLE default.$original_table_name")
-        // sql_ctx.sql(s"DROP TABLE IF EXISTS default.$original_table_name")
+        //        Helpers.log(s"REFRESH TABLE default.$table_name")
+        //        sql_ctx.sql(s"REFRESH TABLE default.$table_name")
+        Helpers.log(s"DROP TABLE default.$table_name")
+        sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
-      sql_ctx.sql(s"REFRESH TABLE $new_table_name")
-      // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
-
       Helpers.log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-      val result_df = sql_ctx.table(new_table_name)
-      result_df.createOrReplaceTempView(view)
-
-      //      for (tableName <- tableNames.filter(t => t.startsWith(original_table_name))){
-      //        Helpers._log(s"DROP TABLE default.$tableName")
-      //        sql_ctx.sql(s"DROP TABLE default.$tableName")
-      //      }
 
       true
     }
@@ -142,7 +122,6 @@ object OptimizedBucketWriter {
         throw unknown
     }
   }
-
 
   def readAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
@@ -199,35 +178,6 @@ object OptimizedBucketWriter {
     }
   }
 
-  def readAsBucketWithPartitions2(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]): Boolean = {
-
-    Helpers.log(s"readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-
-    require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
-    Helpers.log(s"readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
-    val raw_table_name = s"temp_$view"
-    Helpers.log(s"REFRESH TABLE default.$raw_table_name")
-    try {
-      sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
-      // sql_ctx.sql(s"DESCRIBE EXTENDED $raw_table_name").show(numRows = 1000)
-      val result_df = sql_ctx.table(raw_table_name)
-      result_df.createOrReplaceTempView(view)
-      // sql_ctx.sql(s"SELECT * FROM $view").explain(extended = true)
-      Helpers.log(s"readAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-
-      true
-    }
-    catch {
-      case e: SparkException =>
-        val cause = e.getCause
-        Helpers.log(s"readAsBucketWithPartitions: Got SparkException: $cause")
-        throw cause
-      case unknown: Throwable =>
-        Helpers.log(s"readAsBucketWithPartitions: Got some other kind of exception: $unknown")
-        throw unknown
-    }
-  }
-
   private def _getColumnSchema(sql_ctx: SQLContext, temp_view: String) = {
     val df_schema = sql_ctx.sql(s"DESCRIBE $temp_view")
     _getColumnSchemaFromDataFrame(df_schema)
@@ -239,13 +189,140 @@ object OptimizedBucketWriter {
     columns
   }
 
+  def __internalCheckpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                                               location: String, bucketColumns: util.ArrayList[String]): Boolean = {
+    Helpers.log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+
+    try {
+      require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
+        s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
+
+      Helpers.log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
+      val df: DataFrame = sql_ctx.table(view)
+
+      // val original_table_name = s"temp_$view"
+      val rand = Random.alphanumeric.take(5).mkString("")
+      val new_table_name = s"temp_${view}_____$rand"
+      // val tableNames: Array[String] = sql_ctx.tableNames()
+
+      if (bucketColumns.size() == 1) {
+        var my_df = df
+        if (!df.columns.contains("bucket")) {
+          Helpers.log(s"Adding bucket column to $view")
+          my_df = df
+            .withColumn("bucket",
+              pmod(
+                hash(
+                  col(bucketColumns.get(0))
+                ),
+                lit(numBuckets)
+              )
+            )
+            .repartition(numBuckets, col("bucket"))
+
+        }
+        else {
+          Helpers.log(s"Skipping adding bucket column since it exists $view")
+        }
+
+        my_df
+          .write
+          //.mode("overwrite")
+          .format("parquet")
+          //.partitionBy("bucket")
+          .bucketBy(numBuckets, bucketColumns.get(0))
+          .sortBy(bucketColumns.get(0))
+          //.option("path", location)
+          .saveAsTable(new_table_name)
+        //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
+        //        Helpers.Helpers.log(s"saveAsBucketWithPartitions: count: ${my_df.count()}")
+        //        Helpers.Helpers.log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+        //        Helpers.Helpers.log(s"Caching df for $view")
+        //        my_df = my_df.cache()
+        //        Helpers.Helpers.log(s"Finished caching df for $view")
+
+
+        //        my_df.unpersist(true)
+        //        Helpers.Helpers.log(s"REFRESH TABLE default.$original_table_name")
+        //        sql_ctx.sql(s"REFRESH TABLE default.$original_table_name")
+        //        Helpers.Helpers.log(s"DROP TABLE default.$original_table_name")
+        //        sql_ctx.sql(s"DROP TABLE default.$original_table_name")
+      }
+      else if (bucketColumns.size() == 2) {
+        var my_df = df
+        if (!df.columns.contains("bucket")) {
+          Helpers.log(s"Adding bucket column to $view")
+          my_df = df
+            .withColumn("bucket",
+              pmod(
+                hash(
+                  col(bucketColumns.get(0)),
+                  col(bucketColumns.get(1))
+                ),
+                lit(numBuckets)
+              )
+            )
+            .repartition(numBuckets, col("bucket"))
+        } else {
+          Helpers.log(s"Skipping adding bucket column since it exists $view")
+        }
+
+        // my_df.select("bucket", bucketColumns.get(0), bucketColumns.get(1)).show(numRows = 1000)
+
+        //        val unique_buckets = my_df.select(col("bucket")).distinct().count()
+        //        Helpers.Helpers.log(s"saveAsBucketWithPartitions: Number of buckets: $unique_buckets")
+        //        Helpers.Helpers.log(s"Caching df for $view")
+        //        my_df = my_df.cache()
+        //        Helpers.Helpers.log(s"Finished caching df for $view")
+        my_df
+          .write
+          //.mode("overwrite")
+          .format("parquet")
+          //.partitionBy("bucket")
+          .bucketBy(numBuckets, bucketColumns.get(0), bucketColumns.get(1))
+          .sortBy(bucketColumns.get(0), bucketColumns.get(1))
+          //          .option("path", location)
+          .saveAsTable(new_table_name)
+
+        //        my_df.unpersist(true)
+        //        Helpers.Helpers.log(s"REFRESH TABLE default.$original_table_name")
+        //        sql_ctx.sql(s"REFRESH TABLE default.$original_table_name")
+        //        Helpers.Helpers.log(s"DROP TABLE default.$original_table_name")
+        //        sql_ctx.sql(s"DROP TABLE default.$original_table_name")
+        // sql_ctx.sql(s"DROP TABLE IF EXISTS default.$original_table_name")
+      }
+
+      sql_ctx.sql(s"REFRESH TABLE $new_table_name")
+      // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
+
+      Helpers.log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+      val result_df = sql_ctx.table(new_table_name)
+      result_df.createOrReplaceTempView(view)
+
+      //      for (tableName <- tableNames.filter(t => t.startsWith(original_table_name))){
+      //        Helpers.Helpers.log(s"DROP TABLE default.$tableName")
+      //        sql_ctx.sql(s"DROP TABLE default.$tableName")
+      //      }
+
+      true
+    }
+    catch {
+      case e: SparkException =>
+        val cause = e.getCause
+        Helpers.log(s"readAsBucketWithPartitions: Got SparkException: $cause")
+        throw cause
+      case unknown: Throwable =>
+        Helpers.log(s"saveAsBucketWithPartitions: Got some other kind of exception: $unknown")
+        throw unknown
+    }
+  }
+
   def checkpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                      location: String, bucketColumns: util.ArrayList[String]): Boolean = {
 
     Helpers.log(s"checkpointBucketWithPartitions for $view")
     if (!sql_ctx.table(view).isEmpty) {
-      saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
-      // readAsBucketWithPartitions2(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+      __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
     }
     else {
       Helpers.log(s"$view was empty so did not bucket it")
