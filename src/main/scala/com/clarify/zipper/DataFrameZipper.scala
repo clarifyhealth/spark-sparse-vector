@@ -12,14 +12,15 @@ object DataFrameZipper {
 
     val a: DataFrame = sql_ctx.table(view1)
     val b: DataFrame = sql_ctx.table(view2)
-    Helpers.log(f"Zipping data frames: $view1 with $view2")
+    Helpers.log(f"Zipping data frames: $view1 <- $view2")
     val result_df: DataFrame = _zipDataFrames(a, b, column_index)
     result_df.createOrReplaceTempView(result_view)
     Helpers.log(f"Finished zipping data frames: $view1 with $view2")
     true
   }
 
-  def zipDataFramesList(sql_ctx: SQLContext, view1: String, views: util.ArrayList[String], result_view: String, column_index: Int): Boolean = {
+  def zipDataFramesList(sql_ctx: SQLContext, view1: String, views: util.ArrayList[String],
+                        result_view: String, column_index: Int): Boolean = {
 
     val a: DataFrame = sql_ctx.table(view1)
     val len = views.size()
