@@ -197,12 +197,14 @@ object OptimizedBucketWriter {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
         s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
-      Helpers.log(s"__internalCheckpointBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
+      val rand = Random.alphanumeric.take(5).mkString("")
+      val new_table_name = s"temp_${view}_____$rand"
+
+      Helpers.log(s"__internalCheckpointBucketWithPartitions: view=$view table=$new_table_name numBuckets=$numBuckets"
+        + f" bucket_columns(${bucketColumns.size()})=$bucketColumns")
       val df: DataFrame = sql_ctx.table(view)
 
       // val original_table_name = s"temp_$view"
-      val rand = Random.alphanumeric.take(5).mkString("")
-      val new_table_name = s"temp_${view}_____$rand"
       // val tableNames: Array[String] = sql_ctx.tableNames()
 
       if (bucketColumns.size() == 1) {
