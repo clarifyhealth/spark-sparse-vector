@@ -238,17 +238,25 @@ object StatsCalculator {
       .limit(5)
       .withColumn("key_plus_value",
         struct(
-          col(f"$column_name").alias("value"),
-          col("count").alias("value_count")
+          col(f"$column_name").cast("string").alias("value"),
+          col("count").cast("int").alias("value_count")
         )
       )
-      .agg(
-        collect_list("key_plus_value").alias("result")
-      )
-      .select("result")
+      //      .agg(
+      //        collect_list("key_plus_value").alias("result")
+      //      )
+      .select("key_plus_value")
 
     val histogram: Seq[(String, Int)] =
-      result_data_frame.collect()(0).asInstanceOf[Seq[(String, Int)]]
+      result_data_frame
+        .rdd
+        .map {
+          row =>
+            Row(
+              row.getStruct(0).getAs[String]("value"),
+              row.getStruct(0).getAs[Int]("value_count")
+            )
+        }.collect().map(row => (row.getString(0), row.getInt(1)))
 
     histogram
   }
