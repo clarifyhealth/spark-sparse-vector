@@ -174,7 +174,8 @@ object OptimizedBucketWriter {
         s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
       val postfix: String = "____"
-      val table_prefix = f"temp_$view$postfix"
+
+      val table_prefix = f"temp_${view.toLowerCase()}$postfix"
       // find previous checkpoint tables
       val previous_checkpoint_table_names: Seq[String] =
         sql_ctx.tableNames().filter(x => x.startsWith(table_prefix))
@@ -381,7 +382,7 @@ object OptimizedBucketWriter {
 
   import sys.process._
 
-  def _printFreeSpace(sparkContext: SparkContext) = {
+  def _printFreeSpace(sparkContext: SparkContext): Boolean = {
     val deployMode: String = sparkContext.getConf.get("spark.submit.deployMode", null)
     if (deployMode != null && deployMode != "client") {
       //noinspection SpellCheckingInspection
