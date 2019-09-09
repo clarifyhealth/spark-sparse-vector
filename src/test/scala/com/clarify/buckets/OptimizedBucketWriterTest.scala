@@ -132,6 +132,14 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
+    // now update the table
+    val mid2_df: DataFrame = spark.sql(s"select *, 2 as bar from $my_table")
+    mid2_df.createOrReplaceTempView(my_table)
+    // and save again
+    OptimizedBucketWriter.__internalCheckpointBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    println(s"Wrote output to: $location")
+
     // now test reading from it
     //    OptimizedBucketWriter.readAsBucketWithPartitions2(sql_ctx = spark.sqlContext,
     //      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
