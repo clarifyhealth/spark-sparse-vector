@@ -131,7 +131,9 @@ class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
     val columns_to_histogram: Seq[String] = Seq("id", "name", "v1")
 
     val result: DataFrame =
-      StatsCalculator.create_statistics(df, 100, 10, columns_to_histogram, my_table
+      StatsCalculator._create_statistics(df, 100, 10,
+        Seq(),
+        columns_to_histogram, my_table
       )
 
     println(f"result: ${result.count()}")

@@ -4,14 +4,32 @@ import com.clarify.Helpers
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SQLContext}
 
 object StatsCalculator {
 
-  def create_statistics(loaded_df: DataFrame,
-                        record_count: Int, sample_record_count: Int,
+  def create_statistics(sql_ctx: SQLContext,
+                        record_count: Int,
+                        sample_record_count: Int,
+                        columns_to_include: Seq[String],
                         columns_to_histogram: Seq[String],
-                        view: String): DataFrame = {
+                        view: String,
+                        result_view: String): Boolean = {
+
+    val loaded_df: DataFrame = sql_ctx.table(view)
+    val result_df: DataFrame = _create_statistics(loaded_df, record_count, sample_record_count,
+      columns_to_include,
+      columns_to_histogram, view)
+    result_df.createOrReplaceTempView(result_view)
+    true
+  }
+
+  def _create_statistics(loaded_df: DataFrame,
+                         record_count: Int,
+                         sample_record_count: Int,
+                         columns_to_include: Seq[String],
+                         columns_to_histogram: Seq[String],
+                         view: String): DataFrame = {
     //noinspection SpellCheckingInspection
     val statistics_schema = StructType(Array(
       StructField("column_name", StringType, nullable = false),
@@ -45,6 +63,7 @@ object StatsCalculator {
 
     val normal_columns: Seq[(String, DataType)] =
       loaded_df.schema
+        .filter(x => columns_to_include.isEmpty || columns_to_include.contains(x.name))
         .filter(x => !invalid_column_types.contains(x.dataType))
         .map(x => (x.name, x.dataType))
 
