@@ -3,6 +3,7 @@ package com.clarify.partitions
 import java.nio.file.Files
 import java.util
 
+import com.clarify.TestHelpers
 import com.clarify.buckets.OptimizedBucketWriter
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.functions.{col, sum}
@@ -47,6 +48,8 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     result_df.show(numRows = 1000)
 
     assert(result_df.select(sum(col("size"))).collect()(0)(0) == 14.0)
+    TestHelpers.clear_tables(spark_session = spark)
+
   }
 
   test("get partitions with sampling fraction") {
@@ -86,6 +89,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     result_df.show(numRows = 1000)
 
     assert(result_df.count() == 5)
+    TestHelpers.clear_tables(spark_session = spark)
   }
 
   test("bucket and get partitions") {
@@ -142,6 +146,7 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     result_df.show(numRows = 1000)
 
     assert(result_df.select(sum(col("size"))).collect()(0)(0) == 14.0)
+    TestHelpers.clear_tables(spark_session = spark)
   }
   test("bucket and get empty partitions") {
     spark.sharedState.cacheManager.clearCache()
@@ -197,5 +202,6 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     result_df.show(numRows = 1000)
 
     assert(result_df.select(sum(col("size"))).collect()(0)(0) == 5.0)
+    TestHelpers.clear_tables(spark_session = spark)
   }
 }

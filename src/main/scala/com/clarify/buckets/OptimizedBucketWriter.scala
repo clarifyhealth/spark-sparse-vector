@@ -9,8 +9,6 @@ import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext}
 import org.apache.spark.{SparkContext, SparkException}
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.util.Random
-
 object OptimizedBucketWriter {
 
   val _LOGGER: Logger = LoggerFactory.getLogger(this.getClass.getName)
@@ -19,7 +17,7 @@ object OptimizedBucketWriter {
                                  location: String, bucketColumns: util.ArrayList[String],
                                  name: String = null): Boolean = {
     Helpers.log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-    printFreeSpace(sql_ctx.sparkContext)
+    _printFreeSpace(sql_ctx.sparkContext)
     try {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
         s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
@@ -175,8 +173,31 @@ object OptimizedBucketWriter {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
         s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
-      val rand = Random.alphanumeric.take(5).mkString("")
-      val new_table_name = s"temp_${view}_____$rand"
+      val postfix: String = "____"
+      val table_prefix = f"temp_$view$postfix"
+      // find previous checkpoint tables
+      val previous_checkpoint_table_names: Seq[String] =
+        sql_ctx.tableNames().filter(x => x.startsWith(table_prefix))
+          .sorted.reverse
+
+      println("---tables---")
+      sql_ctx.tableNames().foreach(println)
+      println("-------------")
+      println(f"---- previous_checkpoint_table_names: ${previous_checkpoint_table_names.size} ---")
+      previous_checkpoint_table_names.foreach(println)
+      println("--------------")
+
+      val previous_checkpoint_numbers: Seq[Int] =
+        previous_checkpoint_table_names
+          .map(x => x.replace(table_prefix, "").toInt)
+          .sorted.reverse
+
+      previous_checkpoint_numbers.foreach(println)
+
+      val new_checkpoint_number: Int =
+        if (previous_checkpoint_numbers.isEmpty) 1 else previous_checkpoint_numbers.head + 1
+
+      val new_table_name = s"$table_prefix$new_checkpoint_number"
 
       Helpers.log(s"__internalCheckpointBucketWithPartitions: view=$view table=$new_table_name numBuckets=$numBuckets"
         + f" bucket_columns(${bucketColumns.size()})=$bucketColumns")
@@ -275,6 +296,16 @@ object OptimizedBucketWriter {
       sql_ctx.sql(s"REFRESH TABLE $new_table_name")
       // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
 
+      // delete all but latest of the previous checkpoints
+      if (previous_checkpoint_table_names.nonEmpty) {
+        val tables_to_delete: Seq[String] = previous_checkpoint_table_names.drop(1)
+        println(f"---- tables to delete: ${tables_to_delete.size} -----")
+        tables_to_delete.foreach(println)
+        tables_to_delete.foreach(t => {
+          println(f"DROP TABLE default.$t")
+          sql_ctx.sql(f"DROP TABLE default.$t")
+        })
+      }
       Helpers.log(s"__internalCheckpointBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
       val result_df = sql_ctx.table(new_table_name)
       result_df.createOrReplaceTempView(view)
@@ -314,8 +345,9 @@ object OptimizedBucketWriter {
     if (name != null) {
       sql_ctx.sparkContext.setJobDescription(name)
     }
-    Helpers.log(s"checkpointBucketWithPartitions for $view")
-    printFreeSpace(sql_ctx.sparkContext)
+    Helpers
+      .log(s"checkpointBucketWithPartitions for $view")
+    _printFreeSpace(sql_ctx.sparkContext)
     __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
       numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
   }
@@ -349,7 +381,7 @@ object OptimizedBucketWriter {
 
   import sys.process._
 
-  def printFreeSpace(sparkContext: SparkContext) = {
+  def _printFreeSpace(sparkContext: SparkContext) = {
     val deployMode: String = sparkContext.getConf.get("spark.submit.deployMode", null)
     if (deployMode != null && deployMode != "client") {
       //noinspection SpellCheckingInspection
