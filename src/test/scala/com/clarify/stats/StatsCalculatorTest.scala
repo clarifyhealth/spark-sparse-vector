@@ -128,22 +128,21 @@ class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
 
     df.createOrReplaceTempView(my_table)
 
-    val normal_columns: Seq[(String, String)] = Seq(("id", "int"), ("name", "string"), ("v1", "int"))
     val columns_to_histogram: Seq[String] = Seq("id", "name", "v1")
 
     val result: DataFrame =
-      StatsCalculator.create_statistics(df, normal_columns, 100, 10, columns_to_histogram, my_table
+      StatsCalculator.create_statistics(df, 100, 10, columns_to_histogram, my_table
       )
 
     println(f"result: ${result.count()}")
     result.show(truncate = false)
 
     checkAnswer(
-      result.selectExpr("column_name", "sample_count_distinct"),
+      result.selectExpr("column_name", "sample_count_distinct", "sample_min"),
       Seq(
-        Row("id", 8),
-        Row("name", 3),
-        Row("v1", 5)
+        Row("id", 8, 1),
+        Row("name", 3, null),
+        Row("v1", 5, 5)
       )
     )
 

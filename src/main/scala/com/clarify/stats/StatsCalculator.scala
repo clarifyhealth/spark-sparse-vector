@@ -8,7 +8,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row}
 
 object StatsCalculator {
 
-  def create_statistics(loaded_df: DataFrame, normal_columns: Seq[(String, String)],
+  def create_statistics(loaded_df: DataFrame,
                         record_count: Int, sample_record_count: Int,
                         columns_to_histogram: Seq[String],
                         view: String): DataFrame = {
@@ -41,6 +41,13 @@ object StatsCalculator {
       StructField("top_value_percent_5", DoubleType)
     ))
 
+    val invalid_column_types = Seq(ArrayType, MapType, StructType)
+
+    val normal_columns: Seq[(String, DataType)] =
+      loaded_df.schema
+        .filter(x => !invalid_column_types.contains(x.dataType))
+        .map(x => (x.name, x.dataType))
+
     var my_result_list: Seq[Row] = Seq()
     Helpers.log(f"Calculating histograms for $view columns: $columns_to_histogram")
     // this returns List[column_name, List[(value. value_count)]
@@ -52,18 +59,22 @@ object StatsCalculator {
 
     Helpers.log(f"Calculating statistics for $view")
 
-    val numerical_column_types = Seq("short", "integer", "long", "float", "double", "decimal")
+    val numerical_column_types = Seq(ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
+
     for (normal_column <- normal_columns) {
       val column_name = normal_column._1
       val data_type = normal_column._2
+      val data_type_name = normal_column._2.toString
 
-      Helpers.log(f"Processing column ${normal_column._1} $normal_column")
       var my_result: DataFrame = null
+      Helpers.log(f"evaluating column ${column_name} ${data_type_name} $normal_column")
+
       if (numerical_column_types.contains(data_type)) {
+        Helpers.log(f"Processing numerical column ${normal_column._1} $normal_column")
         //noinspection SpellCheckingInspection
         my_result = loaded_df.select(
           lit(column_name).alias("column_name"),
-          lit(data_type).alias("data_type"),
+          lit(data_type_name).alias("data_type_name"),
           lit(record_count).cast(LongType).alias("total_count"),
           lit(sample_record_count).cast(IntegerType).alias("sample_count"),
           countDistinct(col(column_name)).cast(IntegerType).alias("sample_count_distinct"),
@@ -103,17 +114,17 @@ object StatsCalculator {
             .alias("sample_min"),
           // https://stackoverflow.com/questions/31432843/how-to-find-median-and-quantiles-using-spark
           round(
-            expr(f"approx_percentile({column_name}, 0.25, 100)")
+            expr(f"approx_percentile($column_name, 0.25, 100)")
               .cast(DoubleType),
             3)
             .alias("sample_q_1"),
           round(
-            expr(f"approx_percentile({column_name}, 0.5, 100)")
+            expr(f"approx_percentile($column_name, 0.5, 100)")
               .cast(DoubleType),
             3)
             .alias("sample_median"),
           round(
-            expr(f"approx_percentile({column_name}, 0.75, 100)")
+            expr(f"approx_percentile($column_name, 0.75, 100)")
               .cast(DoubleType), 3)
             .alias("sample_q_3"),
           round(
@@ -141,10 +152,11 @@ object StatsCalculator {
         )
       }
       else {
+        Helpers.log(f"Processing non-numerical column ${normal_column._1} $normal_column")
         //noinspection SpellCheckingInspection
         my_result = loaded_df.select(
           lit(column_name).alias("column_name"),
-          lit(data_type).alias("data_type"),
+          lit(data_type_name).alias("data_type_name"),
           lit(record_count).cast(LongType).alias("total_count"),
           lit(sample_record_count).cast(IntegerType).alias("sample_count"),
           countDistinct(col(column_name))
@@ -184,18 +196,18 @@ object StatsCalculator {
       }
 
       // now fill in the histogram
-      if (columns_to_histogram contains column_name) {
-        val histogram_array_tuple: (String, Seq[(String, Int)]) = histogram_list_all_columns.filter(x => x._1 == column_name).head
-        val histogram_array: Seq[(String, Int)] = histogram_array_tuple._2
-        var i: Int = 0
-        for (histogram <- histogram_array) {
-          val histogram_percent = histogram._2 * 100 / sample_record_count
-          my_result = my_result
-            .withColumn(f"top_value_{i + 1}", lit(histogram._2))
-            .withColumn(f"top_value_percent_{i + 1}", round(lit(histogram_percent), 3))
-          i += 1
-        }
-      }
+      //      if (columns_to_histogram contains column_name) {
+      ////        val histogram_array_tuple: (String, Seq[(String, Int)]) = histogram_list_all_columns.filter(x => x._1 == column_name).head
+      ////        val histogram_array: Seq[(String, Int)] = histogram_array_tuple._2
+      ////        var i: Int = 0
+      ////        for (histogram <- histogram_array) {
+      ////          val histogram_percent = histogram._2 * 100 / sample_record_count
+      ////          my_result = my_result
+      ////            .withColumn(f"top_value_${i + 1}", lit(histogram._2))
+      ////            .withColumn(f"top_value_percent_${i + 1}", round(lit(histogram_percent), 3))
+      ////          i += 1
+      ////        }
+      ////      }
       my_result_list = my_result_list :+ my_result.first()
     }
     val result_statistics_df: DataFrame =
