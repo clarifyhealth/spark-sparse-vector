@@ -199,9 +199,9 @@ object StatsCalculator {
 
   def _create_histogram_array(columns_to_histogram: Seq[String],
                               loaded_df: DataFrame): Seq[(String, Seq[(String, Int)])] = {
-    val result: Seq[(String, Seq[(String, Int)])] = List()
+    var result: Seq[(String, Seq[(String, Int)])] = Seq()
     for (column_name <- columns_to_histogram) {
-      result +: _calculate_histogram_array_for_column(column_name, loaded_df)
+      result = result :+ (column_name, _calculate_histogram_array_for_column(column_name, loaded_df))
     }
     result
   }
