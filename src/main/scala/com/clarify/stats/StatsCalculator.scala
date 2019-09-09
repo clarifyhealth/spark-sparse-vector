@@ -1,5 +1,7 @@
 package com.clarify.stats
 
+import java.util
+
 import com.clarify.Helpers
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
@@ -9,17 +11,18 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SQLContext}
 object StatsCalculator {
 
   def create_statistics(sql_ctx: SQLContext,
+                        view: String,
                         record_count: Int,
                         sample_record_count: Int,
-                        columns_to_include: Seq[String],
-                        columns_to_histogram: Seq[String],
-                        view: String,
+                        columns_to_include: util.ArrayList[String],
+                        columns_to_histogram: util.ArrayList[String],
                         result_view: String): Boolean = {
 
     val loaded_df: DataFrame = sql_ctx.table(view)
     val result_df: DataFrame = _create_statistics(loaded_df, record_count, sample_record_count,
-      columns_to_include,
-      columns_to_histogram, view)
+      Helpers.getSeqString(columns_to_include),
+      Helpers.getSeqString(columns_to_histogram),
+      view)
     result_df.createOrReplaceTempView(result_view)
     true
   }
