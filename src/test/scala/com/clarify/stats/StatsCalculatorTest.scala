@@ -37,7 +37,7 @@ class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
     val normal_columns: Seq[(String, String)] = Seq(("id", "int"), ("name", "string"), ("v1", "int"))
     val columns_to_histogram: Seq[String] = Seq("id", "name", "v1")
 
-    val result: Seq[(String, Int)] =
+    val result: Seq[(String, Double)] =
       StatsCalculator._calculate_histogram_array_for_column("v1", df)
 
     println(f"result: ${result.size}")
@@ -78,7 +78,7 @@ class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
     val normal_columns: Seq[(String, String)] = Seq(("id", "int"), ("name", "string"), ("v1", "int"))
     val columns_to_histogram: Seq[String] = Seq("id", "name", "v1")
 
-    val result: Seq[(String, Seq[(String, Int)])] = StatsCalculator._create_histogram_array(
+    val result: Seq[(String, Seq[(String, Double)])] = StatsCalculator._create_histogram_array(
       columns_to_histogram,
       df)
 
@@ -138,11 +138,11 @@ class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
     result.show(truncate = false)
 
     checkAnswer(
-      result.selectExpr("column_name", "sample_count_distinct", "sample_min"),
+      result.selectExpr("column_name", "sample_count_distinct", "sample_min", "top_value_1", "top_value_percent_1"),
       Seq(
-        Row("id", 8, 1),
-        Row("name", 3, null),
-        Row("v1", 5, 5)
+        Row("id", 8, 1, "1", 10.0),
+        Row("name", 3, null, "foo", 60.0),
+        Row("v1", 5, 5, "5", 30.0)
       )
     )
 

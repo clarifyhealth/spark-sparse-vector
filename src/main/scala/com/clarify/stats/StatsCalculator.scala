@@ -51,7 +51,7 @@ object StatsCalculator {
     var my_result_list: Seq[Row] = Seq()
     Helpers.log(f"Calculating histograms for $view columns: $columns_to_histogram")
     // this returns List[column_name, List[(value. value_count)]
-    val histogram_list_all_columns: Seq[(String, Seq[(String, Int)])] = _create_histogram_array(
+    val histogram_list_all_columns: Seq[(String, Seq[(String, Double)])] = _create_histogram_array(
       columns_to_histogram,
       loaded_df)
 
@@ -67,7 +67,7 @@ object StatsCalculator {
       val data_type_name = normal_column._2.toString
 
       var my_result: DataFrame = null
-      Helpers.log(f"evaluating column ${column_name} ${data_type_name} $normal_column")
+      Helpers.log(f"evaluating column $column_name $data_type_name $normal_column")
 
       if (numerical_column_types.contains(data_type)) {
         Helpers.log(f"Processing numerical column ${normal_column._1} $normal_column")
@@ -196,30 +196,30 @@ object StatsCalculator {
       }
 
       // now fill in the histogram
-      //      if (columns_to_histogram contains column_name) {
-      ////        val histogram_array_tuple: (String, Seq[(String, Int)]) = histogram_list_all_columns.filter(x => x._1 == column_name).head
-      ////        val histogram_array: Seq[(String, Int)] = histogram_array_tuple._2
-      ////        var i: Int = 0
-      ////        for (histogram <- histogram_array) {
-      ////          val histogram_percent = histogram._2 * 100 / sample_record_count
-      ////          my_result = my_result
-      ////            .withColumn(f"top_value_${i + 1}", lit(histogram._2))
-      ////            .withColumn(f"top_value_percent_${i + 1}", round(lit(histogram_percent), 3))
-      ////          i += 1
-      ////        }
-      ////      }
+      if (columns_to_histogram contains column_name) {
+        val histogram_array_tuple: (String, Seq[(String, Double)]) = histogram_list_all_columns.filter(x => x._1 == column_name).head
+        val histogram_array: Seq[(String, Double)] = histogram_array_tuple._2
+        var i: Int = 0
+        for (histogram <- histogram_array) {
+          val histogram_percent: Double = histogram._2 * 100 / sample_record_count
+          my_result = my_result
+            .withColumn(f"top_value_${i + 1}", lit(histogram._1))
+            .withColumn(f"top_value_percent_${i + 1}", round(lit(histogram_percent), 3))
+          i += 1
+        }
+      }
       my_result_list = my_result_list :+ my_result.first()
     }
     val result_statistics_df: DataFrame =
       loaded_df.sqlContext.createDataFrame(loaded_df.sqlContext.sparkContext.makeRDD(my_result_list), statistics_schema)
-    Helpers.log(f"Finished calculating statistics for ${view}")
+    Helpers.log(f"Finished calculating statistics for $view")
 
     result_statistics_df
   }
 
   def _create_histogram_array(columns_to_histogram: Seq[String],
-                              loaded_df: DataFrame): Seq[(String, Seq[(String, Int)])] = {
-    var result: Seq[(String, Seq[(String, Int)])] = Seq()
+                              loaded_df: DataFrame): Seq[(String, Seq[(String, Double)])] = {
+    var result: Seq[(String, Seq[(String, Double)])] = Seq()
     for (column_name <- columns_to_histogram) {
       result = result :+ (column_name, _calculate_histogram_array_for_column(column_name, loaded_df))
     }
@@ -247,7 +247,7 @@ object StatsCalculator {
   }
 
   def _calculate_histogram_array_for_column(column_name: String,
-                                            loaded_df: DataFrame): Seq[(String, Int)] = {
+                                            loaded_df: DataFrame): Seq[(String, Double)] = {
     val result_data_frame: DataFrame = loaded_df
       .select(column_name)
       .groupBy(column_name)
@@ -258,8 +258,8 @@ object StatsCalculator {
       .limit(5)
       .withColumn("key_plus_value",
         struct(
-          col(f"$column_name").cast("string").alias("value"),
-          col("count").cast("int").alias("value_count")
+          col(f"$column_name").cast(StringType).alias("value"),
+          col("count").cast(DoubleType).alias("value_count")
         )
       )
       //      .agg(
@@ -267,16 +267,16 @@ object StatsCalculator {
       //      )
       .select("key_plus_value")
 
-    val histogram: Seq[(String, Int)] =
+    val histogram: Seq[(String, Double)] =
       result_data_frame
         .rdd
         .map {
           row =>
             Row(
               row.getStruct(0).getAs[String]("value"),
-              row.getStruct(0).getAs[Int]("value_count")
+              row.getStruct(0).getAs[Double]("value_count")
             )
-        }.collect().map(row => (row.getString(0), row.getInt(1)))
+        }.collect().map(row => (row.getString(0), row.getDouble(1)))
 
     histogram
   }
