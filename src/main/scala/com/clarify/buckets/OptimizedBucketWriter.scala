@@ -4,9 +4,9 @@ import java.util
 
 import com.clarify.Helpers
 import com.clarify.memory.MemoryDiagnostics
-import org.apache.spark.SparkException
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext}
+import org.apache.spark.{SparkContext, SparkException}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.Random
@@ -16,13 +16,17 @@ object OptimizedBucketWriter {
   val _LOGGER: Logger = LoggerFactory.getLogger(this.getClass.getName)
 
   def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
-                                 location: String, bucketColumns: util.ArrayList[String]): Boolean = {
+                                 location: String, bucketColumns: util.ArrayList[String],
+                                 name: String = null): Boolean = {
     Helpers.log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-
+    printFreeSpace(sql_ctx.sparkContext)
     try {
       require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
         s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
+      if (name != null) {
+        sql_ctx.sparkContext.setJobDescription(name)
+      }
       Helpers.log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
       val df: DataFrame = sql_ctx.table(view)
 
@@ -304,10 +308,16 @@ object OptimizedBucketWriter {
   }
 
   def checkpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
-                                     location: String, bucketColumns: util.ArrayList[String]): Boolean = {
+                                     location: String, bucketColumns: util.ArrayList[String],
+                                     name: String = null): Boolean = {
 
+    if (name != null) {
+      sql_ctx.sparkContext.setJobDescription(name)
+    }
     Helpers.log(s"checkpointBucketWithPartitions for $view")
-    __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+    printFreeSpace(sql_ctx.sparkContext)
+    __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
+      numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
   }
 
   def checkpointWithoutBuckets(sql_ctx: SQLContext, view: String, numBuckets: Int,
@@ -337,4 +347,17 @@ object OptimizedBucketWriter {
     true
   }
 
+  import sys.process._
+
+  def printFreeSpace(sparkContext: SparkContext) = {
+    val deployMode: String = sparkContext.getConf.get("spark.submit.deployMode", null)
+    if (deployMode != null && deployMode != "client") {
+      //noinspection SpellCheckingInspection
+      val results = Seq("hdfs", "dfs", "-df", "-h").!!.trim
+      Helpers.log(results)
+    }
+    else {
+      Helpers.log("Skipped showing free space since running in client mode")
+    }
+  }
 }
