@@ -41,7 +41,7 @@ object StatsCalculator {
       StructField("top_value_percent_5", DoubleType)
     ))
 
-    val my_result_list: Seq[Row] = Seq()
+    var my_result_list: Seq[Row] = Seq()
     Helpers.log(f"Calculating histograms for $view columns: $columns_to_histogram")
     // this returns List[column_name, List[(value. value_count)]
     val histogram_list_all_columns: Seq[(String, Seq[(String, Int)])] = _create_histogram_array(
@@ -57,15 +57,16 @@ object StatsCalculator {
       val column_name = normal_column._1
       val data_type = normal_column._2
 
+      Helpers.log(f"Processing column ${normal_column._1} $normal_column")
       var my_result: DataFrame = null
       if (numerical_column_types.contains(data_type)) {
         //noinspection SpellCheckingInspection
         my_result = loaded_df.select(
           lit(column_name).alias("column_name"),
           lit(data_type).alias("data_type"),
-          lit(record_count).alias("total_count"),
-          lit(sample_record_count).alias("sample_count"),
-          countDistinct(col(column_name)).alias("sample_count_distinct"),
+          lit(record_count).cast(LongType).alias("total_count"),
+          lit(sample_record_count).cast(IntegerType).alias("sample_count"),
+          countDistinct(col(column_name)).cast(IntegerType).alias("sample_count_distinct"),
           round(
             count(
               when(
@@ -73,7 +74,9 @@ object StatsCalculator {
                 lit(1)
               )
             ) * 100 / sample_record_count, 3
-          ).alias("sample_percent_null"),
+          )
+            .cast(DoubleType)
+            .alias("sample_percent_null"),
           round(
             count(
               when(
@@ -81,45 +84,49 @@ object StatsCalculator {
                 lit(1)
               )
             ) * 100 / sample_record_count, 3
-          ).alias("sample_percent_zero"),
+          )
+            .cast(DoubleType)
+            .alias("sample_percent_zero"),
           round(
             count(
               when(
                 col(column_name) < lit(0),
                 lit(1))) * 100 / sample_record_count, 3
-          ).alias("sample_percent_less_than_zero"),
+          )
+            .cast(DoubleType)
+            .alias("sample_percent_less_than_zero"),
           // now create the "five number summary":
           // https://www.statisticshowto.datasciencecentral.com/how-to-find-a-five-number-summary-in-statistics/
           round(
             min(col(column_name))
-              .cast("double"), 3)
+              .cast(DoubleType), 3)
             .alias("sample_min"),
           // https://stackoverflow.com/questions/31432843/how-to-find-median-and-quantiles-using-spark
           round(
             expr(f"approx_percentile({column_name}, 0.25, 100)")
-              .cast("double"),
+              .cast(DoubleType),
             3)
             .alias("sample_q_1"),
           round(
             expr(f"approx_percentile({column_name}, 0.5, 100)")
-              .cast("double"),
+              .cast(DoubleType),
             3)
             .alias("sample_median"),
           round(
             expr(f"approx_percentile({column_name}, 0.75, 100)")
-              .cast("double"), 3)
+              .cast(DoubleType), 3)
             .alias("sample_q_3"),
           round(
             max(column_name)
-              .cast("double"), 3)
+              .cast(DoubleType), 3)
             .alias("sample_max"),
           round(
             mean(column_name)
-              .cast("double"), 3)
+              .cast(DoubleType), 3)
             .alias("sample_mean"),
           round(
             stddev_samp(column_name)
-              .cast("double"), 3)
+              .cast(DoubleType), 3)
             .alias("sample_stddev"),
           lit(null).alias("top_value_1"),
           lit(null).alias("top_value_percent_1"),
@@ -138,30 +145,31 @@ object StatsCalculator {
         my_result = loaded_df.select(
           lit(column_name).alias("column_name"),
           lit(data_type).alias("data_type"),
-          lit(record_count).alias("total_count"),
-          lit(sample_record_count).alias("sample_count"),
-          //          countDistinct(col(column_name))
-          //            .alias("sample_count_distinct"),
-          //          round(
-          //            count(
-          //              when(
-          //                isnull(col(column_name)),
-          //                lit(1)
-          //              )
-          //            ) * 100 / sample_record_count, 3
-          //          ).alias("sample_percent_null"),
-          //          lit(null).cast("double").alias("sample_percent_zero"),
-          //          lit(null).cast("double").alias("sample_percent_less_than_zero"),
-          //          // now create the "five number summary":
-          //          // https://www.statisticshowto.datasciencecentral.com/how-to-find-a-five-number-summary-in-statistics/
-          //          lit(null).cast("double").alias("sample_min"),
-          //          // https://stackoverflow.com/questions/31432843/how-to-find-median-and-quantiles-using-spark
-          lit(null).cast("double").alias("sample_q_1"),
-          lit(null).cast("double").alias("sample_median"),
-          lit(null).cast("double").alias("sample_q_3"),
-          lit(null).cast("double").alias("sample_max"),
-          lit(null).cast("double").alias("sample_mean"),
-          lit(null).cast("double").alias("sample_stddev"),
+          lit(record_count).cast(LongType).alias("total_count"),
+          lit(sample_record_count).cast(IntegerType).alias("sample_count"),
+          countDistinct(col(column_name))
+            .cast(IntegerType)
+            .alias("sample_count_distinct"),
+          round(
+            count(
+              when(
+                isnull(col(column_name)),
+                lit(1)
+              )
+            ) * 100 / sample_record_count, 3
+          ).alias("sample_percent_null"),
+          lit(null).cast(DoubleType).alias("sample_percent_zero"),
+          lit(null).cast(DoubleType).alias("sample_percent_less_than_zero"),
+          // now create the "five number summary":
+          // https://www.statisticshowto.datasciencecentral.com/how-to-find-a-five-number-summary-in-statistics/
+          lit(null).cast(DoubleType).alias("sample_min"),
+          // https://stackoverflow.com/questions/31432843/how-to-find-median-and-quantiles-using-spark
+          lit(null).cast(DoubleType).alias("sample_q_1"),
+          lit(null).cast(DoubleType).alias("sample_median"),
+          lit(null).cast(DoubleType).alias("sample_q_3"),
+          lit(null).cast(DoubleType).alias("sample_max"),
+          lit(null).cast(DoubleType).alias("sample_mean"),
+          lit(null).cast(DoubleType).alias("sample_stddev"),
           lit(null).alias("top_value_1"),
           lit(null).alias("top_value_percent_1"),
           lit(null).alias("top_value_2"),
@@ -188,11 +196,11 @@ object StatsCalculator {
           i += 1
         }
       }
-      my_result_list :+ my_result.first()
+      my_result_list = my_result_list :+ my_result.first()
     }
     val result_statistics_df: DataFrame =
       loaded_df.sqlContext.createDataFrame(loaded_df.sqlContext.sparkContext.makeRDD(my_result_list), statistics_schema)
-    Helpers.log(f"Finished calculating statistics for {view}")
+    Helpers.log(f"Finished calculating statistics for ${view}")
 
     result_statistics_df
   }
