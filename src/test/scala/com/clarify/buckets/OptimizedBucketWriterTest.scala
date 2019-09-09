@@ -1,10 +1,11 @@
 package com.clarify.buckets
 
+import java.io.File
 import java.nio.file.Files
 import java.util
 
-import com.clarify.TestHelpers
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
+import com.clarify.{Helpers, TestHelpers}
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, QueryTest, Row}
@@ -33,10 +34,13 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     bucket_columns.add("id")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    OptimizedBucketWriter.__internalCheckpointBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = "my_table", numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    OptimizedBucketWriter.saveAsBucketWithPartitions(spark.sqlContext,
+      "my_table", 10, location, bucket_columns, "foo")
     println(s"Wrote output to: $location")
 
+    println(f"---- files in $location ----")
+    Helpers.printRecursiveListOfFiles(new File(location))
+    println("-------------------------------")
     // spark.catalog.dropTempView("my_table")
 
     // now test reading from it
@@ -73,8 +77,9 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     bucket_columns.add("v2")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    OptimizedBucketWriter.__internalCheckpointBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns,
+      name = "bar")
     println(s"Wrote output to: $location")
 
     val tables = spark.catalog.listTables()
@@ -92,7 +97,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     TestHelpers.clear_tables(spark_session = spark)
   }
 
-  test("save to buckets multiple rows multiple times") {
+  test("checkpoint multiple rows multiple times") {
     spark.sharedState.cacheManager.clearCache()
 
     val my_table = "my_table_multiple"

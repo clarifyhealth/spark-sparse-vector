@@ -15,20 +15,27 @@ object OptimizedBucketWriter {
 
   def saveAsBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                  location: String, bucketColumns: util.ArrayList[String],
-                                 name: String = null): Boolean = {
+                                 name: String): Boolean = {
     Helpers.log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-    _printFreeSpace(sql_ctx.sparkContext)
-    try {
-      require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
-        s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
+    require(location != null, "location cannot be null")
+    require(numBuckets > 0, f"numBuckets $numBuckets should be greater than 0")
+    require(bucketColumns.size() == 1 || bucketColumns.size() == 2,
+      s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
+    // if folder exists then skip writing
+    if (__folderWithDataExists(sql_ctx, location)) {
+      Helpers.log(f"Folder $location already exists with data so skipping saving table")
+      return true
+    }
+
+    try {
       if (name != null) {
         sql_ctx.sparkContext.setJobDescription(name)
       }
-      Helpers.log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
+      Helpers.log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location"
+        + f" bucket_columns(${bucketColumns.size()})=$bucketColumns")
       val df: DataFrame = sql_ctx.table(view)
 
-      // this is a total hack for now
       val table_name = s"temp_$view"
       sql_ctx.sql(s"DROP TABLE IF EXISTS default.$table_name")
 
@@ -148,6 +155,16 @@ object OptimizedBucketWriter {
         val cause = e.getCause
         Helpers.log(s"readAsBucketWithPartitions: Got SparkException: $cause")
         throw cause
+      case e: AnalysisException =>
+        // we do this instead of checking if data frame is empty because the latter is expensive
+        if (e.message.startsWith(s"cannot resolve '`${bucketColumns.get(0)}`' given input columns")) {
+          Helpers.log(s"__internalCheckpointBucketWithPartitions: data frame passed in is empty. $e")
+          false
+        }
+        else {
+          Helpers.log(s"__internalCheckpointBucketWithPartitions: Got AnalysisException: $e")
+          throw e
+        }
       case unknown: Throwable =>
         Helpers.log(s"readAsBucketWithPartitions: Got some other kind of exception: $unknown")
         throw unknown
@@ -346,11 +363,36 @@ object OptimizedBucketWriter {
     if (name != null) {
       sql_ctx.sparkContext.setJobDescription(name)
     }
-    Helpers
-      .log(s"checkpointBucketWithPartitions for $view")
-    _printFreeSpace(sql_ctx.sparkContext)
-    __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
-      numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+    Helpers.log(s"checkpointBucketWithPartitions for $view, name=$name, location=$location")
+    // if location is specified then use external tables
+    if (location != null && location.toLowerCase().startsWith("s3")) {
+      _checkpointToS3(sql_ctx, view, numBuckets, location, bucketColumns, name)
+    } else {
+      // use Spark managed tables for better performance
+      val result = __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
+        numBuckets = numBuckets, location = location, bucketColumns = bucketColumns)
+      // print free space left
+      _printFreeSpace(sql_ctx.sparkContext)
+      result
+    }
+  }
+
+  private def _checkpointToS3(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                              location: String, bucketColumns: util.ArrayList[String],
+                              name: String) = {
+    // append name to create a unique location
+    val fullLocation = if (location.endsWith("/")) f"$location$name" else f"$location/$name"
+    // save to location
+    val success = saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
+      location = fullLocation, bucketColumns = bucketColumns, name)
+    if (success) {
+      // read from location
+      readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
+        location = fullLocation, bucketColumns = bucketColumns)
+    }
+    else {
+      false
+    }
   }
 
   def checkpointWithoutBuckets(sql_ctx: SQLContext, view: String, numBuckets: Int,
@@ -391,6 +433,32 @@ object OptimizedBucketWriter {
     }
     else {
       Helpers.log("Skipped showing free space since running in client mode")
+    }
+  }
+
+  def __folderWithDataExists(sql_ctx: SQLContext, location: String): Boolean = {
+    try {
+      sql_ctx.read.parquet(location).take(1)
+      true
+    }
+    catch {
+      case e: SparkException =>
+        val cause = e.getCause
+        Helpers.log(s"__folderExists: Got SparkException: $cause")
+        throw cause
+      case e: AnalysisException =>
+        // we do this instead of checking if data frame is empty because the latter is expensive
+        if (e.message.startsWith(s"Unable to infer schema for Parquet. It must be specified manually.")) {
+          Helpers.log(s"__folderExists: data frame passed in is empty. $e")
+          false
+        }
+        else {
+          Helpers.log(s"__folderExists: Got AnalysisException: $e")
+          throw e
+        }
+      case unknown: Throwable =>
+        Helpers.log(s"__folderExists: Got some other kind of exception: $unknown")
+        throw unknown
     }
   }
 }
