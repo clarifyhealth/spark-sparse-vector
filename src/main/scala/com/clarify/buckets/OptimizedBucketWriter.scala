@@ -135,12 +135,14 @@ object OptimizedBucketWriter {
     try {
       val temp_view = s"${view}_temp_bucket_reader"
       val raw_table_name = s"${view}_raw_buckets"
+      sql_ctx.sql(s"DROP TABLE IF EXISTS default.$raw_table_name")
       val sql: String = getCreateTableCommand(sql_ctx, numBuckets, location, bucketColumns, temp_view, raw_table_name)
       Helpers.log(sql)
       sql_ctx.sql(sql)
+      sql_ctx.sql(s"DROP VIEW $temp_view") // done with view
       Helpers.log(s"REFRESH TABLE default.$raw_table_name")
       sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
-      // sql_ctx.sql(s"DESCRIBE EXTENDED $raw_table_name").show(numRows = 1000)
+      // sql_ctx.sql(s"DESCRIBE EXTENDED $table_name").show(numRows = 1000)
       val result_df = sql_ctx.table(raw_table_name)
       result_df.createOrReplaceTempView(view)
       // sql_ctx.sql(s"SELECT * FROM $view").explain(extended = true)
@@ -170,24 +172,17 @@ object OptimizedBucketWriter {
   }
 
   private def getCreateTableCommand(sql_ctx: SQLContext, numBuckets: Int, location: String,
-                                    bucketColumns: util.ArrayList[String], temp_view: String,
-                                    raw_table_name: String) = {
+                                    bucketColumns: util.ArrayList[String], view_for_schema: String,
+                                    table_name: String): String = {
     // get schema from parquet file without loading data from it
     val df = sql_ctx.read.format("parquet")
       .load(location)
 
-    df.createOrReplaceTempView(temp_view)
-    val columns = _getColumnSchema(sql_ctx, temp_view)
-    sql_ctx.sql(s"DROP VIEW $temp_view") // done with view
-
-    // sql_ctx.sql(s"DROP VIEW IF EXISTS default.$temp_view") // done with view
-    // drop the raw table if it exists
-
-    sql_ctx.sql(s"DROP TABLE IF EXISTS default.$raw_table_name")
-    //sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
+    df.createOrReplaceTempView(view_for_schema)
+    val columns = _getColumnsSchema(sql_ctx, view_for_schema)
     val bucket_by_text = Helpers.getSeqString(bucketColumns).mkString(",")
     // have to use CREATE TABLE syntax since that supports bucketing
-    var text = s"CREATE TABLE $raw_table_name ("
+    var text = s"CREATE TABLE $table_name ("
     text += columns.map(column => s"\n${column(0)} ${column(1)}").mkString(",")
     text += ")\n"
     text +=
@@ -201,7 +196,7 @@ object OptimizedBucketWriter {
     text
   }
 
-  private def _getColumnSchema(sql_ctx: SQLContext, temp_view: String) = {
+  private def _getColumnsSchema(sql_ctx: SQLContext, temp_view: String) = {
     val df_schema = sql_ctx.sql(s"DESCRIBE $temp_view")
     _getColumnSchemaFromDataFrame(df_schema)
   }
