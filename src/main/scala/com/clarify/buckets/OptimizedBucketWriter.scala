@@ -331,7 +331,7 @@ object OptimizedBucketWriter {
         // sql_ctx.sql(s"DROP TABLE IF EXISTS default.$original_table_name")
       }
 
-      sql_ctx.sql(s"REFRESH TABLE $new_table_name")
+      sql_ctx.sql(s"REFRESH TABLE default.$new_table_name")
       // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
 
       // delete all but latest of the previous checkpoints
@@ -386,7 +386,7 @@ object OptimizedBucketWriter {
     Helpers.log(s"checkpointBucketWithPartitions for $view, name=$name, location=$location")
     // if location is specified then use external tables
     if (location != null && location.toLowerCase().startsWith("s3")) {
-      checkpointToS3(sql_ctx, view, numBuckets, location, bucketColumns, name)
+      checkpointBucketToDisk(sql_ctx, view, numBuckets, location, bucketColumns, name)
     } else {
       // use Spark managed tables for better performance
       val result = __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
@@ -397,14 +397,15 @@ object OptimizedBucketWriter {
     }
   }
 
-  def checkpointToS3(sql_ctx: SQLContext, view: String, numBuckets: Int,
-                     location: String, bucketColumns: util.ArrayList[String],
-                     name: String): Boolean = {
+  def checkpointBucketToDisk(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                             location: String, bucketColumns: util.ArrayList[String],
+                             name: String): Boolean = {
     // append name to create a unique location
     val fullLocation = if (location.endsWith("/")) f"$location$name" else f"$location/$name"
+    Helpers.log(s"checkpointBucketToDisk for $view, name=$name, location=$fullLocation")
     // if folder already exists then just read from it
-    if (name != null && __folderWithDataExists(sql_ctx, location)) {
-      Helpers.log(f"Folder $location already exists with data so skipping saving table")
+    if (name != null && __folderWithDataExists(sql_ctx, fullLocation)) {
+      Helpers.log(f"Folder $fullLocation already exists with data so skipping saving table")
       readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
         location = fullLocation, bucketColumns = bucketColumns)
       return true
@@ -414,10 +415,10 @@ object OptimizedBucketWriter {
       location = fullLocation, bucketColumns = bucketColumns, name)
     if (success) {
       // val localLocation = if (location.startsWith("s3:")) f"/tmp/checkpoint/$name" else location
-      val localLocation = location
+      // val localLocation = location
       // read from location
       readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
-        location = localLocation, bucketColumns = bucketColumns)
+        location = fullLocation, bucketColumns = bucketColumns)
     }
     else {
       false
@@ -433,6 +434,7 @@ object OptimizedBucketWriter {
       df.write.parquet(location)
       val result_df = sql_ctx.read.parquet(location)
       result_df.createOrReplaceTempView(view)
+      Helpers.log(s"REFRESH TABLE $view")
       sql_ctx.sql(s"REFRESH TABLE $view")
       sql_ctx.sql(s"DESCRIBE EXTENDED $view").show(numRows = 1000)
       true
