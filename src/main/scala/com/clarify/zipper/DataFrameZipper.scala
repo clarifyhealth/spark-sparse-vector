@@ -8,12 +8,25 @@ import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
 object DataFrameZipper {
 
-  def zipDataFrames(sql_ctx: SQLContext, view1: String, view2: String, result_view: String, column_index: Int): Boolean = {
+  def zipDataFrames(sql_ctx: SQLContext, view1: String, view2: String,
+                    result_view: String): Boolean = {
 
     val a: DataFrame = sql_ctx.table(view1)
     val b: DataFrame = sql_ctx.table(view2)
     Helpers.log(f"Zipping data frames: $view1 <- $view2")
-    val result_df: DataFrame = _zipDataFrames(a, b, column_index)
+    val result_df: DataFrame = _zipDataFramesAllColumns(a, b)
+    result_df.createOrReplaceTempView(result_view)
+    Helpers.log(f"Finished zipping data frames: $view1 with $view2")
+    true
+  }
+
+  def zipDataFramesSingleColumn(sql_ctx: SQLContext, view1: String, view2: String,
+                                result_view: String, column_index: Int): Boolean = {
+
+    val a: DataFrame = sql_ctx.table(view1)
+    val b: DataFrame = sql_ctx.table(view2)
+    Helpers.log(f"Zipping data frames: $view1 <- $view2")
+    val result_df: DataFrame = _zipDataFramesSingleColumn(a, b, column_index)
     result_df.createOrReplaceTempView(result_view)
     Helpers.log(f"Finished zipping data frames: $view1 with $view2")
     true
@@ -49,7 +62,7 @@ object DataFrameZipper {
     true
   }
 
-  def _zipDataFrames(a: DataFrame, b: DataFrame, column_index: Int): DataFrame = {
+  def _zipDataFramesSingleColumn(a: DataFrame, b: DataFrame, column_index: Int): DataFrame = {
     // Merge rows
     val rows = a.rdd.zip(b.rdd).map {
       case (rowLeft, rowRight) => Row.fromSeq(rowLeft.toSeq :+ rowRight(column_index))
@@ -57,6 +70,20 @@ object DataFrameZipper {
 
     // Merge schemas
     val schema = StructType(a.schema.fields :+ b.schema.fields(column_index))
+
+    // Create new data frame
+    val ab: DataFrame = a.sqlContext.createDataFrame(rows, schema)
+    ab
+  }
+
+  def _zipDataFramesAllColumns(a: DataFrame, b: DataFrame): DataFrame = {
+    // Merge rows
+    val rows = a.rdd.zip(b.rdd).map {
+      case (rowLeft, rowRight) => Row.fromSeq(rowLeft.toSeq ++ rowRight.toSeq)
+    }
+
+    // Merge schemas
+    val schema = StructType(a.schema.fields ++ b.schema.fields)
 
     // Create new data frame
     val ab: DataFrame = a.sqlContext.createDataFrame(rows, schema)

@@ -41,7 +41,7 @@ class DataFrameZipperTest extends QueryTest with SparkSessionTestWrapper {
     df2.createOrReplaceTempView(table2)
 
     //val result_table = "result_table"
-    DataFrameZipper.zipDataFrames(df1.sqlContext, table1, table2, table1, 1)
+    DataFrameZipper.zipDataFrames(df1.sqlContext, table1, table2, table1)
 
     // now test reading from it
     val result_df: DataFrame = spark.table(table1)
