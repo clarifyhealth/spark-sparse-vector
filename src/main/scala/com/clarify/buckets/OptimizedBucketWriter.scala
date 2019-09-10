@@ -23,7 +23,7 @@ object OptimizedBucketWriter {
       s"bucketColumns length, ${bucketColumns.size()} , is not supported.  We only support 1 and 2 right now.")
 
     // if folder exists then skip writing
-    if (__folderWithDataExists(sql_ctx, location)) {
+    if (name != null && __folderWithDataExists(sql_ctx, location)) {
       Helpers.log(f"Folder $location already exists with data so skipping saving table")
       return true
     }
@@ -366,7 +366,7 @@ object OptimizedBucketWriter {
     Helpers.log(s"checkpointBucketWithPartitions for $view, name=$name, location=$location")
     // if location is specified then use external tables
     if (location != null && location.toLowerCase().startsWith("s3")) {
-      _checkpointToS3(sql_ctx, view, numBuckets, location, bucketColumns, name)
+      checkpointToS3(sql_ctx, view, numBuckets, location, bucketColumns, name)
     } else {
       // use Spark managed tables for better performance
       val result = __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
@@ -377,9 +377,9 @@ object OptimizedBucketWriter {
     }
   }
 
-  private def _checkpointToS3(sql_ctx: SQLContext, view: String, numBuckets: Int,
-                              location: String, bucketColumns: util.ArrayList[String],
-                              name: String) = {
+  def checkpointToS3(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                     location: String, bucketColumns: util.ArrayList[String],
+                     name: String): Boolean = {
     // append name to create a unique location
     val fullLocation = if (location.endsWith("/")) f"$location$name" else f"$location/$name"
     // save to location
@@ -449,7 +449,11 @@ object OptimizedBucketWriter {
       case e: AnalysisException =>
         // we do this instead of checking if data frame is empty because the latter is expensive
         if (e.message.startsWith(s"Unable to infer schema for Parquet. It must be specified manually.")) {
-          Helpers.log(s"__folderExists: data frame passed in is empty. $e")
+          Helpers.log(s"__folderExists: data frame passed in is empty $location. $e")
+          false
+        }
+        else if (e.message.startsWith("Path does not exist")) {
+          Helpers.log(s"__folderExists: path does not exist $location. $e")
           false
         }
         else {

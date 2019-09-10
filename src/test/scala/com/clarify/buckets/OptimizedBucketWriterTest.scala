@@ -97,6 +97,113 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     TestHelpers.clear_tables(spark_session = spark)
   }
 
+  test("checkpoint to S3 location") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val my_table = "my_table_multiple"
+
+    val data = List(
+      Row(1, "foo"),
+      Row(2, "bar"),
+      Row(3, "zoo")
+    )
+    val fields = List(
+      StructField("id", IntegerType, nullable = false),
+      StructField("v2", StringType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+
+    df.createOrReplaceTempView(my_table)
+
+    val bucket_columns = new util.ArrayList[String]()
+    bucket_columns.add("id")
+    bucket_columns.add("v2")
+
+    val location = Files.createTempDirectory("parquet").toFile.toString
+    OptimizedBucketWriter.checkpointToS3(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns,
+      name = "bar")
+    println(s"Wrote output to: $location")
+
+    println(f"---- files in $location ----")
+    Helpers.printRecursiveListOfFiles(new File(location))
+    println("-------------------------------")
+
+    val tables = spark.catalog.listTables()
+    tables.foreach(t => println(t.name))
+
+    // now test reading from it
+    //    OptimizedBucketWriter.readAsBucketWithPartitions2(sql_ctx = spark.sqlContext,
+    //      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    val result_df = spark.table(my_table)
+    result_df.show()
+
+    assert(result_df.count() == df.count())
+    // spark.sql(s"DESCRIBE EXTENDED ${my_table}").show(numRows = 1000, truncate = false)
+
+    TestHelpers.clear_tables(spark_session = spark)
+  }
+
+  test("checkpoint to S3 location multiple times") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val my_table = "my_table_multiple"
+
+    val data = List(
+      Row(1, "foo"),
+      Row(2, "bar"),
+      Row(3, "zoo")
+    )
+    val fields = List(
+      StructField("id", IntegerType, nullable = false),
+      StructField("v2", StringType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+
+    df.createOrReplaceTempView(my_table)
+
+    val bucket_columns = new util.ArrayList[String]()
+    bucket_columns.add("id")
+    bucket_columns.add("v2")
+
+    val location = Files.createTempDirectory("parquet").toFile.toString
+    // checkpoint
+    OptimizedBucketWriter.checkpointToS3(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns,
+      name = "bar")
+    println(s"Wrote output to: $location")
+
+    println(f"---- files in $location ----")
+    Helpers.printRecursiveListOfFiles(new File(location))
+    println("-------------------------------")
+
+    // checkpoint
+    OptimizedBucketWriter.checkpointToS3(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns,
+      name = "bar")
+    println(f"---- files in $location ----")
+    Helpers.printRecursiveListOfFiles(new File(location))
+    println("-------------------------------")
+
+    val tables = spark.catalog.listTables()
+    tables.foreach(t => println(t.name))
+
+    // now test reading from it
+    //    OptimizedBucketWriter.readAsBucketWithPartitions2(sql_ctx = spark.sqlContext,
+    //      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    val result_df = spark.table(my_table)
+    result_df.show()
+
+    assert(result_df.count() == df.count())
+    // spark.sql(s"DESCRIBE EXTENDED ${my_table}").show(numRows = 1000, truncate = false)
+
+    TestHelpers.clear_tables(spark_session = spark)
+  }
+
   test("checkpoint multiple rows multiple times") {
     spark.sharedState.cacheManager.clearCache()
 
