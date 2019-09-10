@@ -122,7 +122,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     bucket_columns.add("v2")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    OptimizedBucketWriter.checkpointToS3(sql_ctx = spark.sqlContext,
+    OptimizedBucketWriter.checkpointBucketToDisk(sql_ctx = spark.sqlContext,
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns,
       name = "bar")
     println(s"Wrote output to: $location")
@@ -172,7 +172,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
 
     val location = Files.createTempDirectory("parquet").toFile.toString
     // checkpoint
-    OptimizedBucketWriter.checkpointToS3(sql_ctx = spark.sqlContext,
+    OptimizedBucketWriter.checkpointBucketToDisk(sql_ctx = spark.sqlContext,
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns,
       name = "bar")
     println(s"Wrote output to: $location")
@@ -182,7 +182,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     println("-------------------------------")
 
     // checkpoint
-    OptimizedBucketWriter.checkpointToS3(sql_ctx = spark.sqlContext,
+    OptimizedBucketWriter.checkpointBucketToDisk(sql_ctx = spark.sqlContext,
       view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns,
       name = "bar")
     println(f"---- files in $location ----")

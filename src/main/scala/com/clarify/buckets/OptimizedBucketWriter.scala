@@ -9,6 +9,8 @@ import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext}
 import org.apache.spark.{SparkContext, SparkException}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.sys.process._
+
 object OptimizedBucketWriter {
 
   val _LOGGER: Logger = LoggerFactory.getLogger(this.getClass.getName)
@@ -28,6 +30,16 @@ object OptimizedBucketWriter {
       return true
     }
 
+    _saveBucketsInternal(sql_ctx, view, numBuckets, location, bucketColumns, name, saveLocalAndCopyToS3 = false)
+  }
+
+  private def _saveBucketsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                                   location: String, bucketColumns: util.ArrayList[String],
+                                   name: String,
+                                   saveLocalAndCopyToS3: Boolean): Boolean = {
+
+    // To avoid S3 slowdown due to writing too many files, write to local and then copy to s3
+    val localLocation = if (saveLocalAndCopyToS3 && location.startsWith("s3:")) f"/tmp/checkpoint/$name" else location
     try {
       if (name != null) {
         sql_ctx.sparkContext.setJobDescription(name)
@@ -58,7 +70,7 @@ object OptimizedBucketWriter {
           .partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0))
           .sortBy(bucketColumns.get(0))
-          .option("path", location)
+          .option("path", localLocation)
           .saveAsTable(table_name)
 
         Helpers.log(s"DROP TABLE default.$table_name")
@@ -84,13 +96,21 @@ object OptimizedBucketWriter {
           .partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0), bucketColumns.get(1))
           .sortBy(bucketColumns.get(0), bucketColumns.get(1))
-          .option("path", location)
+          .option("path", localLocation)
           .saveAsTable(table_name)
 
         Helpers.log(s"DROP TABLE default.$table_name")
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
+      if (saveLocalAndCopyToS3 && location.startsWith("s3:")) {
+        Helpers.log(f"s3-dist-cp --s3Endpoint=s3.us-west-2.amazonaws.com --src=hdfs://$localLocation --dest=$location")
+        val results = Seq("s3-dist-cp",
+          "--s3Endpoint=s3.us-west-2.amazonaws.com",
+          f"--src=hdfs://$localLocation",
+          f"--dest=$location").!!.trim
+        Helpers.log(results)
+      }
       Helpers.log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
 
       true
@@ -210,7 +230,7 @@ object OptimizedBucketWriter {
           .map(x => x.replace(table_prefix, "").toInt)
           .sorted.reverse
 
-      previous_checkpoint_numbers.foreach(println)
+      //      previous_checkpoint_numbers.foreach(println)
 
       val new_checkpoint_number: Int =
         if (previous_checkpoint_numbers.isEmpty) 1 else previous_checkpoint_numbers.head + 1
@@ -311,12 +331,12 @@ object OptimizedBucketWriter {
         // sql_ctx.sql(s"DROP TABLE IF EXISTS default.$original_table_name")
       }
 
-      sql_ctx.sql(s"REFRESH TABLE $new_table_name")
+      sql_ctx.sql(s"REFRESH TABLE default.$new_table_name")
       // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
 
       // delete all but latest of the previous checkpoints
-      if (previous_checkpoint_table_names.nonEmpty) {
-        val tables_to_delete: Seq[String] = previous_checkpoint_table_names.drop(1)
+      if (previous_checkpoint_numbers.nonEmpty) {
+        val tables_to_delete: Seq[String] = previous_checkpoint_numbers.drop(1).map(x => f"$table_prefix$x")
         println(f"---- tables to delete: ${tables_to_delete.size} -----")
         tables_to_delete.foreach(println)
         tables_to_delete.foreach(t => {
@@ -366,7 +386,7 @@ object OptimizedBucketWriter {
     Helpers.log(s"checkpointBucketWithPartitions for $view, name=$name, location=$location")
     // if location is specified then use external tables
     if (location != null && location.toLowerCase().startsWith("s3")) {
-      checkpointToS3(sql_ctx, view, numBuckets, location, bucketColumns, name)
+      checkpointBucketToDisk(sql_ctx, view, numBuckets, location, bucketColumns, name)
     } else {
       // use Spark managed tables for better performance
       val result = __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
@@ -377,15 +397,25 @@ object OptimizedBucketWriter {
     }
   }
 
-  def checkpointToS3(sql_ctx: SQLContext, view: String, numBuckets: Int,
-                     location: String, bucketColumns: util.ArrayList[String],
-                     name: String): Boolean = {
+  def checkpointBucketToDisk(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                             location: String, bucketColumns: util.ArrayList[String],
+                             name: String): Boolean = {
     // append name to create a unique location
     val fullLocation = if (location.endsWith("/")) f"$location$name" else f"$location/$name"
+    Helpers.log(s"checkpointBucketToDisk for $view, name=$name, location=$fullLocation")
+    // if folder already exists then just read from it
+    if (name != null && __folderWithDataExists(sql_ctx, fullLocation)) {
+      Helpers.log(f"Folder $fullLocation already exists with data so skipping saving table")
+      readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
+        location = fullLocation, bucketColumns = bucketColumns)
+      return true
+    }
     // save to location
     val success = saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
       location = fullLocation, bucketColumns = bucketColumns, name)
     if (success) {
+      // val localLocation = if (location.startsWith("s3:")) f"/tmp/checkpoint/$name" else location
+      // val localLocation = location
       // read from location
       readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
         location = fullLocation, bucketColumns = bucketColumns)
@@ -404,6 +434,7 @@ object OptimizedBucketWriter {
       df.write.parquet(location)
       val result_df = sql_ctx.read.parquet(location)
       result_df.createOrReplaceTempView(view)
+      Helpers.log(s"REFRESH TABLE $view")
       sql_ctx.sql(s"REFRESH TABLE $view")
       sql_ctx.sql(s"DESCRIBE EXTENDED $view").show(numRows = 1000)
       true
@@ -421,8 +452,6 @@ object OptimizedBucketWriter {
     sql_ctx.createDataFrame(rdd, df.schema).createOrReplaceTempView(view)
     true
   }
-
-  import sys.process._
 
   def _printFreeSpace(sparkContext: SparkContext): Boolean = {
     val deployMode: String = sparkContext.getConf.get("spark.submit.deployMode", null)
@@ -464,5 +493,9 @@ object OptimizedBucketWriter {
         Helpers.log(s"__folderExists: Got some other kind of exception: $unknown")
         throw unknown
     }
+  }
+
+  def s3distCp(src: String, dest: String): Unit = {
+    s"s3-dist-cp --src $src --dest $dest".!
   }
 }
