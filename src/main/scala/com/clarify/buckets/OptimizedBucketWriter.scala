@@ -30,7 +30,7 @@ object OptimizedBucketWriter {
       return true
     }
 
-    _saveBucketsInternal(sql_ctx, view, numBuckets, location, bucketColumns, name, true)
+    _saveBucketsInternal(sql_ctx, view, numBuckets, location, bucketColumns, name, saveLocalAndCopyToS3 = false)
   }
 
   private def _saveBucketsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
@@ -103,7 +103,7 @@ object OptimizedBucketWriter {
         sql_ctx.sql(s"DROP TABLE default.$table_name")
       }
 
-      if (saveLocalAndCopyToS3 && location.startsWith("s3")) {
+      if (saveLocalAndCopyToS3 && location.startsWith("s3:")) {
         Helpers.log(f"s3-dist-cp --s3Endpoint=s3.us-west-2.amazonaws.com --src=hdfs://$localLocation --dest=$location")
         val results = Seq("s3-dist-cp",
           "--s3Endpoint=s3.us-west-2.amazonaws.com",
@@ -335,8 +335,8 @@ object OptimizedBucketWriter {
       // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
 
       // delete all but latest of the previous checkpoints
-      if (previous_checkpoint_table_names.nonEmpty) {
-        val tables_to_delete: Seq[String] = previous_checkpoint_table_names.drop(1)
+      if (previous_checkpoint_numbers.nonEmpty) {
+        val tables_to_delete: Seq[String] = previous_checkpoint_numbers.drop(1).map(x => f"$table_prefix$x")
         println(f"---- tables to delete: ${tables_to_delete.size} -----")
         tables_to_delete.foreach(println)
         tables_to_delete.foreach(t => {
@@ -413,7 +413,8 @@ object OptimizedBucketWriter {
     val success = saveAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
       location = fullLocation, bucketColumns = bucketColumns, name)
     if (success) {
-      val localLocation = if (location.startsWith("s3:")) f"/tmp/checkpoint/$name" else location
+      // val localLocation = if (location.startsWith("s3:")) f"/tmp/checkpoint/$name" else location
+      val localLocation = location
       // read from location
       readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
         location = localLocation, bucketColumns = bucketColumns)
