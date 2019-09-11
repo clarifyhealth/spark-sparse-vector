@@ -57,7 +57,7 @@ object OptimizedBucketWriter {
         my_df
           .write
           .format("parquet")
-          .partitionBy("bucket")
+          //.partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0))
           .sortBy(bucketColumns.get(0))
           .option("path", localLocation)
@@ -70,7 +70,7 @@ object OptimizedBucketWriter {
         my_df
           .write
           .format("parquet")
-          .partitionBy("bucket")
+          //.partitionBy("bucket")
           .bucketBy(numBuckets, bucketColumns.get(0), bucketColumns.get(1))
           .sortBy(bucketColumns.get(0), bucketColumns.get(1))
           .option("path", localLocation)
@@ -405,7 +405,9 @@ object OptimizedBucketWriter {
     Helpers.log(s"checkpointWithoutBuckets for $view")
     if (!sql_ctx.table(view).isEmpty) {
       val df = sql_ctx.table(view)
-      df.write.parquet(location)
+      if (!__folderWithDataExists(sql_ctx, location)) {
+        df.write.parquet(location)
+      }
       val result_df = sql_ctx.read.parquet(location)
       result_df.createOrReplaceTempView(view)
       Helpers.log(s"REFRESH TABLE $view")
