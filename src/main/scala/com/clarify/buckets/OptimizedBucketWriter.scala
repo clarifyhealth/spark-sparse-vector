@@ -134,7 +134,7 @@ object OptimizedBucketWriter {
         throw cause
       case e: AnalysisException =>
         // we do this instead of checking if data frame is empty because the latter is expensive
-        if (e.message.startsWith(s"cannot resolve '`${bucketColumns.get(0)}`' given input columns")) {
+        if (e.message.startsWith(s"cannot resolve '`${bucketColumns.get(0)}`' given input columns") || e.message.startsWith("Unable to infer schema for Parquet. It must be specified manually")) {
           Helpers.log(s"__internalCheckpointBucketWithPartitions: data frame passed in is empty. $e")
           false
         }
