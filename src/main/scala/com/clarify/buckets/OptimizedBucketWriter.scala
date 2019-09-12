@@ -4,11 +4,15 @@ import java.util
 
 import com.clarify.Helpers
 import com.clarify.memory.MemoryDiagnostics
+import com.clarify.retry.Retry
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
 import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext}
 import org.apache.spark.{SparkContext, SparkException}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 import scala.sys.process._
 
 object OptimizedBucketWriter {
@@ -30,7 +34,10 @@ object OptimizedBucketWriter {
       return true
     }
 
-    _saveBucketsInternal(sql_ctx, view, numBuckets, location, bucketColumns, name, saveLocalAndCopyToS3 = false)
+    val result = Retry.retry(5) {
+      _saveBucketsInternal(sql_ctx, view, numBuckets, location, bucketColumns, name, saveLocalAndCopyToS3 = false)
+    }
+    Await.result(result, 10 seconds)
   }
 
   private def _saveBucketsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
