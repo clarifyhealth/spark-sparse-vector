@@ -391,8 +391,15 @@ object OptimizedBucketWriter {
       // val localLocation = if (location.startsWith("s3:")) f"/tmp/checkpoint/$name" else location
       // val localLocation = location
       // read from location
-      readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
-        location = fullLocation, bucketColumns = bucketColumns)
+      if (name != null && __folderWithDataExists(sql_ctx, fullLocation)) {
+        readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
+          location = fullLocation, bucketColumns = bucketColumns)
+      }
+      else {
+        // add bucket column to avoid errors
+        sql_ctx.table(view).withColumn("bucket", lit(0)).createOrReplaceTempView(view)
+        true
+      }
     }
     else {
       false
