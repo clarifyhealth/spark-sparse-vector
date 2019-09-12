@@ -115,6 +115,14 @@ object OptimizedBucketWriter {
     Helpers.log(s"readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
 
     require(bucketColumns.size() == 1 || bucketColumns.size() == 2, s"bucketColumns length, ${bucketColumns.size()} , is not supported")
+
+    val result = Retry.retry(5) {
+      readAsBucketWithPartitionsInternal(sql_ctx, view, numBuckets, location, bucketColumns)
+    }
+    Await.result(result, 10 seconds)
+  }
+
+  private def readAsBucketWithPartitionsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]) = {
     Helpers.log(s"readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location bucket_columns(${bucketColumns.size()})=$bucketColumns")
     try {
       val temp_view = s"${view}_temp_bucket_reader"
