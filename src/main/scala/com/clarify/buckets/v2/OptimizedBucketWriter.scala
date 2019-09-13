@@ -31,7 +31,7 @@ object OptimizedBucketWriter {
     require(sortColumns.size() > 0, f"There were no sort columns specified")
 
     // if folder exists then skip writing
-    if (name != null && __folderWithDataExists(sql_ctx, location)) {
+    if (name != null && __folderWithDataExists(sql_ctx, location, name)) {
       Helpers.log(f"Folder $location already exists with data so skipping saving table")
       return true
     }
@@ -380,7 +380,7 @@ object OptimizedBucketWriter {
     val fullLocation = if (location.endsWith("/")) f"$location$name" else f"$location/$name"
     Helpers.log(s"checkpointBucketToDisk v2 for $view, name=$name, location=$fullLocation")
     // if folder already exists then just read from it
-    if (name != null && __folderWithDataExists(sql_ctx, fullLocation)) {
+    if (name != null && __folderWithDataExists(sql_ctx, fullLocation, name)) {
       Helpers.log(f"Folder $fullLocation already exists with data so skipping saving table")
       sql_ctx.sparkContext.setJobDescription(f"$name (already exists so reading)")
       readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
@@ -395,7 +395,7 @@ object OptimizedBucketWriter {
       // val localLocation = if (location.startsWith("s3:")) f"/tmp/checkpoint/$name" else location
       // val localLocation = location
       // read from location
-      if (name != null && __folderWithDataExists(sql_ctx, fullLocation)) {
+      if (name != null && __folderWithDataExists(sql_ctx, fullLocation, name)) {
         sql_ctx.sparkContext.setJobDescription(f"$name (read after save)")
         readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
           location = fullLocation, bucketColumns = bucketColumns,
@@ -415,13 +415,14 @@ object OptimizedBucketWriter {
   def checkpointWithoutBuckets(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                location: String,
                                bucketColumns: util.ArrayList[String],
-                               sortColumns: util.ArrayList[String]
+                               sortColumns: util.ArrayList[String],
+                               name: String
                               ): Boolean = {
 
     Helpers.log(s"checkpointWithoutBuckets v2 for $view")
     if (!sql_ctx.table(view).isEmpty) {
       val df = sql_ctx.table(view)
-      if (!__folderWithDataExists(sql_ctx, location)) {
+      if (!__folderWithDataExists(sql_ctx, location, name)) {
         df.write.parquet(location)
       }
       val result_df = sql_ctx.read.parquet(location)
@@ -460,8 +461,11 @@ object OptimizedBucketWriter {
     }
   }
 
-  def __folderWithDataExists(sql_ctx: SQLContext, location: String): Boolean = {
+  def __folderWithDataExists(sql_ctx: SQLContext, location: String, name: String): Boolean = {
     try {
+      if (name != null) {
+        sql_ctx.sparkContext.setJobDescription(f"$name (check if folder exists)")
+      }
       sql_ctx.read.parquet(location).take(1)
       true
     }
