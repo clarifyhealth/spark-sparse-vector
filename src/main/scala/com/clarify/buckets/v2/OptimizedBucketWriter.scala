@@ -24,7 +24,7 @@ object OptimizedBucketWriter {
                                  bucketColumns: util.ArrayList[String],
                                  sortColumns: util.ArrayList[String],
                                  name: String): Boolean = {
-    Helpers.log(s"saveAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+    Helpers.log(s"saveAsBucketWithPartitions v2: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
     require(location != null, "location cannot be null")
     require(numBuckets > 0, f"numBuckets $numBuckets should be greater than 0")
     require(bucketColumns.size() > 0, f"There were no bucket columns specified")
@@ -62,7 +62,7 @@ object OptimizedBucketWriter {
       if (name != null) {
         sql_ctx.sparkContext.setJobDescription(name)
       }
-      Helpers.log(s"saveAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location"
+      Helpers.log(s"saveAsBucketWithPartitions v2: view=$view numBuckets=$numBuckets location=$location"
         + f" bucket_columns(${bucketColumns.size()})=$bucketColumns, sort_columns=$sortColumns")
       val df: DataFrame = sql_ctx.table(view)
 
@@ -113,7 +113,7 @@ object OptimizedBucketWriter {
                                  bucketColumns: util.ArrayList[String],
                                  sortColumns: util.ArrayList[String]): Boolean = {
 
-    Helpers.log(s"readAsBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+    Helpers.log(s"readAsBucketWithPartitions v2: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
 
     val result = Retry.retry(5) {
       readAsBucketWithPartitionsInternal(sql_ctx, view, numBuckets, location, bucketColumns, sortColumns)
@@ -124,7 +124,7 @@ object OptimizedBucketWriter {
   private def readAsBucketWithPartitionsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String,
                                                  bucketColumns: util.ArrayList[String],
                                                  sortColumns: util.ArrayList[String]) = {
-    Helpers.log(s"readAsBucketWithPartitions: view=$view numBuckets=$numBuckets location=$location "
+    Helpers.log(s"readAsBucketWithPartitions v2: view=$view numBuckets=$numBuckets location=$location "
       + f"bucket_columns(${bucketColumns.size()})=$bucketColumns, sort_columns=$sortColumns")
     try {
       val temp_view = s"${view}_temp_bucket_reader"
@@ -210,6 +210,7 @@ object OptimizedBucketWriter {
   def addBucketColumn(sql_ctx: SQLContext, view: String, result_view: String,
                       numBuckets: Int,
                       bucketColumns: util.ArrayList[String]): Boolean = {
+    Helpers.log(f"addBucketColumn v2: Adding bucket column to $view")
     val df: DataFrame = sql_ctx.table(view)
 
     val result_df: DataFrame = addBucketColumnToDataFrame(df, view, numBuckets, bucketColumns)
@@ -252,7 +253,7 @@ object OptimizedBucketWriter {
                                                location: String,
                                                bucketColumns: util.ArrayList[String],
                                                sortColumns: util.ArrayList[String]): Boolean = {
-    Helpers.log(s"__internalCheckpointBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+    Helpers.log(s"__internalCheckpointBucketWithPartitions v2: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
     require(bucketColumns.size() > 0, f"There were no bucket columns specified")
     require(sortColumns.size() > 0, f"There were no sort columns specified")
     try {
@@ -355,7 +356,7 @@ object OptimizedBucketWriter {
     if (name != null) {
       sql_ctx.sparkContext.setJobDescription(name)
     }
-    Helpers.log(s"checkpointBucketWithPartitions for $view, name=$name, location=$location")
+    Helpers.log(s"checkpointBucketWithPartitions v2 for $view, name=$name, location=$location")
     // if location is specified then use external tables
     if (location != null && location.toLowerCase().startsWith("s3")) {
       checkpointBucketToDisk(sql_ctx, view, numBuckets, location, bucketColumns, sortColumns, name)
@@ -377,10 +378,11 @@ object OptimizedBucketWriter {
                              name: String): Boolean = {
     // append name to create a unique location
     val fullLocation = if (location.endsWith("/")) f"$location$name" else f"$location/$name"
-    Helpers.log(s"checkpointBucketToDisk for $view, name=$name, location=$fullLocation")
+    Helpers.log(s"checkpointBucketToDisk v2 for $view, name=$name, location=$fullLocation")
     // if folder already exists then just read from it
     if (name != null && __folderWithDataExists(sql_ctx, fullLocation)) {
       Helpers.log(f"Folder $fullLocation already exists with data so skipping saving table")
+      sql_ctx.sparkContext.setJobDescription(f"$name (already exists so reading)")
       readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
         location = fullLocation, bucketColumns = bucketColumns, sortColumns = sortColumns)
       return true
@@ -394,6 +396,7 @@ object OptimizedBucketWriter {
       // val localLocation = location
       // read from location
       if (name != null && __folderWithDataExists(sql_ctx, fullLocation)) {
+        sql_ctx.sparkContext.setJobDescription(f"$name (read after save)")
         readAsBucketWithPartitions(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
           location = fullLocation, bucketColumns = bucketColumns,
           sortColumns = sortColumns)
@@ -415,7 +418,7 @@ object OptimizedBucketWriter {
                                sortColumns: util.ArrayList[String]
                               ): Boolean = {
 
-    Helpers.log(s"checkpointWithoutBuckets for $view")
+    Helpers.log(s"checkpointWithoutBuckets v2 for $view")
     if (!sql_ctx.table(view).isEmpty) {
       val df = sql_ctx.table(view)
       if (!__folderWithDataExists(sql_ctx, location)) {
