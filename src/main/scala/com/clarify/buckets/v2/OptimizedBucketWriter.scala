@@ -54,6 +54,8 @@ object OptimizedBucketWriter {
                                    name: String,
                                    saveLocalAndCopyToS3: Boolean): Boolean = {
 
+    require(bucketColumns.size() > 0, f"There were no bucket columns specified")
+    require(sortColumns.size() > 0, f"There were no sort columns specified")
     // To avoid S3 slowdown due to writing too many files, write to local and then copy to s3
     val localLocation = if (saveLocalAndCopyToS3 && location.startsWith("s3:")) f"/tmp/checkpoint/$name" else location
     try {
@@ -169,6 +171,8 @@ object OptimizedBucketWriter {
                                     sortColumns: util.ArrayList[String],
                                     view_for_schema: String,
                                     table_name: String): String = {
+    require(bucketColumns.size() > 0, f"There were no bucket columns specified")
+    require(sortColumns.size() > 0, f"There were no sort columns specified")
     // get schema from parquet file without loading data from it
     val df = sql_ctx.read.format("parquet")
       .load(location)
@@ -218,6 +222,7 @@ object OptimizedBucketWriter {
                                          view: String,
                                          numBuckets: Int,
                                          bucketColumns: util.ArrayList[String]): DataFrame = {
+    require(bucketColumns.size() > 0, f"There were no bucket columns specified")
     var result_df: DataFrame = df
     val bucketColumnsSeq: Seq[String] = Helpers.getSeqString(bucketColumns)
     val bucketColumnsTypeSeq = bucketColumnsSeq.map(x => col(x))
@@ -248,7 +253,8 @@ object OptimizedBucketWriter {
                                                bucketColumns: util.ArrayList[String],
                                                sortColumns: util.ArrayList[String]): Boolean = {
     Helpers.log(s"__internalCheckpointBucketWithPartitions: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-
+    require(bucketColumns.size() > 0, f"There were no bucket columns specified")
+    require(sortColumns.size() > 0, f"There were no sort columns specified")
     try {
       val postfix: String = "____"
 
