@@ -37,7 +37,7 @@ object OptimizedBucketWriter {
     val result = Retry.retry(5) {
       _saveBucketsInternal(sql_ctx, view, numBuckets, location, bucketColumns, name, saveLocalAndCopyToS3 = false)
     }
-    Await.result(result, 10 seconds)
+    Await.result(result, 3 hours)
   }
 
   private def _saveBucketsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
@@ -119,7 +119,7 @@ object OptimizedBucketWriter {
     val result = Retry.retry(5) {
       readAsBucketWithPartitionsInternal(sql_ctx, view, numBuckets, location, bucketColumns)
     }
-    Await.result(result, 10 seconds)
+    Await.result(result, 3 hours)
   }
 
   private def readAsBucketWithPartitionsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int, location: String, bucketColumns: util.ArrayList[String]) = {
