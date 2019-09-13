@@ -1,5 +1,7 @@
 package com.clarify.retry
 
+import com.clarify.Helpers
+
 import scala.concurrent._
 import scala.concurrent.duration.{Deadline, Duration, DurationLong}
 import scala.language.postfixOps
@@ -34,7 +36,7 @@ object Retry {
                ignoreThrowable: Throwable => Boolean = noIgnore)(block: => T)(implicit ctx: ExecutionContext): Future[T] = {
 
     class TooManyRetriesException extends Exception("too many retries without exception")
-    class DeadlineExceededException extends Exception("deadline exceded")
+    class DeadlineExceededException extends Exception("deadline exceeded")
 
     val p = promise[T]
 
@@ -60,6 +62,7 @@ object Retry {
           case t: Throwable if !ignoreThrowable(t) =>
             blocking {
               val interval = backoff(retryCnt).toMillis
+              Helpers.log(f"Retry #$retryCnt backing off for $interval milli seconds")
               Thread.sleep(interval)
             }
             recursiveRetry(retryCnt + 1, Some(t))(f)
