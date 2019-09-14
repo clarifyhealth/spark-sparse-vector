@@ -217,41 +217,32 @@ object OptimizedBucketWriter {
     var result_df: DataFrame = df
 
     if (bucketColumns.size() == 1) {
-      if (!df.columns.contains("bucket")) {
-        Helpers.log(s"Adding bucket column to $view")
-        result_df = df
-          .withColumn("bucket",
-            pmod(
-              hash(
-                col(bucketColumns.get(0))
-              ),
-              lit(numBuckets)
-            )
+      Helpers.log(s"Adding bucket column to $view")
+      result_df = df
+        .withColumn("bucket",
+          pmod(
+            hash(
+              col(bucketColumns.get(0))
+            ),
+            lit(numBuckets)
           )
-          .repartition(numBuckets, col("bucket"))
+        )
+        .repartition(numBuckets, col("bucket"))
 
-      }
-      else {
-        Helpers.log(s"Skipping adding bucket column since it exists $view")
-      }
     }
     else if (bucketColumns.size() == 2) {
-      if (!df.columns.contains("bucket")) {
-        Helpers.log(s"Adding bucket column to $view")
-        result_df = df
-          .withColumn("bucket",
-            pmod(
-              hash(
-                col(bucketColumns.get(0)),
-                col(bucketColumns.get(1))
-              ),
-              lit(numBuckets)
-            )
+      Helpers.log(s"Adding bucket column to $view")
+      result_df = df
+        .withColumn("bucket",
+          pmod(
+            hash(
+              col(bucketColumns.get(0)),
+              col(bucketColumns.get(1))
+            ),
+            lit(numBuckets)
           )
-          .repartition(numBuckets, col("bucket"))
-      } else {
-        Helpers.log(s"Skipping adding bucket column since it exists $view")
-      }
+        )
+        .repartition(numBuckets, col("bucket"))
     }
     result_df
   }
