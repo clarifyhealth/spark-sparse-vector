@@ -69,7 +69,8 @@ object OptimizedBucketWriter {
       val table_name = s"temp_$view"
       sql_ctx.sql(s"DROP TABLE IF EXISTS default.$table_name")
       val my_df: DataFrame = addBucketColumnToDataFrame(df = df, view = view,
-        numBuckets = numBuckets, bucketColumns = bucketColumns)
+        numBuckets = numBuckets, bucketColumns = bucketColumns,
+        sortColumns = sortColumns)
 
       val bucketColumnsSeq: Seq[String] = Helpers.getSeqString(bucketColumns).drop(1)
       val sortColumnsSeq: Seq[String] = Helpers.getSeqString(sortColumns).drop(1)
@@ -209,11 +210,12 @@ object OptimizedBucketWriter {
 
   def addBucketColumn(sql_ctx: SQLContext, view: String, result_view: String,
                       numBuckets: Int,
-                      bucketColumns: util.ArrayList[String]): Boolean = {
+                      bucketColumns: util.ArrayList[String],
+                      sortColumns: util.ArrayList[String]): Boolean = {
     Helpers.log(f"addBucketColumn v2: Adding bucket column to $view")
     val df: DataFrame = sql_ctx.table(view)
 
-    val result_df: DataFrame = addBucketColumnToDataFrame(df, view, numBuckets, bucketColumns)
+    val result_df: DataFrame = addBucketColumnToDataFrame(df, view, numBuckets, bucketColumns, sortColumns = sortColumns)
 
     result_df.createOrReplaceTempView(result_view)
     true
@@ -222,29 +224,27 @@ object OptimizedBucketWriter {
   private def addBucketColumnToDataFrame(df: DataFrame,
                                          view: String,
                                          numBuckets: Int,
-                                         bucketColumns: util.ArrayList[String]): DataFrame = {
+                                         bucketColumns: util.ArrayList[String],
+                                         sortColumns: util.ArrayList[String]
+                                        ): DataFrame = {
     require(bucketColumns.size() > 0, f"There were no bucket columns specified")
     var result_df: DataFrame = df
     val bucketColumnsSeq: Seq[String] = Helpers.getSeqString(bucketColumns)
     val bucketColumnsTypeSeq = bucketColumnsSeq.map(x => col(x))
+    val sortColumnsSeq: Seq[String] = Helpers.getSeqString(sortColumns).drop(1)
 
-    if (!df.columns.contains("bucket")) {
-      Helpers.log(s"Adding bucket column to $view")
-      result_df = df
-        .withColumn("bucket",
-          pmod(
-            hash(
-              bucketColumnsTypeSeq: _*
-            ),
-            lit(numBuckets)
-          )
+    Helpers.log(s"Adding bucket column to $view")
+    result_df = df
+      .withColumn("bucket",
+        pmod(
+          hash(
+            bucketColumnsTypeSeq: _*
+          ),
+          lit(numBuckets)
         )
-        .repartition(numBuckets, col("bucket"))
-
-    }
-    else {
-      Helpers.log(s"Skipping adding bucket column since it exists $view")
-    }
+      )
+      .repartition(numBuckets, col("bucket"))
+      .sortWithinPartitions(sortColumns.get(0), sortColumnsSeq: _*)
 
     result_df
   }
@@ -289,7 +289,8 @@ object OptimizedBucketWriter {
       val df: DataFrame = sql_ctx.table(view)
 
       val my_df: DataFrame = addBucketColumnToDataFrame(df = df, view = view,
-        numBuckets = numBuckets, bucketColumns = bucketColumns)
+        numBuckets = numBuckets, bucketColumns = bucketColumns,
+        sortColumns = sortColumns)
 
       val bucketColumnsSeq: Seq[String] = Helpers.getSeqString(bucketColumns).drop(1)
       val sortColumnsSeq: Seq[String] = Helpers.getSeqString(sortColumns).drop(1)
