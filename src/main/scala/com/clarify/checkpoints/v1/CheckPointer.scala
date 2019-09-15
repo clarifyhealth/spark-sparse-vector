@@ -15,7 +15,7 @@ object CheckPointer {
                                                location: String,
                                                bucketColumns: util.ArrayList[String],
                                                sortColumns: util.ArrayList[String]): Boolean = {
-    Helpers.log(s"__internalCheckpointBucketWithPartitions v2: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+    Helpers.log(s"__internalCheckpointBucketWithPartitions v3: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
     require(bucketColumns.size() > 0, f"There were no bucket columns specified")
     require(sortColumns.size() > 0, f"There were no sort columns specified")
     try {
@@ -46,7 +46,7 @@ object CheckPointer {
 
       val new_table_name = s"$table_prefix$new_checkpoint_number"
 
-      Helpers.log(s"__internalCheckpointBucketWithPartitions: view=$view table=$new_table_name numBuckets=$numBuckets"
+      Helpers.log(s"__internalCheckpointBucketWithPartitions v3: view=$view table=$new_table_name numBuckets=$numBuckets"
         + f" bucket_columns(${bucketColumns.size()})=$bucketColumns, sort_columns=$sortColumns")
       val df: DataFrame = sql_ctx.table(view)
 
@@ -78,7 +78,7 @@ object CheckPointer {
           sql_ctx.sql(f"DROP TABLE default.$t")
         })
       }
-      Helpers.log(s"__internalCheckpointBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+      Helpers.log(s"__internalCheckpointBucketWithPartitions v3: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
       val result_df = sql_ctx.table(new_table_name)
       result_df.createOrReplaceTempView(view)
 
@@ -92,20 +92,20 @@ object CheckPointer {
     catch {
       case e: SparkException =>
         val cause = e.getCause
-        Helpers.log(s"__internalCheckpointBucketWithPartitions: Got SparkException: $cause")
+        Helpers.log(s"__internalCheckpointBucketWithPartitions v3: Got SparkException: $cause")
         throw cause
       case e: AnalysisException =>
         // we do this instead of checking if data frame is empty because the latter is expensive
         if (e.message.startsWith(s"cannot resolve '`${bucketColumns.get(0)}`' given input columns")) {
-          Helpers.log(s"__internalCheckpointBucketWithPartitions: data frame passed in is empty. $e")
+          Helpers.log(s"__internalCheckpointBucketWithPartitions v3: data frame passed in is empty. $e")
           false
         }
         else {
-          Helpers.log(s"__internalCheckpointBucketWithPartitions: Got AnalysisException: $e")
+          Helpers.log(s"__internalCheckpointBucketWithPartitions v3: Got AnalysisException: $e")
           throw e
         }
       case unknown: Throwable =>
-        Helpers.log(s"__internalCheckpointBucketWithPartitions: Got some other kind of exception: $unknown")
+        Helpers.log(s"__internalCheckpointBucketWithPartitions v3: Got some other kind of exception: $unknown")
         throw unknown
     }
   }
@@ -122,7 +122,7 @@ object CheckPointer {
     if (name != null) {
       sql_ctx.sparkContext.setJobDescription(name)
     }
-    Helpers.log(s"checkpointBucketWithPartitions v2 for $view, name=$name, location=$location")
+    Helpers.log(s"checkpointBucketWithPartitions v3 for $view, name=$name, location=$location")
     // if location is specified then use external tables
     if (location != null && location.toLowerCase().startsWith("s3")) {
       checkpointBucketToDisk(sql_ctx, view, tracking_id, numBuckets, location, bucketColumns, sortColumns, name)
@@ -146,7 +146,7 @@ object CheckPointer {
                              sortColumns: util.ArrayList[String],
                              name: String): Boolean = {
     // append name to create a unique location
-    val fullLocation = if (location.endsWith("/")) f"$location$tracking_id" else f"$location/$tracking_id"
+    val fullLocation = if (location.endsWith("/")) f"$location$view$tracking_id" else f"$location/$view$tracking_id"
     Helpers.log(s"checkpointBucketToDisk v3 for $view, name=$name, location=$fullLocation")
     // if folder already exists then just read from it
     if (name != null && HdfsHelper.__folderWithDataExists(sql_ctx, fullLocation, name)) {
@@ -188,7 +188,7 @@ object CheckPointer {
                                name: String
                               ): Boolean = {
 
-    Helpers.log(s"checkpointWithoutBuckets v2 for $view")
+    Helpers.log(s"checkpointWithoutBuckets v3 for $view")
     if (!sql_ctx.table(view).isEmpty) {
       val df = sql_ctx.table(view)
       if (!HdfsHelper.__folderWithDataExists(sql_ctx, location, name)) {
