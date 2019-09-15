@@ -62,7 +62,7 @@ object OptimizedBucketWriter {
       if (name != null) {
         sql_ctx.sparkContext.setJobDescription(name)
       }
-      Helpers.log(s"saveAsBucketWithPartitions v2: view=$view numBuckets=$numBuckets location=$location"
+      Helpers.log(s"_saveBucketsToFileInternal v2: view=$view numBuckets=$numBuckets location=$location"
         + f" bucket_columns(${bucketColumns.size()})=$bucketColumns, sort_columns=$sortColumns")
       val df: DataFrame = sql_ctx.table(view)
 
@@ -95,8 +95,11 @@ object OptimizedBucketWriter {
           f"--dest=$location").!!.trim
         Helpers.log(results)
       }
-      Helpers.log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-
+      Helpers.log(s"_saveBucketsToFileInternal: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+      if (!location.startsWith("s3:")) {
+        // print free space left
+        _printFreeSpace(sql_ctx.sparkContext)
+      }
       true
     }
     catch {
