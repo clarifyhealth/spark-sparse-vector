@@ -1,4 +1,4 @@
-package com.clarify.checkpoints
+package com.clarify.checkpoints.v1
 
 import java.util
 
@@ -110,7 +110,10 @@ object CheckPointer {
     }
   }
 
-  def checkpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
+  def checkpointBucketWithPartitions(sql_ctx: SQLContext,
+                                     view: String,
+                                     tracking_id: Int,
+                                     numBuckets: Int,
                                      location: String,
                                      bucketColumns: util.ArrayList[String],
                                      sortColumns: util.ArrayList[String],
@@ -122,7 +125,7 @@ object CheckPointer {
     Helpers.log(s"checkpointBucketWithPartitions v2 for $view, name=$name, location=$location")
     // if location is specified then use external tables
     if (location != null && location.toLowerCase().startsWith("s3")) {
-      checkpointBucketToDisk(sql_ctx, view, numBuckets, location, bucketColumns, sortColumns, name)
+      checkpointBucketToDisk(sql_ctx, view, tracking_id, numBuckets, location, bucketColumns, sortColumns, name)
     } else {
       // use Spark managed tables for better performance
       val result = __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
@@ -134,14 +137,17 @@ object CheckPointer {
     }
   }
 
-  def checkpointBucketToDisk(sql_ctx: SQLContext, view: String, numBuckets: Int,
+  def checkpointBucketToDisk(sql_ctx: SQLContext,
+                             view: String,
+                             tracking_id: Int,
+                             numBuckets: Int,
                              location: String,
                              bucketColumns: util.ArrayList[String],
                              sortColumns: util.ArrayList[String],
                              name: String): Boolean = {
     // append name to create a unique location
-    val fullLocation = if (location.endsWith("/")) f"$location$name" else f"$location/$name"
-    Helpers.log(s"checkpointBucketToDisk v2 for $view, name=$name, location=$fullLocation")
+    val fullLocation = if (location.endsWith("/")) f"$location$tracking_id" else f"$location/$tracking_id"
+    Helpers.log(s"checkpointBucketToDisk v3 for $view, name=$name, location=$fullLocation")
     // if folder already exists then just read from it
     if (name != null && HdfsHelper.__folderWithDataExists(sql_ctx, fullLocation, name)) {
       Helpers.log(f"Folder $fullLocation already exists with data so skipping saving table")
