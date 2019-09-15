@@ -37,7 +37,7 @@ object OptimizedBucketWriter {
     }
 
     val result = Retry.retry(5) {
-      _saveBucketsInternal(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
+      _saveBucketsToFileInternal(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
         location = location,
         bucketColumns = bucketColumns,
         sortColumns = sortColumns,
@@ -47,12 +47,12 @@ object OptimizedBucketWriter {
     Await.result(result, 3 hours)
   }
 
-  private def _saveBucketsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
-                                   location: String,
-                                   bucketColumns: util.ArrayList[String],
-                                   sortColumns: util.ArrayList[String],
-                                   name: String,
-                                   saveLocalAndCopyToS3: Boolean): Boolean = {
+  private def _saveBucketsToFileInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                                         location: String,
+                                         bucketColumns: util.ArrayList[String],
+                                         sortColumns: util.ArrayList[String],
+                                         name: String,
+                                         saveLocalAndCopyToS3: Boolean): Boolean = {
 
     require(bucketColumns.size() > 0, f"There were no bucket columns specified")
     require(sortColumns.size() > 0, f"There were no sort columns specified")
