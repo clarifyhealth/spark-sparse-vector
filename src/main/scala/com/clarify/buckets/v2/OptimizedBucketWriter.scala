@@ -102,8 +102,11 @@ object OptimizedBucketWriter {
     catch {
       case e: SparkException =>
         val cause = e.getCause
-        Helpers.log(s"readAsBucketWithPartitions: Got SparkException: $cause")
-        throw cause
+        if (cause != null) {
+          Helpers.log(s"readAsBucketWithPartitions: Got SparkException (${cause.getClass}): $cause")
+          throw cause
+        }
+        throw e
       case unknown: Throwable =>
         Helpers.log(s"saveAsBucketWithPartitions: Got some other kind of exception: $unknown")
         throw unknown
@@ -149,8 +152,11 @@ object OptimizedBucketWriter {
     catch {
       case e: SparkException =>
         val cause = e.getCause
-        Helpers.log(s"readAsBucketWithPartitions: Got SparkException: $cause")
-        throw cause
+        if (cause != null) {
+          Helpers.log(s"readAsBucketWithPartitions: Got SparkException (${cause.getClass}): $cause")
+          throw cause
+        }
+        throw e
       case e: AnalysisException =>
         // we do this instead of checking if data frame is empty because the latter is expensive
         if (e.message.startsWith(s"cannot resolve '`${bucketColumns.get(0)}`' given input columns") || e.message.startsWith("Unable to infer schema for Parquet. It must be specified manually")) {
