@@ -37,7 +37,7 @@ object OptimizedBucketWriter {
     }
 
     val result = Retry.retry(5) {
-      _saveBucketsInternal(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
+      _saveBucketsToFileInternal(sql_ctx = sql_ctx, view = view, numBuckets = numBuckets,
         location = location,
         bucketColumns = bucketColumns,
         sortColumns = sortColumns,
@@ -47,12 +47,12 @@ object OptimizedBucketWriter {
     Await.result(result, 3 hours)
   }
 
-  private def _saveBucketsInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
-                                   location: String,
-                                   bucketColumns: util.ArrayList[String],
-                                   sortColumns: util.ArrayList[String],
-                                   name: String,
-                                   saveLocalAndCopyToS3: Boolean): Boolean = {
+  private def _saveBucketsToFileInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                                         location: String,
+                                         bucketColumns: util.ArrayList[String],
+                                         sortColumns: util.ArrayList[String],
+                                         name: String,
+                                         saveLocalAndCopyToS3: Boolean): Boolean = {
 
     require(bucketColumns.size() > 0, f"There were no bucket columns specified")
     require(sortColumns.size() > 0, f"There were no sort columns specified")
@@ -62,7 +62,7 @@ object OptimizedBucketWriter {
       if (name != null) {
         sql_ctx.sparkContext.setJobDescription(name)
       }
-      Helpers.log(s"saveAsBucketWithPartitions v2: view=$view numBuckets=$numBuckets location=$location"
+      Helpers.log(s"_saveBucketsToFileInternal v2: view=$view numBuckets=$numBuckets location=$location"
         + f" bucket_columns(${bucketColumns.size()})=$bucketColumns, sort_columns=$sortColumns")
       val df: DataFrame = sql_ctx.table(view)
 
@@ -95,8 +95,11 @@ object OptimizedBucketWriter {
           f"--dest=$location").!!.trim
         Helpers.log(results)
       }
-      Helpers.log(s"saveAsBucketWithPartitions: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
-
+      Helpers.log(s"_saveBucketsToFileInternal: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+      if (!location.startsWith("s3:")) {
+        // print free space left
+        _printFreeSpace(sql_ctx.sparkContext)
+      }
       true
     }
     catch {
