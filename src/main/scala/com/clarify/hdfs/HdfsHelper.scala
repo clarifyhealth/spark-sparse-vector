@@ -52,6 +52,38 @@ object HdfsHelper {
     }
   }
 
+  def appendPaths(path1: String, path2: String): String = {
+    addTrailingSlash(path1) + path2
+  }
+
+  private def addTrailingSlash(path: String): String = {
+    if (!path.endsWith("/")) return path + "/"
+    path
+  }
+
+  def getFoldersWithPrefix(sparkContext: SparkContext, path: String, prefix: String): Seq[String] = {
+    val deployMode = sparkContext.getConf.get("spark.submit.deployMode", null)
+    if (deployMode != null && deployMode != "client") {
+      //noinspection SpellCheckingInspection
+      val results: String = Seq("hdfs", "dfs", "-ls", "-C", path).!!.trim
+      results.split("\\s+").toSeq.filter(folder => folder.startsWith(prefix))
+    }
+    else {
+      // use local file system calls
+      val results: String = Seq("ls", "-C", path).!!.trim
+      results.split("\\s+").toSeq.filter(folder => folder.startsWith(prefix))
+    }
+  }
+
+  def getFolderNumbersOnly(sparkContext: SparkContext, path: String, prefix: String): Seq[Int] = {
+    val list_of_folders = getFoldersWithPrefix(sparkContext, path, prefix)
+    list_of_folders.map(f => f.replace(f"$prefix", "").toInt)
+  }
+
+  def getLatestFolderNumber(sparkContext: SparkContext, path: String, prefix: String): Option[Int] = {
+    getFolderNumbersOnly(sparkContext, path, prefix).sorted.reverse.headOption
+  }
+
   def s3distCp(src: String, dest: String): Unit = {
     s"s3-dist-cp --src $src --dest $dest".!
   }
