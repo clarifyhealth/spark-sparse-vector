@@ -1,5 +1,7 @@
 package com.clarify.hdfs
 
+import java.nio.file.Paths
+
 import com.clarify.Helpers
 import org.apache.spark.sql.{AnalysisException, SQLContext}
 import org.apache.spark.{SparkContext, SparkException}
@@ -53,23 +55,21 @@ object HdfsHelper {
   }
 
   def appendPaths(path1: String, path2: String): String = {
-    addTrailingSlash(path1) + path2
-  }
-
-  private def addTrailingSlash(path: String): String = {
-    if (!path.endsWith("/")) return path + "/"
-    path
+    Paths.get(path1, path2).toString
   }
 
   def getFoldersWithPrefix(sparkContext: SparkContext, path: String, prefix: String): Seq[String] = {
     val deployMode = sparkContext.getConf.get("spark.submit.deployMode", null)
     if (deployMode != null && deployMode != "client") {
       //noinspection SpellCheckingInspection
+      // create folder if it doesn't exist
+      Seq("hdfs", "dfs", "-mkdir", "-p", path).!!.trim
       val results: String = Seq("hdfs", "dfs", "-ls", "-C", path).!!.trim
       results.split("\\s+").toSeq.filter(folder => folder.startsWith(prefix))
     }
     else {
       // use local file system calls
+      Seq("mkdir", "-p", path).!!.trim
       val results: String = Seq("ls", "-C", path).!!.trim
       results.split("\\s+").toSeq.filter(folder => folder.startsWith(prefix))
     }
