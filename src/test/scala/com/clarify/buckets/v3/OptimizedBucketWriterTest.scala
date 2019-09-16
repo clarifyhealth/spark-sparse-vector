@@ -1,9 +1,10 @@
 package com.clarify.buckets.v3
 
 import java.io.File
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 import java.util
 
+import com.clarify.checkpoints.v1.CheckPointer
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import com.clarify.{Helpers, TestHelpers}
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
@@ -171,5 +172,24 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
       )
 
     my_df.show()
+  }
+
+  test("get latest folder number with prefix over 10") {
+    spark.sharedState.cacheManager.clearCache()
+    val location = Files.createTempDirectory("hdfs").toFile.toString
+    val postfix = CheckPointer.postfix
+    Files.createDirectory(Paths.get(location, f"foo${postfix}2"))
+    Files.createDirectory(Paths.get(location, f"foo${postfix}11"))
+    val result = CheckPointer.getLatestCheckpointForView(sql_ctx = spark.sqlContext, path = location, view = "foo")
+    assert(11 == result)
+  }
+  test("get latest folder number with no checkpoints") {
+    spark.sharedState.cacheManager.clearCache()
+    val location = Files.createTempDirectory("hdfs").toFile.toString
+    val postfix = CheckPointer.postfix
+    Files.createDirectory(Paths.get(location, f"foo2${postfix}2"))
+    Files.createDirectory(Paths.get(location, f"foo2${postfix}11"))
+    val result = CheckPointer.getLatestCheckpointForView(sql_ctx = spark.sqlContext, path = location, view = "foo")
+    assert(null == result)
   }
 }

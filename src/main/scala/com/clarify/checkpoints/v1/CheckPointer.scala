@@ -1,5 +1,6 @@
 package com.clarify.checkpoints.v1
 
+import java.nio.file.Paths
 import java.util
 
 import com.clarify.Helpers
@@ -11,6 +12,8 @@ import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext}
 
 object CheckPointer {
+  val postfix: String = "____"
+
   def __internalCheckpointBucketWithPartitions(sql_ctx: SQLContext, view: String, numBuckets: Int,
                                                location: String,
                                                bucketColumns: util.ArrayList[String],
@@ -19,7 +22,6 @@ object CheckPointer {
     require(bucketColumns.size() > 0, f"There were no bucket columns specified")
     require(sortColumns.size() > 0, f"There were no sort columns specified")
     try {
-      val postfix: String = "____"
 
       val table_prefix = f"temp_${view.toLowerCase()}$postfix"
       // find previous checkpoint tables
@@ -146,7 +148,7 @@ object CheckPointer {
                              sortColumns: util.ArrayList[String],
                              name: String): Boolean = {
     // append name to create a unique location
-    val fullLocation = if (location.endsWith("/")) f"$location$view$tracking_id" else f"$location/$view$tracking_id"
+    val fullLocation = getPathToCheckpoint(view, tracking_id, location)
     Helpers.log(s"checkpointBucketToDisk v3 for $view, name=$name, location=$fullLocation")
     // if folder already exists then just read from it
     if (name != null && HdfsHelper.__folderWithDataExists(sql_ctx, fullLocation, name)) {
@@ -179,6 +181,10 @@ object CheckPointer {
     else {
       false
     }
+  }
+
+  private def getPathToCheckpoint(view: String, tracking_id: Int, location: String) = {
+    Paths.get(location, f"$view$postfix$tracking_id").toString
   }
 
   def checkpointWithoutBuckets(sql_ctx: SQLContext, view: String, numBuckets: Int,
@@ -216,5 +222,9 @@ object CheckPointer {
     rdd.cache()
     sql_ctx.createDataFrame(rdd, df.schema).createOrReplaceTempView(view)
     true
+  }
+
+  def getLatestCheckpointForView(sql_ctx: SQLContext, path: String, view: String): Any = {
+    HdfsHelper.getLatestFolderNumber(sql_ctx.sparkContext, path = path, prefix = f"$view$postfix").orNull
   }
 }
