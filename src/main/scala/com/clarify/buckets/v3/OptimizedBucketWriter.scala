@@ -85,6 +85,12 @@ object OptimizedBucketWriter {
         .option("path", localLocation)
         .saveAsTable(table_name)
 
+      //      val df_after_save: DataFrame = sql_ctx.table(table_name)
+      //      if (df_after_save.isEmpty) {
+      //        Helpers.log(f"data frame was empty so writing via df.write view=$view location=$location")
+      //        // if data frame is empty then write an empty data frame otherwise we get no file
+      //        df_after_save.write.mode("overwrite").parquet(localLocation)
+      //      }
       Helpers.log(s"DROP TABLE default.$table_name")
       sql_ctx.sql(s"DROP TABLE default.$table_name")
 
@@ -112,7 +118,7 @@ object OptimizedBucketWriter {
         }
         throw e
       case unknown: Throwable =>
-        Helpers.log(s"saveAsBucketWithPartitions: Got some other kind of exception: $unknown")
+        Helpers.log(s"readAsBucketWithPartitions: Got some other kind of exception: $unknown")
         throw unknown
     }
   }

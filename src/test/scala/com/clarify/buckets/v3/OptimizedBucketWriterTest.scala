@@ -1,10 +1,11 @@
 package com.clarify.buckets.v3
 
 import java.io.File
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import java.util
 
 import com.clarify.checkpoints.v1.CheckPointer
+import com.clarify.hdfs.HdfsHelper
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import com.clarify.{Helpers, TestHelpers}
 import org.apache.spark.sql.functions.{col, hash, lit, pmod}
@@ -62,6 +63,50 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
       Row(1, "foo"),
       Row(2, "bar"),
       Row(3, "zoo")
+    )
+    val fields = List(
+      StructField("id", IntegerType, nullable = false),
+      StructField("v2", StringType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+
+    df.createOrReplaceTempView(my_table)
+
+    val bucket_columns = new util.ArrayList[String]()
+    bucket_columns.add("id")
+    bucket_columns.add("v2")
+
+    val location = Files.createTempDirectory("parquet").toFile.toString
+    OptimizedBucketWriter.saveAsBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table, numBuckets = 10, location = location,
+      bucketColumns = bucket_columns,
+      sortColumns = bucket_columns,
+      name = "bar")
+    println(s"Wrote output to: $location")
+
+    val tables = spark.catalog.listTables()
+    tables.foreach(t => println(t.name))
+
+    // now test reading from it
+    //    OptimizedBucketWriter.readAsBucketWithPartitions2(sql_ctx = spark.sqlContext,
+    //      view = my_table, numBuckets = 10, location = location, bucketColumns = bucket_columns)
+    val result_df = spark.table(my_table)
+    result_df.show()
+
+    assert(result_df.count() == df.count())
+    // spark.sql(s"DESCRIBE EXTENDED ${my_table}").show(numRows = 1000, truncate = false)
+
+    TestHelpers.clear_tables(spark_session = spark)
+  }
+
+  test("save to buckets empty data frame") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val my_table = "my_table_multiple"
+
+    val data = List[Row](
     )
     val fields = List(
       StructField("id", IntegerType, nullable = false),
@@ -206,7 +251,7 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     val data_rdd = spark.sparkContext.makeRDD(data)
 
     val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
-    val folder = Paths.get(location, name)
+    val folder = HdfsHelper.appendPaths(location, name)
 
     df.write.parquet(path = folder.toString)
   }

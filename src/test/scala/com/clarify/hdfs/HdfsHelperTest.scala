@@ -2,6 +2,7 @@ package com.clarify.hdfs
 
 import java.nio.file._
 
+import com.clarify.hdfs.HdfsHelper.appendPaths
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, QueryTest, Row}
@@ -32,7 +33,7 @@ class HdfsHelperTest extends QueryTest with SparkSessionTestWrapper {
     val data_rdd = spark.sparkContext.makeRDD(data)
 
     val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
-    val folder = Paths.get(location, name)
+    val folder = appendPaths(location, name)
 
     df.write.parquet(path = folder.toString)
   }
@@ -76,7 +77,7 @@ class HdfsHelperTest extends QueryTest with SparkSessionTestWrapper {
   }
   test("get latest folder number creates folder if it doesn't exist") {
     spark.sharedState.cacheManager.clearCache()
-    val location = Paths.get(Files.createTempDirectory("hdfs").toFile.toString, "doesnotexist").toString
+    val location = appendPaths(Files.createTempDirectory("hdfs").toFile.toString, "doesnotexist").toString
     val result: Option[Int] = HdfsHelper.getLatestFolderNumber(sparkContext = spark.sparkContext,
       sql_ctx = spark.sqlContext, path = location, prefix = "foo__")
     assert(null == result.orNull)
@@ -93,7 +94,7 @@ class HdfsHelperTest extends QueryTest with SparkSessionTestWrapper {
 
     val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
     val location = Files.createTempDirectory("hdfs").toFile.toString
-    val folder = Paths.get(location, "foo__3")
+    val folder = appendPaths(location, "foo__3")
     df.show()
 
     df.write.parquet(path = folder.toString)
@@ -101,5 +102,10 @@ class HdfsHelperTest extends QueryTest with SparkSessionTestWrapper {
     val result: Option[Int] = HdfsHelper.getLatestFolderNumber(sparkContext = spark.sparkContext,
       sql_ctx = spark.sqlContext, path = location, prefix = "foo__")
     assert(null == result.orNull)
+  }
+
+  test("check appending paths") {
+    val result = appendPaths("s3://tera-feature-lake/checkpoints/medicaid/v1/", "claims____1")
+    assert(result == "s3://tera-feature-lake/checkpoints/medicaid/v1/claims____1")
   }
 }

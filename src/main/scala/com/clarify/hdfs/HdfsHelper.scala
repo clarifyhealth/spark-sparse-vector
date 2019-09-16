@@ -1,7 +1,5 @@
 package com.clarify.hdfs
 
-import java.nio.file.Paths
-
 import com.clarify.Helpers
 import org.apache.spark.sql.{AnalysisException, SQLContext}
 import org.apache.spark.{SparkContext, SparkException}
@@ -59,7 +57,12 @@ object HdfsHelper {
   }
 
   def appendPaths(path1: String, path2: String): String = {
-    Paths.get(path1, path2).toString
+    addTrailingSlash(path1) + path2
+  }
+
+  private def addTrailingSlash(path: String): String = {
+    if (!path.endsWith("/")) return path + "/"
+    path
   }
 
   def getFoldersWithPrefix(sparkContext: SparkContext, sql_ctx: SQLContext, path: String, prefix: String): Seq[String] = {
@@ -70,14 +73,14 @@ object HdfsHelper {
       Seq("hdfs", "dfs", "-mkdir", "-p", path).!!.trim
       val results: String = Seq("hdfs", "dfs", "-ls", "-C", path).!!.trim
       results.split("\\s+").toSeq.filter(folder => folder.startsWith(prefix))
-        .filter(r => _folderWithDataExistsInternal(sql_ctx = sql_ctx, location = Paths.get(path, r).toString))
+        .filter(r => _folderWithDataExistsInternal(sql_ctx = sql_ctx, location = appendPaths(path, r).toString))
     }
     else {
       // use local file system calls
       Seq("mkdir", "-p", path).!!.trim
       val results: String = Seq("ls", "-C", path).!!.trim
       results.split("\\s+").toSeq.filter(folder => folder.startsWith(prefix))
-        .filter(r => _folderWithDataExistsInternal(sql_ctx = sql_ctx, location = Paths.get(path, r).toString))
+        .filter(r => _folderWithDataExistsInternal(sql_ctx = sql_ctx, location = appendPaths(path, r).toString))
     }
   }
 

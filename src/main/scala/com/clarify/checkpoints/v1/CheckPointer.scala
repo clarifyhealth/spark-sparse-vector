@@ -1,6 +1,5 @@
 package com.clarify.checkpoints.v1
 
-import java.nio.file.Paths
 import java.util
 
 import com.clarify.Helpers
@@ -127,7 +126,7 @@ object CheckPointer {
     Helpers.log(s"checkpointBucketWithPartitions v3 for $view, name=$name, location=$location")
     // if location is specified then use external tables
     if (location != null && location.toLowerCase().startsWith("s3")) {
-      checkpointBucketToDisk(sql_ctx, view, tracking_id, numBuckets, location, bucketColumns, sortColumns, name)
+      _checkpointBucketToDiskInternal(sql_ctx, view, numBuckets, bucketColumns, sortColumns, name, location)
     } else {
       // use Spark managed tables for better performance
       val result = __internalCheckpointBucketWithPartitions(sql_ctx = sql_ctx, view = view,
@@ -149,6 +148,12 @@ object CheckPointer {
                              name: String): Boolean = {
     // append name to create a unique location
     val fullLocation = getPathToCheckpoint(view, tracking_id, location)
+    _checkpointBucketToDiskInternal(sql_ctx, view, numBuckets, bucketColumns, sortColumns, name, fullLocation)
+  }
+
+  private def _checkpointBucketToDiskInternal(sql_ctx: SQLContext, view: String, numBuckets: Int,
+                                              bucketColumns: util.ArrayList[String], sortColumns: util.ArrayList[String],
+                                              name: String, fullLocation: String): Boolean = {
     Helpers.log(s"checkpointBucketToDisk v3 for $view, name=$name, location=$fullLocation")
     // if folder already exists then just read from it
     if (name != null && HdfsHelper.__folderWithDataExists(sql_ctx, fullLocation, name)) {
@@ -181,10 +186,11 @@ object CheckPointer {
     else {
       false
     }
+    true
   }
 
   private def getPathToCheckpoint(view: String, tracking_id: Int, location: String) = {
-    Paths.get(location, f"$view$postfix$tracking_id").toString
+    HdfsHelper.appendPaths(location, f"$view$postfix$tracking_id").toString
   }
 
   def checkpointWithoutBuckets(sql_ctx: SQLContext, view: String, numBuckets: Int,
