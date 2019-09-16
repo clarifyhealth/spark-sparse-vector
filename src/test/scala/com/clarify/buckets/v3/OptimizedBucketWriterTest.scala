@@ -178,8 +178,8 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     spark.sharedState.cacheManager.clearCache()
     val location = Files.createTempDirectory("hdfs").toFile.toString
     val postfix = CheckPointer.postfix
-    Files.createDirectory(Paths.get(location, f"foo${postfix}2"))
-    Files.createDirectory(Paths.get(location, f"foo${postfix}11"))
+    create_sample_parquet(location, f"foo${postfix}2")
+    create_sample_parquet(location, f"foo${postfix}11")
     val result = CheckPointer.getLatestCheckpointForView(sql_ctx = spark.sqlContext, path = location, view = "foo")
     assert(11 == result)
   }
@@ -187,9 +187,27 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     spark.sharedState.cacheManager.clearCache()
     val location = Files.createTempDirectory("hdfs").toFile.toString
     val postfix = CheckPointer.postfix
-    Files.createDirectory(Paths.get(location, f"foo2${postfix}2"))
-    Files.createDirectory(Paths.get(location, f"foo2${postfix}11"))
+    create_sample_parquet(location, f"foo2${postfix}2")
+    create_sample_parquet(location, f"foo2${postfix}11")
     val result = CheckPointer.getLatestCheckpointForView(sql_ctx = spark.sqlContext, path = location, view = "foo")
     assert(null == result)
+  }
+
+  private def create_sample_parquet(location: String, name: String): Unit = {
+    val data = List(
+      Row(1, "foo"),
+      Row(2, "bar"),
+      Row(3, "zoo")
+    )
+    val fields = List(
+      StructField("id", IntegerType, nullable = false),
+      StructField("v2", StringType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+    val folder = Paths.get(location, name)
+
+    df.write.parquet(path = folder.toString)
   }
 }

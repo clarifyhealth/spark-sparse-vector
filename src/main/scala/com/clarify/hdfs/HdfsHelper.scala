@@ -22,10 +22,14 @@ object HdfsHelper {
   }
 
   def __folderWithDataExists(sql_ctx: SQLContext, location: String, name: String): Boolean = {
+    if (name != null) {
+      sql_ctx.sparkContext.setJobDescription(f"$name (check if folder exists)")
+    }
+    _folderWithDataExistsInternal(sql_ctx, location)
+  }
+
+  private def _folderWithDataExistsInternal(sql_ctx: SQLContext, location: String): Boolean = {
     try {
-      if (name != null) {
-        sql_ctx.sparkContext.setJobDescription(f"$name (check if folder exists)")
-      }
       sql_ctx.read.parquet(location).take(1)
       true
     }
@@ -58,7 +62,7 @@ object HdfsHelper {
     Paths.get(path1, path2).toString
   }
 
-  def getFoldersWithPrefix(sparkContext: SparkContext, path: String, prefix: String): Seq[String] = {
+  def getFoldersWithPrefix(sparkContext: SparkContext, sql_ctx: SQLContext, path: String, prefix: String): Seq[String] = {
     val deployMode = sparkContext.getConf.get("spark.submit.deployMode", null)
     if (deployMode != null && deployMode != "client") {
       //noinspection SpellCheckingInspection
@@ -66,24 +70,26 @@ object HdfsHelper {
       Seq("hdfs", "dfs", "-mkdir", "-p", path).!!.trim
       val results: String = Seq("hdfs", "dfs", "-ls", "-C", path).!!.trim
       results.split("\\s+").toSeq.filter(folder => folder.startsWith(prefix))
+        .filter(r => _folderWithDataExistsInternal(sql_ctx = sql_ctx, location = Paths.get(path, r).toString))
     }
     else {
       // use local file system calls
       Seq("mkdir", "-p", path).!!.trim
       val results: String = Seq("ls", "-C", path).!!.trim
       results.split("\\s+").toSeq.filter(folder => folder.startsWith(prefix))
+        .filter(r => _folderWithDataExistsInternal(sql_ctx = sql_ctx, location = Paths.get(path, r).toString))
     }
   }
 
-  def getFolderNumbersOnly(sparkContext: SparkContext, path: String, prefix: String): Seq[Int] = {
-    val list_of_folders = getFoldersWithPrefix(sparkContext, path, prefix)
+  def getFolderNumbersOnly(sparkContext: SparkContext, sql_ctx: SQLContext, path: String, prefix: String): Seq[Int] = {
+    val list_of_folders = getFoldersWithPrefix(sparkContext, sql_ctx, path, prefix)
     list_of_folders.map(f => f.replace(f"$prefix", ""))
       .filter(r => r.forall(c => c.isDigit))
       .map(r => r.toInt)
   }
 
-  def getLatestFolderNumber(sparkContext: SparkContext, path: String, prefix: String): Option[Int] = {
-    getFolderNumbersOnly(sparkContext, path, prefix).sorted.reverse.headOption
+  def getLatestFolderNumber(sparkContext: SparkContext, sql_ctx: SQLContext, path: String, prefix: String): Option[Int] = {
+    getFolderNumbersOnly(sparkContext, sql_ctx, path, prefix).sorted.reverse.headOption
   }
 
   def s3distCp(src: String, dest: String): Unit = {

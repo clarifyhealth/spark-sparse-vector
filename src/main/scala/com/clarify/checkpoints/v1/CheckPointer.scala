@@ -225,6 +225,6 @@ object CheckPointer {
   }
 
   def getLatestCheckpointForView(sql_ctx: SQLContext, path: String, view: String): Any = {
-    HdfsHelper.getLatestFolderNumber(sql_ctx.sparkContext, path = path, prefix = f"$view$postfix").orNull
+    HdfsHelper.getLatestFolderNumber(sql_ctx.sparkContext, sql_ctx = sql_ctx, path = path, prefix = f"$view$postfix").orNull
   }
 }
