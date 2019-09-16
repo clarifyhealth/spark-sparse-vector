@@ -39,6 +39,15 @@ class HdfsHelperTest extends QueryTest with SparkSessionTestWrapper {
     val result: Option[Int] = HdfsHelper.getLatestFolderNumber(sparkContext = spark.sparkContext, path = location, prefix = "foo__")
     assert(11 == result.getOrElse())
   }
+  test("get latest folder number can handle non-numeric") {
+    spark.sharedState.cacheManager.clearCache()
+    val location = Files.createTempDirectory("hdfs").toFile.toString
+    Files.createDirectory(Paths.get(location, "foo__2"))
+    Files.createDirectory(Paths.get(location, "foo__text"))
+    Files.createDirectory(Paths.get(location, "foo__11"))
+    val result: Option[Int] = HdfsHelper.getLatestFolderNumber(sparkContext = spark.sparkContext, path = location, prefix = "foo__")
+    assert(11 == result.getOrElse())
+  }
   test("get latest folder number creates folder if it doesn't exist") {
     spark.sharedState.cacheManager.clearCache()
     val location = Paths.get(Files.createTempDirectory("hdfs").toFile.toString, "doesnotexist").toString

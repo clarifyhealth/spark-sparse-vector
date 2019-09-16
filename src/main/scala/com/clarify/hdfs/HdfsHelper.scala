@@ -77,7 +77,9 @@ object HdfsHelper {
 
   def getFolderNumbersOnly(sparkContext: SparkContext, path: String, prefix: String): Seq[Int] = {
     val list_of_folders = getFoldersWithPrefix(sparkContext, path, prefix)
-    list_of_folders.map(f => f.replace(f"$prefix", "").toInt)
+    list_of_folders.map(f => f.replace(f"$prefix", ""))
+      .filter(r => r.forall(c => c.isDigit))
+      .map(r => r.toInt)
   }
 
   def getLatestFolderNumber(sparkContext: SparkContext, path: String, prefix: String): Option[Int] = {
