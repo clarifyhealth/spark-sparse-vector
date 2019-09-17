@@ -61,8 +61,9 @@ object Retry {
         } catch {
           case t: Throwable if !ignoreThrowable(t) =>
             blocking {
+              println(t)
               val interval = backoff(retryCnt).toMillis
-              Helpers.log(f"Retry #$retryCnt backing off for $interval milli seconds")
+              Helpers.log(f"---- Retry #$retryCnt backing off for $interval milli seconds ---")
               Thread.sleep(interval)
             }
             recursiveRetry(retryCnt + 1, Some(t))(f)
