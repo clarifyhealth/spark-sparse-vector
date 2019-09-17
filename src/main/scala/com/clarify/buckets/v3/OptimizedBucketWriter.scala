@@ -153,7 +153,7 @@ object OptimizedBucketWriter {
       sql_ctx.sql(s"REFRESH TABLE default.$raw_table_name")
       val bucketColumnsAsCsv: String = Helpers.getSeqString(bucketColumns).mkString(",")
       Helpers.log(s"ANALYZE TABLE default.$raw_table_name COMPUTE STATISTICS FOR COLUMNS $bucketColumnsAsCsv")
-      sql_ctx.sql(s"ANALYZE TABLE default.$raw_table_name COMPUTE STATISTICS")
+      sql_ctx.sql(s"ANALYZE TABLE default.$raw_table_name COMPUTE STATISTICS FOR COLUMNS $bucketColumnsAsCsv")
       // sql_ctx.sql(s"DESCRIBE EXTENDED $table_name").show(numRows = 1000)
       val result_df = sql_ctx.table(raw_table_name)
       result_df.createOrReplaceTempView(view)

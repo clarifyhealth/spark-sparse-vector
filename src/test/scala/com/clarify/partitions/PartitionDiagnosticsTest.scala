@@ -4,7 +4,7 @@ import java.nio.file.Files
 import java.util
 
 import com.clarify.TestHelpers
-import com.clarify.buckets.OptimizedBucketWriter
+import com.clarify.checkpoints.v1.CheckPointer
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.functions.{col, sum}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
@@ -135,8 +135,10 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     bucket_columns.add("v2")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    OptimizedBucketWriter.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = my_table, numBuckets = 5, location = location, bucketColumns = bucket_columns)
+    CheckPointer.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table,
+      tracking_id = 1,
+      numBuckets = 5, location = location, bucketColumns = bucket_columns, sortColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
     val result_df: DataFrame = PartitionDiagnostics.getPartitionsAndCount(df.sqlContext,
@@ -191,8 +193,10 @@ class PartitionDiagnosticsTest extends QueryTest with SparkSessionTestWrapper {
     bucket_columns.add("v2")
 
     val location = Files.createTempDirectory("parquet").toFile.toString
-    OptimizedBucketWriter.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
-      view = my_table, numBuckets = 5, location = location, bucketColumns = bucket_columns)
+    CheckPointer.checkpointBucketWithPartitions(sql_ctx = spark.sqlContext,
+      view = my_table,
+      tracking_id = 1,
+      numBuckets = 5, location = location, bucketColumns = bucket_columns, sortColumns = bucket_columns)
     println(s"Wrote output to: $location")
 
     val result_df: DataFrame = PartitionDiagnostics.getEmptyPartitions(df.sqlContext,
