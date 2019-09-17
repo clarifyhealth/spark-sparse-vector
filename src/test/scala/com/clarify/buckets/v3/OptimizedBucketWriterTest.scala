@@ -145,6 +145,51 @@ class OptimizedBucketWriterTest extends QueryTest with SparkSessionTestWrapper {
     TestHelpers.clear_tables(spark_session = spark)
   }
 
+  test("save to buckets empty data frame save table") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val my_table = "my_table_multiple"
+
+    val data = List[Row](
+    )
+    val fields = List(
+      StructField("id", IntegerType, nullable = false),
+      StructField("v2", StringType, nullable = false))
+
+    val data_rdd = spark.sparkContext.makeRDD(data)
+
+    val df: DataFrame = spark.createDataFrame(data_rdd, StructType(fields))
+
+    df.createOrReplaceTempView(my_table)
+
+    val bucketColumns = new util.ArrayList[String]()
+    bucketColumns.add("id")
+    bucketColumns.add("v2")
+
+    val sortColumns = new util.ArrayList[String]()
+    sortColumns.add("id")
+    sortColumns.add("v2")
+
+    val location = Files.createTempDirectory("parquet").toFile.toString
+
+    val bucketColumnsSeq: Seq[String] = Helpers.getSeqString(bucketColumns).drop(1)
+    val sortColumnsSeq: Seq[String] = Helpers.getSeqString(sortColumns).drop(1)
+
+    val table_name = "temp_my_table_empty"
+
+    df
+      .write
+      .format("parquet")
+      //.partitionBy("bucket")
+      .bucketBy(10, colName = bucketColumns.get(0), colNames = bucketColumnsSeq: _*)
+      .sortBy(colName = sortColumns.get(0), colNames = sortColumnsSeq: _*)
+      .option("path", location)
+      .saveAsTable(table_name)
+
+    println(s"Wrote output to: $location")
+
+    TestHelpers.clear_tables(spark_session = spark)
+  }
 
   test("calculate bucket") {
     spark.sharedState.cacheManager.clearCache()
