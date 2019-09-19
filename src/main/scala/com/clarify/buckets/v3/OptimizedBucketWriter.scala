@@ -76,6 +76,8 @@ object OptimizedBucketWriter {
       val bucketColumnsSeq: Seq[String] = Helpers.getSeqString(bucketColumns).drop(1)
       val sortColumnsSeq: Seq[String] = Helpers.getSeqString(sortColumns).drop(1)
 
+      Helpers.log(f"Saving to bucketed table $view")
+
       my_df
         .write
         .format("parquet")
@@ -84,6 +86,8 @@ object OptimizedBucketWriter {
         .sortBy(colName = sortColumns.get(0), colNames = sortColumnsSeq: _*)
         .option("path", localLocation)
         .saveAsTable(table_name)
+
+      Helpers.log(f"Finished saving to bucketed table $view")
 
       //      val df_after_save: DataFrame = sql_ctx.table(table_name)
       //      if (df_after_save.isEmpty) {
