@@ -33,34 +33,6 @@ object StatsCalculator {
                          columns_to_include: Seq[String],
                          columns_to_histogram: Seq[String],
                          view: String): DataFrame = {
-    //noinspection SpellCheckingInspection
-    val statistics_schema = StructType(Array(
-      StructField("column_name", StringType, nullable = false),
-      StructField("data_type", StringType, nullable = false),
-      StructField("total_count", LongType, nullable = false),
-      StructField("sample_count", IntegerType, nullable = false),
-      StructField("sample_count_distinct", IntegerType, nullable = false),
-      StructField("sample_percent_null", DoubleType),
-      StructField("sample_percent_zero", DoubleType),
-      StructField("sample_percent_less_than_zero", DoubleType),
-      StructField("sample_min", DoubleType),
-      StructField("sample_q_1", DoubleType),
-      StructField("sample_median", DoubleType),
-      StructField("sample_q_3", DoubleType),
-      StructField("sample_max", DoubleType),
-      StructField("sample_mean", DoubleType),
-      StructField("sample_stddev", DoubleType),
-      StructField("top_value_1", StringType),
-      StructField("top_value_percent_1", DoubleType),
-      StructField("top_value_2", StringType),
-      StructField("top_value_percent_2", DoubleType),
-      StructField("top_value_3", StringType),
-      StructField("top_value_percent_3", DoubleType),
-      StructField("top_value_4", StringType),
-      StructField("top_value_percent_4", DoubleType),
-      StructField("top_value_5", StringType),
-      StructField("top_value_percent_5", DoubleType)
-    ))
 
     val invalid_column_types = Seq(ArrayType, MapType, StructType)
 
@@ -89,14 +61,14 @@ object StatsCalculator {
       val data_type_name = normal_column._2.toString
 
       var my_result: DataFrame = null
-      Helpers.log(f"evaluating column $column_name $data_type_name $normal_column")
+      // Helpers.log(f"evaluating column $column_name $data_type_name $normal_column")
 
       if (numerical_column_types.contains(data_type)) {
-        Helpers.log(f"Processing numerical column ${normal_column._1} $normal_column")
+        // Helpers.log(f"Processing numerical column ${normal_column._1} $normal_column")
         //noinspection SpellCheckingInspection
         my_result = loaded_df.select(
           lit(column_name).alias("column_name"),
-          lit(data_type_name).alias("data_type_name"),
+          lit(data_type_name).alias("data_type"),
           lit(record_count).cast(LongType).alias("total_count"),
           lit(sample_record_count).cast(IntegerType).alias("sample_count"),
           countDistinct(col(column_name)).cast(IntegerType).alias("sample_count_distinct"),
@@ -161,16 +133,16 @@ object StatsCalculator {
             stddev_samp(column_name)
               .cast(DoubleType), 3)
             .alias("sample_stddev"),
-          lit(null).alias("top_value_1"),
-          lit(null).alias("top_value_percent_1"),
-          lit(null).alias("top_value_2"),
-          lit(null).alias("top_value_percent_2"),
-          lit(null).alias("top_value_3"),
-          lit(null).alias("top_value_percent_3"),
-          lit(null).alias("top_value_4"),
-          lit(null).alias("top_value_percent_4"),
-          lit(null).alias("top_value_5"),
-          lit(null).alias("top_value_percent_5")
+          lit(null).cast(StringType).alias("top_value_1"),
+          lit(null).cast(DoubleType).alias("top_value_percent_1"),
+          lit(null).cast(StringType).alias("top_value_2"),
+          lit(null).cast(DoubleType).alias("top_value_percent_2"),
+          lit(null).cast(StringType).alias("top_value_3"),
+          lit(null).cast(DoubleType).alias("top_value_percent_3"),
+          lit(null).cast(StringType).alias("top_value_4"),
+          lit(null).cast(DoubleType).alias("top_value_percent_4"),
+          lit(null).cast(StringType).alias("top_value_5"),
+          lit(null).cast(DoubleType).alias("top_value_percent_5")
         )
       }
       else {
@@ -178,7 +150,7 @@ object StatsCalculator {
         //noinspection SpellCheckingInspection
         my_result = loaded_df.select(
           lit(column_name).alias("column_name"),
-          lit(data_type_name).alias("data_type_name"),
+          lit(data_type_name).alias("data_type"),
           lit(record_count).cast(LongType).alias("total_count"),
           lit(sample_record_count).cast(IntegerType).alias("sample_count"),
           countDistinct(col(column_name))
@@ -204,16 +176,16 @@ object StatsCalculator {
           lit(null).cast(DoubleType).alias("sample_max"),
           lit(null).cast(DoubleType).alias("sample_mean"),
           lit(null).cast(DoubleType).alias("sample_stddev"),
-          lit(null).alias("top_value_1"),
-          lit(null).alias("top_value_percent_1"),
-          lit(null).alias("top_value_2"),
-          lit(null).alias("top_value_percent_2"),
-          lit(null).alias("top_value_3"),
-          lit(null).alias("top_value_percent_3"),
-          lit(null).alias("top_value_4"),
-          lit(null).alias("top_value_percent_4"),
-          lit(null).alias("top_value_5"),
-          lit(null).alias("top_value_percent_5")
+          lit(null).cast(StringType).alias("top_value_1"),
+          lit(null).cast(DoubleType).alias("top_value_percent_1"),
+          lit(null).cast(StringType).alias("top_value_2"),
+          lit(null).cast(DoubleType).alias("top_value_percent_2"),
+          lit(null).cast(StringType).alias("top_value_3"),
+          lit(null).cast(DoubleType).alias("top_value_percent_3"),
+          lit(null).cast(StringType).alias("top_value_4"),
+          lit(null).cast(DoubleType).alias("top_value_percent_4"),
+          lit(null).cast(StringType).alias("top_value_5"),
+          lit(null).cast(DoubleType).alias("top_value_percent_5")
         )
       }
 
