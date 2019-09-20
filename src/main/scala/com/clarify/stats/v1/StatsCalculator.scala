@@ -146,7 +146,7 @@ object StatsCalculator {
         )
       }
       else {
-        Helpers.log(f"Processing non-numerical column ${normal_column._1} $normal_column")
+        // Helpers.log(f"Processing non-numerical column ${normal_column._1} $normal_column")
         //noinspection SpellCheckingInspection
         my_result = loaded_df.select(
           lit(column_name).alias("column_name"),
@@ -206,10 +206,38 @@ object StatsCalculator {
       // my_result_list = my_result_list :+ my_result.first()
     }
 
-    // val my_result_list: Seq[DataFrame] = my_result_data_frames.par.map(df => df).seq
-    val result_statistics_df: DataFrame = my_result_data_frames.reduce((a, b) => a.union(b))
-    //    val result_statistics_df: DataFrame =
-    //      loaded_df.sqlContext.createDataFrame(loaded_df.sqlContext.sparkContext.makeRDD(my_result_list), statistics_schema)
+    // execute in parallel
+    val my_result_list: Seq[Row] = my_result_data_frames.par.map(df => df.first()).seq
+    // val result_statistics_df: DataFrame = my_result_data_frames.reduce((a, b) => a.union(b))
+    val statistics_schema = StructType(Array(
+      StructField("column_name", StringType, nullable = false),
+      StructField("data_type", StringType, nullable = false),
+      StructField("total_count", LongType, nullable = false),
+      StructField("sample_count", IntegerType, nullable = false),
+      StructField("sample_count_distinct", IntegerType, nullable = false),
+      StructField("sample_percent_null", DoubleType),
+      StructField("sample_percent_zero", DoubleType),
+      StructField("sample_percent_less_than_zero", DoubleType),
+      StructField("sample_min", DoubleType),
+      StructField("sample_q_1", DoubleType),
+      StructField("sample_median", DoubleType),
+      StructField("sample_q_3", DoubleType),
+      StructField("sample_max", DoubleType),
+      StructField("sample_mean", DoubleType),
+      StructField("sample_stddev", DoubleType),
+      StructField("top_value_1", StringType),
+      StructField("top_value_percent_1", DoubleType),
+      StructField("top_value_2", StringType),
+      StructField("top_value_percent_2", DoubleType),
+      StructField("top_value_3", StringType),
+      StructField("top_value_percent_3", DoubleType),
+      StructField("top_value_4", StringType),
+      StructField("top_value_percent_4", DoubleType),
+      StructField("top_value_5", StringType),
+      StructField("top_value_percent_5", DoubleType)
+    ))
+    val result_statistics_df: DataFrame =
+      loaded_df.sqlContext.createDataFrame(loaded_df.sqlContext.sparkContext.makeRDD(my_result_list), statistics_schema)
     Helpers.log(f"Finished calculating statistics for $view")
 
     result_statistics_df
