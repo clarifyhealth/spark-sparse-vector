@@ -37,14 +37,16 @@ class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
     val normal_columns: Seq[(String, String)] = Seq(("id", "int"), ("name", "string"), ("v1", "int"))
     val columns_to_histogram: Seq[String] = Seq("id", "name", "v1")
 
-    val result: Seq[(String, Double)] =
+    val result: DataFrame =
       StatsCalculator._calculate_histogram_array_for_column("v1", df)
 
-    println(f"result: ${result.size}")
-    result.foreach(println)
+    println(f"result: ${result.count()}")
+    result.collect().foreach(println)
 
-    val expected: Seq[(String, Int)] = Seq(("5", 3), ("6", 2), ("9", 1), ("7", 1), ("11", 1))
-    assert(result == expected)
+    val result_seq: Seq[(String, Double)] = result.collect().map(row => (row.getString(0), row.getDouble(1))).toSeq
+
+    val expected: Seq[(String, Double)] = Seq(("5", 3.0), ("6", 2.0), ("9", 1.0), ("7", 1.0), ("11", 1.0))
+    assert(result_seq == expected)
 
     TestHelpers.clear_tables(spark_session = spark)
   }
@@ -78,13 +80,20 @@ class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
     val normal_columns: Seq[(String, String)] = Seq(("id", "int"), ("name", "string"), ("v1", "int"))
     val columns_to_histogram: Seq[String] = Seq("id", "name", "v1")
 
-    val result: Seq[(String, Seq[(String, Double)])] = StatsCalculator._create_histogram_array(
+    val result: Seq[(String, DataFrame)] = StatsCalculator._create_histogram_array(
       columns_to_histogram,
       df)
 
     println(f"result: ${result.size}")
     result.foreach(x => println(x))
-
+    val result_seq: Seq[(String, Seq[(String, Double)])] = result.map(
+      a => (
+        a._1,
+        a._2.collect().map(
+          row => (row.getString(0), row.getDouble(1))
+        ).toSeq
+      )
+    )
     val expected: Seq[(String, Seq[(String, Int)])] =
       Seq(
         ("id",
@@ -97,7 +106,7 @@ class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
           Seq(("5", 3), ("6", 2), ("9", 1), ("7", 1), ("11", 1))
         )
       )
-    assert(result == expected)
+    assert(result_seq == expected)
 
     TestHelpers.clear_tables(spark_session = spark)
   }
