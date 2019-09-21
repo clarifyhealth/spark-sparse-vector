@@ -17,6 +17,16 @@ object StatsCalculator {
                         columns_to_include: util.ArrayList[String],
                         columns_to_histogram: util.ArrayList[String],
                         result_view: String): Boolean = {
+    create_statistics(sql_ctx, view, record_count.toLong, sample_record_count, columns_to_include, columns_to_histogram, result_view)
+  }
+
+  def create_statistics(sql_ctx: SQLContext,
+                        view: String,
+                        record_count: Long,
+                        sample_record_count: Int,
+                        columns_to_include: util.ArrayList[String],
+                        columns_to_histogram: util.ArrayList[String],
+                        result_view: String): Boolean = {
 
     val loaded_df: DataFrame = sql_ctx.table(view)
     val result_df: DataFrame = _create_statistics(loaded_df, record_count, sample_record_count,
@@ -28,7 +38,7 @@ object StatsCalculator {
   }
 
   def _create_statistics(loaded_df: DataFrame,
-                         record_count: Int,
+                         record_count: Long,
                          sample_record_count: Int,
                          columns_to_include: Seq[String],
                          columns_to_histogram: Seq[String],
