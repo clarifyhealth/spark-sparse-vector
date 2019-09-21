@@ -28,6 +28,7 @@ object StatsCalculator {
                         columns_to_histogram: util.ArrayList[String],
                         result_view: String): Boolean = {
 
+    sql_ctx.sparkContext.setJobDescription(f"statistics for $view")
     val loaded_df: DataFrame = sql_ctx.table(view)
     val result_df: DataFrame = _create_statistics(loaded_df, record_count, sample_record_count,
       Helpers.getSeqString(columns_to_include),
