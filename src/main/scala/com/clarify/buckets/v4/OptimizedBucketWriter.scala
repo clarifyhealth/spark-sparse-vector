@@ -256,7 +256,7 @@ object OptimizedBucketWriter {
     val bucketColumnsTypeSeq = bucketColumnsSeq.map(x => col(x))
     val sortColumnsSeq: Seq[String] = Helpers.getSeqString(sortColumns).drop(1)
 
-    Helpers.log(s"Adding bucket column to $view")
+    Helpers.log(s"Repartitioning and sorting within partitions $view")
     result_df = df
       .repartition(numBuckets, bucketColumnsTypeSeq: _*)
       .sortWithinPartitions(sortColumns.get(0), sortColumnsSeq: _*)

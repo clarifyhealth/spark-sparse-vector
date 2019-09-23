@@ -6,13 +6,16 @@ object MemoryDiagnostics {
     // memory info
     val mb = 1024 * 1024
     val runtime = Runtime.getRuntime
-    println("** Used Memory (MB):  " + (runtime.totalMemory - runtime.freeMemory) / mb)
-    println("** Free Memory (MB):  " + runtime.freeMemory / mb)
-    println("** Total Memory (MB): " + runtime.totalMemory / mb)
-    println("** Max Memory (MB):   " + runtime.maxMemory / mb)
+    println("** Spark Memory:  Used(MB): "
+      + (runtime.totalMemory - runtime.freeMemory) / mb
+      + " Free(MB): " + runtime.freeMemory / mb
+      + " Total(MB): " + runtime.totalMemory / mb
+      + " Max(MB): " + runtime.maxMemory / mb
+      + " **")
   }
 
   val mb: Long = 1024 * 1024
+
   def print_free_memory(): Unit = {
     // memory info
 
