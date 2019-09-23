@@ -111,6 +111,78 @@ object CheckPointer {
     }
   }
 
+  def __internalCheckpointWithoutBuckets(sql_ctx: SQLContext, view: String, name: String): Boolean = {
+    Helpers.log(s"__internalCheckpointWithoutBuckets v4: free memory before (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+    try {
+
+      val table_prefix = f"temp_${view.toLowerCase()}$postfix"
+      // find previous checkpoint tables
+      val previous_checkpoint_table_names: Seq[String] =
+        sql_ctx.tableNames().filter(x => x.startsWith(table_prefix))
+          .sorted.reverse
+
+      println("---tables---")
+      sql_ctx.tableNames().foreach(println)
+      println("-------------")
+      println(f"---- previous_checkpoint_table_names: ${previous_checkpoint_table_names.size} ---")
+      previous_checkpoint_table_names.foreach(println)
+      println("--------------")
+
+      val previous_checkpoint_numbers: Seq[Int] =
+        previous_checkpoint_table_names
+          .map(x => x.replace(table_prefix, "").toInt)
+          .sorted.reverse
+
+      //      previous_checkpoint_numbers.foreach(println)
+
+      val new_checkpoint_number: Int =
+        if (previous_checkpoint_numbers.isEmpty) 1 else previous_checkpoint_numbers.head + 1
+
+      val new_table_name = s"$table_prefix$new_checkpoint_number"
+
+      Helpers.log(s"__internalCheckpointWithoutBuckets v4: view=$view table=$new_table_name")
+      val df: DataFrame = sql_ctx.table(view)
+
+      val my_df: DataFrame = df
+
+      my_df
+        .write
+        .format("parquet")
+        .saveAsTable(new_table_name)
+
+      sql_ctx.sql(s"REFRESH TABLE default.$new_table_name")
+      // sql_ctx.sql(s"DESCRIBE EXTENDED $new_table_name").show(numRows = 1000)
+
+      // delete all but latest of the previous checkpoints
+      if (previous_checkpoint_numbers.nonEmpty) {
+        val tables_to_delete: Seq[String] = previous_checkpoint_numbers.drop(1).map(x => f"$table_prefix$x")
+        println(f"---- tables to delete: ${tables_to_delete.size} -----")
+        tables_to_delete.foreach(println)
+        tables_to_delete.foreach(t => {
+          println(f"DROP TABLE default.$t")
+          sql_ctx.sql(f"DROP TABLE default.$t")
+        })
+      }
+      Helpers.log(s"__internalCheckpointWithoutBuckets v4: free memory after (MB): ${MemoryDiagnostics.getFreeMemoryMB}")
+      val result_df = sql_ctx.table(new_table_name)
+      result_df.createOrReplaceTempView(view)
+      true
+    }
+    catch {
+      case e: SparkException =>
+        val cause = e.getCause
+        Helpers.log(s"__internalCheckpointBucketWithPartitions v3: Got SparkException: $cause")
+        throw cause
+      case e: AnalysisException =>
+        // we do this instead of checking if data frame is empty because the latter is expensive
+        Helpers.log(s"__internalCheckpointBucketWithPartitions v3: Got AnalysisException: $e")
+        throw e
+      case unknown: Throwable =>
+        Helpers.log(s"__internalCheckpointBucketWithPartitions v3: Got some other kind of exception: $unknown")
+        throw unknown
+    }
+  }
+
   def checkpointBucketWithPartitions(sql_ctx: SQLContext,
                                      view: String,
                                      tracking_id: Int,
@@ -218,6 +290,15 @@ object CheckPointer {
       false
     }
   }
+
+  def checkpointManagedTableWithoutBuckets(sql_ctx: SQLContext, view: String,
+                                           name: String
+                                          ): Boolean = {
+
+    Helpers.log(s"checkpointManagedTableWithoutBuckets v4 for $view")
+    __internalCheckpointWithoutBuckets(sql_ctx = sql_ctx, view = view, name = name)
+  }
+
 
   def checkpointBucketWithPartitionsInMemory(sql_ctx: SQLContext, view: String,
                                              numBuckets: Int, location: String,
