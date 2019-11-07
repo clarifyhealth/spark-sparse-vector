@@ -50,8 +50,7 @@ class GLAMExplainTransformer(override val uid: String) extends Transformer {
    * in each row as it expands to multiple rows in the flatMap.  We do (a) for simplicity.
    */
   override def transform(dataset: Dataset[_]): DataFrame = {
-    val flatMapUdf = udf(myFlatMapFunction)
-    dataset.select(explode(flatMapUdf(col($(getCoefficientView)))).as($(outputCol)))
+    dataset.select("*")
   }
 
   /**
