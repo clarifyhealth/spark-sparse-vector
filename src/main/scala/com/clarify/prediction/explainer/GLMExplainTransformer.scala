@@ -70,6 +70,12 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       }
     }
 
+  private val keepPositive: Double => Double = (temp: Double) => {
+    if (temp < 0.0) 0.0 else temp
+  }
+  private val keepNegative: Double => Double = (temp: Double) => {
+    if (temp > 0.0) 0.0 else temp
+  }
   // Transformer requires 3 methods:
   //  - transform
   //  - transformSchema
@@ -104,7 +110,7 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     val featureCoefficients =
       allCoefficients.filter(x => x._1 != "Intercept").toMap
 
-    val df = calculateLinearContrib(
+    val df = calculateLinearContributions(
       dataset.toDF(),
       featureCoefficients,
       "linear_contrib"
@@ -145,21 +151,26 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       expr("(predNeg  - contrib_intercept + deficit) / 2")
     )
 
-    contribNegsDF.show()
-    contribNegsDF
+    val contributionsDF =
+      calculateContributions(contribNegsDF, featureCoefficients, "contrib")
+    contributionsDF.show()
+
+    contributionsDF
   }
 
-  def calculateLinearContrib(
+  def calculateLinearContributions(
       df: DataFrame,
       featureCoefficients: Map[String, Double],
       prefix: String
   ): DataFrame = {
     val encoder =
       RowEncoder.apply(getSchema(df, featureCoefficients, prefix))
-    df.map(mappingLinearContribRows(df.schema)(featureCoefficients))(encoder)
+    df.map(mappingLinearContributionsRows(df.schema)(featureCoefficients))(
+      encoder
+    )
   }
 
-  private val mappingLinearContribRows
+  private val mappingLinearContributionsRows
       : StructType => Map[String, Double] => Row => Row =
     (schema) =>
       (featureCoefficients) =>
@@ -213,13 +224,13 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
               case (featureName, _) =>
                 val temp =
                   row.getDouble(schema.fieldIndex(s"${prefix}_${featureName}"))
-                if (temp < 0) 0.0 else temp
+                keepPositive(temp)
             }.sum,
             featureCoefficients.map {
               case (featureName, _) =>
                 val temp =
                   row.getDouble(schema.fieldIndex(s"${prefix}_${featureName}"))
-                if (temp > 0) 0.0 else temp
+                keepNegative(temp)
             }.sum
           )
           Row.merge(row, Row.fromSeq(calculate))
@@ -236,6 +247,50 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     }
     schema
   }
+
+  def calculateContributions(
+      df: DataFrame,
+      featureCoefficients: Map[String, Double],
+      prefix: String
+  ): DataFrame = {
+    val encoder =
+      RowEncoder.apply(getSchema(df, featureCoefficients, prefix))
+    df.map(
+      mappingContributionsRows(df.schema, "linear_contrib")(featureCoefficients)
+    )(encoder)
+  }
+
+  private val mappingContributionsRows
+      : (StructType, String) => Map[String, Double] => Row => Row =
+    (schema, prefix) =>
+      (featureCoefficients) =>
+        (row) => {
+          val calculate: List[Double] = featureCoefficients.map {
+            case (featureName, _) =>
+              val temp = row.getDouble(
+                schema.fieldIndex(s"${prefix}_${featureName}")
+              )
+
+              val sigmaPos = row
+                .getDouble(
+                  schema.fieldIndex("sigmaPos")
+                )
+              val sigmaPosZerReplace = if (sigmaPos == 0.0) 1.0 else sigmaPos
+
+              val sigmaNeg = row
+                .getDouble(
+                  schema.fieldIndex("sigmaNeg")
+                )
+              val sigmaNegZerReplace = if (sigmaNeg == 0.0) 1.0 else sigmaNeg
+
+              val contribPos = row.getDouble(schema.fieldIndex("contribPos"))
+              val contribNeg = row.getDouble(schema.fieldIndex("contribNeg"))
+
+              (keepPositive(temp) * contribPos) / sigmaPosZerReplace +
+                (keepNegative(temp) * contribNeg) / sigmaNegZerReplace
+          }.toList
+          Row.merge(row, Row.fromSeq(calculate))
+        }
 
   /**
     * Check transform validity and derive the output schema from the input schema.
