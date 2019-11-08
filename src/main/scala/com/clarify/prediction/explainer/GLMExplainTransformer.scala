@@ -50,7 +50,7 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     s"log(${x})"
   }
   private val logitLink: String => String = { x: String =>
-    s"(1 / (1 + np.exp(-${x}))"
+    s"1 / (1 + exp(-${x}))"
   }
   private val powerHalfLink: String => String = { x: String =>
     s"pow(${x},2)"
@@ -115,7 +115,7 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       featureCoefficients,
       "linear_contrib"
     )
-    val dfWithSigma = calculateSigma(df, featureCoefficients, "linear_contrib")
+    val dfWithSigma = calculateSigma(df, featureCoefficients)
 
     val predDf = dfWithSigma.withColumn(
       "pred",
@@ -139,16 +139,16 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
 
     val deficitDF = contribInterceptDF.withColumn(
       "deficit",
-      expr("(pred + contrib_intercept) - (predPos + predNeg)")
+      expr("pred + contrib_intercept - (predPos + predNeg)")
     )
 
     val contribPosDF = deficitDF.withColumn(
       "contribPos",
-      expr("(predPos - contrib_intercept + deficit) / 2")
+      expr("predPos - contrib_intercept + deficit / 2")
     )
     val contribNegsDF = contribPosDF.withColumn(
       "contribNeg",
-      expr("(predNeg  - contrib_intercept + deficit) / 2")
+      expr("predNeg - contrib_intercept + deficit / 2")
     )
 
     val contributionsDF =
@@ -164,7 +164,12 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       prefix: String
   ): DataFrame = {
     val encoder =
-      RowEncoder.apply(getSchema(df, featureCoefficients, prefix))
+      RowEncoder.apply(
+        getSchema(
+          df,
+          featureCoefficients.keys.map(x => s"${prefix}_${x}").toList
+        )
+      )
     df.map(mappingLinearContributionsRows(df.schema)(featureCoefficients))(
       encoder
     )
@@ -175,61 +180,52 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     (schema) =>
       (featureCoefficients) =>
         (row) => {
-          val addedCols: List[Double] = featureCoefficients.map {
+          val calculate: List[Double] = featureCoefficients.map {
             case (featureName, coefficient) =>
               row
                 .get(schema.fieldIndex(featureName))
                 .toString
                 .toDouble * coefficient
           }.toList
-          Row.merge(row, Row.fromSeq(addedCols))
+          Row.merge(row, Row.fromSeq(calculate))
         }
-
-  private def getSchema(
-      df: DataFrame,
-      featureCoefficients: Map[String, Double],
-      prefix: String
-  ): StructType = {
-    var schema: StructType = df.schema
-    featureCoefficients.foreach {
-      case (featureName, _) =>
-        schema =
-          schema.add(s"${prefix}_${featureName}", DataTypes.DoubleType, false)
-    }
-    schema
-  }
 
   def calculateSigma(
       df: DataFrame,
-      featureCoefficients: Map[String, Double],
-      prefix: String
+      featureCoefficients: Map[String, Double]
   ): DataFrame = {
     val encoder =
       RowEncoder.apply(getSchema(df, List("sigma", "sigmaPos", "sigmaNeg")))
-    df.map(mappingSigmaRows(df.schema, prefix)(featureCoefficients))(encoder)
+    df.map(mappingSigmaRows(df.schema)(featureCoefficients))(encoder)
   }
 
   private val mappingSigmaRows
-      : (StructType, String) => Map[String, Double] => Row => Row =
-    (schema, prefix) =>
+      : StructType => Map[String, Double] => Row => Row =
+    (schema) =>
       (featureCoefficients) =>
         (row) => {
           val calculate: List[Double] = List(
             featureCoefficients.map {
               case (featureName, _) =>
                 row
-                  .getDouble(schema.fieldIndex(s"${prefix}_${featureName}"))
+                  .getDouble(
+                    schema.fieldIndex(s"linear_contrib_${featureName}")
+                  )
             }.sum,
             featureCoefficients.map {
               case (featureName, _) =>
                 val temp =
-                  row.getDouble(schema.fieldIndex(s"${prefix}_${featureName}"))
+                  row.getDouble(
+                    schema.fieldIndex(s"linear_contrib_${featureName}")
+                  )
                 keepPositive(temp)
             }.sum,
             featureCoefficients.map {
               case (featureName, _) =>
                 val temp =
-                  row.getDouble(schema.fieldIndex(s"${prefix}_${featureName}"))
+                  row.getDouble(
+                    schema.fieldIndex(s"linear_contrib_${featureName}")
+                  )
                 keepNegative(temp)
             }.sum
           )
@@ -254,40 +250,44 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       prefix: String
   ): DataFrame = {
     val encoder =
-      RowEncoder.apply(getSchema(df, featureCoefficients, prefix))
+      RowEncoder.apply(
+        getSchema(
+          df,
+          featureCoefficients.keys.map(x => s"${prefix}_${x}").toList
+        )
+      )
     df.map(
-      mappingContributionsRows(df.schema, "linear_contrib")(featureCoefficients)
+      mappingContributionsRows(df.schema)(featureCoefficients)
     )(encoder)
   }
 
   private val mappingContributionsRows
-      : (StructType, String) => Map[String, Double] => Row => Row =
-    (schema, prefix) =>
+      : StructType => Map[String, Double] => Row => Row =
+    (schema) =>
       (featureCoefficients) =>
         (row) => {
           val calculate: List[Double] = featureCoefficients.map {
             case (featureName, _) =>
               val temp = row.getDouble(
-                schema.fieldIndex(s"${prefix}_${featureName}")
+                schema.fieldIndex(s"linear_contrib_${featureName}")
               )
-
               val sigmaPos = row
                 .getDouble(
                   schema.fieldIndex("sigmaPos")
                 )
-              val sigmaPosZerReplace = if (sigmaPos == 0.0) 1.0 else sigmaPos
+              val sigmaPosZeroReplace = if (sigmaPos == 0.0) 1.0 else sigmaPos
 
               val sigmaNeg = row
                 .getDouble(
                   schema.fieldIndex("sigmaNeg")
                 )
-              val sigmaNegZerReplace = if (sigmaNeg == 0.0) 1.0 else sigmaNeg
+              val sigmaNegZeroReplace = if (sigmaNeg == 0.0) 1.0 else sigmaNeg
 
               val contribPos = row.getDouble(schema.fieldIndex("contribPos"))
               val contribNeg = row.getDouble(schema.fieldIndex("contribNeg"))
 
-              (keepPositive(temp) * contribPos) / sigmaPosZerReplace +
-                (keepNegative(temp) * contribNeg) / sigmaNegZerReplace
+              (keepPositive(temp) * contribPos) / sigmaPosZeroReplace +
+                (keepNegative(temp) * contribNeg) / sigmaNegZeroReplace
           }.toList
           Row.merge(row, Row.fromSeq(calculate))
         }
