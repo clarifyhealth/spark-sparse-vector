@@ -77,16 +77,13 @@ class GLMExplainTransformerTest extends QueryTest with SparkSessionTestWrapper {
     val allCoefficients = coefficients
       .map(row => (row.getAs[String](0) -> row.getAs[Double](1)))
 
-    val intercept =
-      allCoefficients.find(x => x._1 != "Intercept").get._2
-
     val featureCoefficients =
       allCoefficients.filter(x => x._1 != "Intercept").toMap
 
     val contribDF =
       calculateTotalContrib(resultDF, featureCoefficients)
 
-    contribDF.select("pred", "contribSum").show()
+    contribDF.select("ccg_id", "pred", "contribSum", "contrib_intercept").show()
 
   }
 

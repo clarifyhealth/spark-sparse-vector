@@ -158,18 +158,13 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     contributionsDF
   }
 
-  def calculateLinearContributions(
+  private def calculateLinearContributions(
       df: DataFrame,
       featureCoefficients: Map[String, Double],
       prefix: String
   ): DataFrame = {
     val encoder =
-      RowEncoder.apply(
-        getSchema(
-          df,
-          featureCoefficients.keys.map(x => s"${prefix}_${x}").toList
-        )
-      )
+      buildEncoder(df, featureCoefficients, prefix)
     df.map(mappingLinearContributionsRows(df.schema)(featureCoefficients))(
       encoder
     )
@@ -190,7 +185,7 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
           Row.merge(row, Row.fromSeq(calculate))
         }
 
-  def calculateSigma(
+  private def calculateSigma(
       df: DataFrame,
       featureCoefficients: Map[String, Double]
   ): DataFrame = {
@@ -244,21 +239,29 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     schema
   }
 
-  def calculateContributions(
+  private def calculateContributions(
       df: DataFrame,
       featureCoefficients: Map[String, Double],
       prefix: String
   ): DataFrame = {
     val encoder =
-      RowEncoder.apply(
-        getSchema(
-          df,
-          featureCoefficients.keys.map(x => s"${prefix}_${x}").toList
-        )
-      )
+      buildEncoder(df, featureCoefficients, prefix)
     df.map(
       mappingContributionsRows(df.schema)(featureCoefficients)
     )(encoder)
+  }
+
+  private def buildEncoder(
+      df: DataFrame,
+      featureCoefficients: Map[String, Double],
+      prefix: String
+  ) = {
+    RowEncoder.apply(
+      getSchema(
+        df,
+        featureCoefficients.keys.map(x => s"${prefix}_${x}").toList
+      )
+    )
   }
 
   private val mappingContributionsRows
@@ -286,8 +289,8 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
               val contribPos = row.getDouble(schema.fieldIndex("contribPos"))
               val contribNeg = row.getDouble(schema.fieldIndex("contribNeg"))
 
-              (keepPositive(temp) * contribPos) / sigmaPosZeroReplace +
-                (keepNegative(temp) * contribNeg) / sigmaNegZeroReplace
+              keepPositive(temp) * contribPos / sigmaPosZeroReplace +
+                keepNegative(temp) * contribNeg / sigmaNegZeroReplace
           }.toList
           Row.merge(row, Row.fromSeq(calculate))
         }
