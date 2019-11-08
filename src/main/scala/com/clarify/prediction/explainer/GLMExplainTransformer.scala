@@ -6,7 +6,7 @@ import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset}
 
-class GLAMExplainTransformer(override val uid: String) extends Transformer {
+class GLMExplainTransformer(override val uid: String) extends Transformer {
 
   // Transformer Params
   // Defining a Param requires 3 elements:
@@ -23,7 +23,7 @@ class GLAMExplainTransformer(override val uid: String) extends Transformer {
 
   final def getCoefficientView: String = $(coefficientView)
 
-  final def setCoefficientView(value: String): GLAMExplainTransformer =
+  final def setCoefficientView(value: String): GLMExplainTransformer =
     set(coefficientView, value)
 
   final val linkFunctionType: Param[String] =
@@ -31,7 +31,7 @@ class GLAMExplainTransformer(override val uid: String) extends Transformer {
 
   final def getLinkFunctionType: String = $(linkFunctionType)
 
-  final def setLinkFunctionType(value: String): GLAMExplainTransformer =
+  final def setLinkFunctionType(value: String): GLMExplainTransformer =
     set(linkFunctionType, value)
 
   // (Optional) You can set defaults for Param values if you like.
@@ -56,7 +56,7 @@ class GLAMExplainTransformer(override val uid: String) extends Transformer {
     s"${x}"
   }
 
-  def linkFunction(linkFunctionType: String): String => String =
+  def buildLinkFunction(linkFunctionType: String): String => String =
     (x: String) => {
       linkFunctionType match {
         case "logLink"      => logLink(x)
@@ -87,9 +87,10 @@ class GLAMExplainTransformer(override val uid: String) extends Transformer {
     * in each row as it expands to multiple rows in the flatMap.  We do (a) for simplicity.
     */
   override def transform(dataset: Dataset[_]): DataFrame = {
-    val df = dataset.toDF()
 
-    val coefficients = df.sqlContext
+    val linkFunction = buildLinkFunction($(linkFunctionType))
+
+    val coefficients = dataset.sqlContext
       .table($(coefficientView))
       .select("Feature", "Coefficient")
       .filter("not Feature RLIKE '^.*_OHE___unknown$'")
@@ -120,9 +121,7 @@ class GLAMExplainTransformer(override val uid: String) extends Transformer {
           s"(case when ${featureName} * ${coefficient} > 0 then 0 else ${featureName} * ${coefficient} end )"
       }.toList
 
-    val linkFunctionLocal = linkFunction($(linkFunctionType))
-
-    val sigmaDF = df.withColumn("sigma", expr(sum(linearContrib)))
+    val sigmaDF = dataset.withColumn("sigma", expr(sum(linearContrib)))
 
     val sigmaPosDF =
       sigmaDF.withColumn("sigmaPos", expr(sum(linearContribPositive)))
@@ -132,22 +131,22 @@ class GLAMExplainTransformer(override val uid: String) extends Transformer {
 
     val predDf = sigmaNegDF.withColumn(
       "pred",
-      expr(linkFunctionLocal(s"sigma + $intercept"))
+      expr(linkFunction(s"sigma + $intercept"))
     )
 
     val predPosDF = predDf.withColumn(
       "predPos",
-      expr(linkFunctionLocal(s"sigmaPos + $intercept"))
+      expr(linkFunction(s"sigmaPos + $intercept"))
     )
 
     val predNegDF = predPosDF.withColumn(
       "predNeg",
-      expr(linkFunctionLocal(s"sigmaNeg + $intercept"))
+      expr(linkFunction(s"sigmaNeg + $intercept"))
     )
 
     val contribInterceptDF = predNegDF.withColumn(
       "contrib_intercept",
-      expr(linkFunctionLocal(s"$intercept"))
+      expr(linkFunction(s"$intercept"))
     )
 
     val deficitDF = contribInterceptDF.withColumn(
