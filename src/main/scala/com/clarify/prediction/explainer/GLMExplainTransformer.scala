@@ -2,9 +2,11 @@ package com.clarify.prediction.explainer
 
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.ml.util.Identifiable
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.functions.expr
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.types.{DataTypes, StructType}
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
 
 class GLMExplainTransformer(override val uid: String) extends Transformer {
 
@@ -14,6 +16,7 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
   //  - Param getter method
   //  - Param setter method
   // (The getter and setter are technically not required, but they are nice standards to follow.)
+  def this() = this(Identifiable.randomUID("GLMExplainTransformer"))
 
   /**
     * Param for input column name.
@@ -67,10 +70,6 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       }
     }
 
-  private val sum: List[String] => String = { x: List[String] =>
-    x.mkString("+")
-  }
-
   // Transformer requires 3 methods:
   //  - transform
   //  - transformSchema
@@ -97,7 +96,7 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       .collect()
 
     val allCoefficients = coefficients
-      .map(row => (row.getAs[String](0) -> row.getAs[Float](1)))
+      .map(row => (row.getAs[String](0) -> row.getAs[Double](1)))
 
     val intercept =
       allCoefficients.find(x => x._1 != "Intercept").get._2
@@ -105,31 +104,14 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     val featureCoefficients =
       allCoefficients.filter(x => x._1 != "Intercept").toMap
 
-    val linearContrib = featureCoefficients.map {
-      case (featureName, coefficient) => s"(${featureName} * ${coefficient})"
-    }.toList
+    val df = calculateLinearContrib(
+      dataset.toDF(),
+      featureCoefficients,
+      "linear_contrib"
+    )
+    val dfWithSigma = calculateSigma(df, featureCoefficients, "linear_contrib")
 
-    val linearContribPositive =
-      featureCoefficients.map {
-        case (featureName, coefficient) =>
-          s"(case when ${featureName} * ${coefficient} < 0 then 0 else ${featureName} * ${coefficient} end )"
-      }.toList
-
-    val linearContribNegative =
-      featureCoefficients.map {
-        case (featureName, coefficient) =>
-          s"(case when ${featureName} * ${coefficient} > 0 then 0 else ${featureName} * ${coefficient} end )"
-      }.toList
-
-    val sigmaDF = dataset.withColumn("sigma", expr(sum(linearContrib)))
-
-    val sigmaPosDF =
-      sigmaDF.withColumn("sigmaPos", expr(sum(linearContribPositive)))
-
-    val sigmaNegDF =
-      sigmaPosDF.withColumn("sigmaNeg", expr(sum(linearContribNegative)))
-
-    val predDf = sigmaNegDF.withColumn(
+    val predDf = dfWithSigma.withColumn(
       "pred",
       expr(linkFunction(s"sigma + $intercept"))
     )
@@ -163,19 +145,96 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       expr("(predNeg  - contrib_intercept + deficit) / 2")
     )
 
-    val contributions = featureCoefficients.map {
-      case (featureName, coefficient) =>
-        s"""((case when ${featureName} * ${coefficient} < 0 then 0 else ${featureName} * ${coefficient} end) * contribPos 
-           | / 
-           | (case when sigmaPos = 0 then 1 else sigmaPos end))
-           | / 
-           |((case when ${featureName} * ${coefficient} > 0 then 0 else ${featureName} * ${coefficient} end) * contribNeg 
-           |/ (case when sigmaNeg = 0 then 1 else sigmaNeg end)) as contrib_${featureName}""".stripMargin
-    }.toList
+    contribNegsDF.show()
+    contribNegsDF
+  }
 
-    val contribDF = contribNegsDF.select("*", contributions: _*)
+  def calculateLinearContrib(
+      df: DataFrame,
+      featureCoefficients: Map[String, Double],
+      prefix: String
+  ): DataFrame = {
+    val encoder =
+      RowEncoder.apply(getSchema(df, featureCoefficients, prefix))
+    df.map(mappingLinearContribRows(df.schema)(featureCoefficients))(encoder)
+  }
 
-    contribDF
+  private val mappingLinearContribRows
+      : StructType => Map[String, Double] => Row => Row =
+    (schema) =>
+      (featureCoefficients) =>
+        (row) => {
+          val addedCols: List[Double] = featureCoefficients.map {
+            case (featureName, coefficient) =>
+              row
+                .get(schema.fieldIndex(featureName))
+                .toString
+                .toDouble * coefficient
+          }.toList
+          Row.merge(row, Row.fromSeq(addedCols))
+        }
+
+  private def getSchema(
+      df: DataFrame,
+      featureCoefficients: Map[String, Double],
+      prefix: String
+  ): StructType = {
+    var schema: StructType = df.schema
+    featureCoefficients.foreach {
+      case (featureName, _) =>
+        schema =
+          schema.add(s"${prefix}_${featureName}", DataTypes.DoubleType, false)
+    }
+    schema
+  }
+
+  def calculateSigma(
+      df: DataFrame,
+      featureCoefficients: Map[String, Double],
+      prefix: String
+  ): DataFrame = {
+    val encoder =
+      RowEncoder.apply(getSchema(df, List("sigma", "sigmaPos", "sigmaNeg")))
+    df.map(mappingSigmaRows(df.schema, prefix)(featureCoefficients))(encoder)
+  }
+
+  private val mappingSigmaRows
+      : (StructType, String) => Map[String, Double] => Row => Row =
+    (schema, prefix) =>
+      (featureCoefficients) =>
+        (row) => {
+          val calculate: List[Double] = List(
+            featureCoefficients.map {
+              case (featureName, _) =>
+                row
+                  .getDouble(schema.fieldIndex(s"${prefix}_${featureName}"))
+            }.sum,
+            featureCoefficients.map {
+              case (featureName, _) =>
+                val temp =
+                  row.getDouble(schema.fieldIndex(s"${prefix}_${featureName}"))
+                if (temp < 0) 0.0 else temp
+            }.sum,
+            featureCoefficients.map {
+              case (featureName, _) =>
+                val temp =
+                  row.getDouble(schema.fieldIndex(s"${prefix}_${featureName}"))
+                if (temp > 0) 0.0 else temp
+            }.sum
+          )
+          Row.merge(row, Row.fromSeq(calculate))
+        }
+
+  private def getSchema(
+      df: DataFrame,
+      columnNames: List[String]
+  ): StructType = {
+    var schema: StructType = df.schema
+    columnNames.foreach {
+      case (featureName) =>
+        schema = schema.add(s"${featureName}", DataTypes.DoubleType, false)
+    }
+    schema
   }
 
   /**

@@ -1,8 +1,7 @@
 package com.clarify.prediction.explainer
 
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.{QueryTest, Row}
+import org.apache.spark.sql.QueryTest
 
 class GLMExplainTransformerTest extends QueryTest with SparkSessionTestWrapper {
 
@@ -22,9 +21,16 @@ class GLMExplainTransformerTest extends QueryTest with SparkSessionTestWrapper {
 
     coefficientsDF.createOrReplaceTempView("my_coefficients")
 
-    coefficientsDF.show()
-    predictionDF.show()
+    // coefficientsDF.show()
+    // predictionDF.show()
 
+    val explainTransformer = new GLMExplainTransformer()
+    explainTransformer.setCoefficientView("my_coefficients")
+    explainTransformer.setLinkFunctionType("powerHalfLink")
+
+    val resultDF = explainTransformer.transform(predictionDF)
+
+    resultDF.show()
   }
 
 }
