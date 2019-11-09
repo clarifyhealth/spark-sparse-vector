@@ -3,7 +3,7 @@ package com.clarify.prediction.explainer
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.Identifiable
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
+import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.{DataTypes, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
@@ -259,7 +259,7 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       df: DataFrame,
       featureCoefficients: Map[String, Double],
       prefix: String
-  ) = {
+  ): ExpressionEncoder[Row] = {
     RowEncoder.apply(
       getSchema(
         df,
