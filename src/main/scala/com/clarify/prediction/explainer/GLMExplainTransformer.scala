@@ -59,6 +59,11 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     s"${x}"
   }
 
+  /**
+    *
+    * @param linkFunctionType
+    * @return
+    */
   def buildLinkFunction(linkFunctionType: String): String => String =
     (x: String) => {
       linkFunctionType match {
@@ -160,6 +165,13 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     contributionsDF
   }
 
+  /**
+    *
+    * @param df
+    * @param featureCoefficients
+    * @param prefix
+    * @return
+    */
   private def calculateLinearContributions(
       df: DataFrame,
       featureCoefficients: Map[String, Double],
@@ -187,6 +199,12 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
           Row.merge(row, Row.fromSeq(calculate))
         }
 
+  /**
+    *
+    * @param df
+    * @param featureCoefficients
+    * @return
+    */
   private def calculateSigma(
       df: DataFrame,
       featureCoefficients: Map[String, Double]
@@ -243,6 +261,13 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     schema
   }
 
+  /**
+    *
+    * @param df
+    * @param featureCoefficients
+    * @param prefix
+    * @return
+    */
   private def calculateContributions(
       df: DataFrame,
       featureCoefficients: Map[String, Double],
@@ -255,6 +280,13 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     )(encoder)
   }
 
+  /**
+    *
+    * @param df
+    * @param featureCoefficients
+    * @param prefix
+    * @return
+    */
   private def buildEncoder(
       df: DataFrame,
       featureCoefficients: Map[String, Double],
