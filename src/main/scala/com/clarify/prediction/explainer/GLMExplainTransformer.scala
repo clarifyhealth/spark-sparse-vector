@@ -62,7 +62,7 @@ class GLMExplainTransformer(override val uid: String)
     s"pow(${x},2)"
   }
   private val identityLink: String => String = { x: String =>
-    s"${x}"
+    s"cast(${x} as double)"
   }
 
   /**
