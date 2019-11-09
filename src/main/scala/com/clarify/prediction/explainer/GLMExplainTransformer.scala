@@ -118,18 +118,18 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     val dfWithSigma = calculateSigma(df, featureCoefficients)
 
     val predDf = dfWithSigma.withColumn(
-      "pred",
+      "calculated_prediction",
       expr(linkFunction(s"sigma + $intercept"))
     )
 
     val predPosDF = predDf.withColumn(
-      "predPos",
-      expr(linkFunction(s"sigmaPos + $intercept"))
+      "prediction_positive",
+      expr(linkFunction(s"sigma_positive + $intercept"))
     )
 
     val predNegDF = predPosDF.withColumn(
-      "predNeg",
-      expr(linkFunction(s"sigmaNeg + $intercept"))
+      "prediction_negative",
+      expr(linkFunction(s"sigma_negative + $intercept"))
     )
 
     val contribInterceptDF = predNegDF.withColumn(
@@ -139,16 +139,18 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
 
     val deficitDF = contribInterceptDF.withColumn(
       "deficit",
-      expr("pred + contrib_intercept - (predPos + predNeg)")
+      expr(
+        "calculated_prediction + contrib_intercept - (prediction_positive + prediction_negative)"
+      )
     )
 
     val contribPosDF = deficitDF.withColumn(
-      "contribPos",
-      expr("predPos - contrib_intercept + deficit / 2")
+      "contrib_positive",
+      expr("prediction_positive - contrib_intercept + deficit / 2")
     )
     val contribNegsDF = contribPosDF.withColumn(
-      "contribNeg",
-      expr("predNeg - contrib_intercept + deficit / 2")
+      "contrib_negative",
+      expr("prediction_negative - contrib_intercept + deficit / 2")
     )
 
     val contributionsDF =
@@ -190,7 +192,9 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
       featureCoefficients: Map[String, Double]
   ): DataFrame = {
     val encoder =
-      RowEncoder.apply(getSchema(df, List("sigma", "sigmaPos", "sigmaNeg")))
+      RowEncoder.apply(
+        getSchema(df, List("sigma", "sigma_positive", "sigma_negative"))
+      )
     df.map(mappingSigmaRows(df.schema)(featureCoefficients))(encoder)
   }
 
@@ -276,18 +280,20 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
               )
               val sigmaPos = row
                 .getDouble(
-                  schema.fieldIndex("sigmaPos")
+                  schema.fieldIndex("sigma_positive")
                 )
               val sigmaPosZeroReplace = if (sigmaPos == 0.0) 1.0 else sigmaPos
 
               val sigmaNeg = row
                 .getDouble(
-                  schema.fieldIndex("sigmaNeg")
+                  schema.fieldIndex("sigma_negative")
                 )
               val sigmaNegZeroReplace = if (sigmaNeg == 0.0) 1.0 else sigmaNeg
 
-              val contribPos = row.getDouble(schema.fieldIndex("contribPos"))
-              val contribNeg = row.getDouble(schema.fieldIndex("contribNeg"))
+              val contribPos =
+                row.getDouble(schema.fieldIndex("contrib_positive"))
+              val contribNeg =
+                row.getDouble(schema.fieldIndex("contrib_negative"))
 
               keepPositive(temp) * contribPos / sigmaPosZeroReplace +
                 keepNegative(temp) * contribNeg / sigmaNegZeroReplace

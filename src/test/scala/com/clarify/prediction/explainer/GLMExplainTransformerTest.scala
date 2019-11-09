@@ -12,7 +12,7 @@ class GLMExplainTransformerTest extends QueryTest with SparkSessionTestWrapper {
       featureCoefficients: Map[String, Double]
   ): DataFrame = {
     val encoder =
-      RowEncoder.apply(getSchema(df, List("contribSum")))
+      RowEncoder.apply(getSchema(df, List("contrib_sum")))
     df.map(mappingSumRows(df.schema)(featureCoefficients))(
       encoder
     )
@@ -83,7 +83,14 @@ class GLMExplainTransformerTest extends QueryTest with SparkSessionTestWrapper {
     val contribDF =
       calculateTotalContrib(resultDF, featureCoefficients)
 
-    contribDF.select("ccg_id", "pred", "contribSum", "contrib_intercept").show()
+    contribDF
+      .select(
+        "ccg_id",
+        "calculated_prediction",
+        "contrib_sum",
+        "contrib_intercept"
+      )
+      .show()
 
   }
 
