@@ -2,13 +2,19 @@ package com.clarify.prediction.explainer
 
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{Param, ParamMap}
-import org.apache.spark.ml.util.Identifiable
+import org.apache.spark.ml.util.{
+  DefaultParamsReadable,
+  DefaultParamsWritable,
+  Identifiable
+}
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.{DataTypes, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 
-class GLMExplainTransformer(override val uid: String) extends Transformer {
+class GLMExplainTransformer(override val uid: String)
+    extends Transformer
+    with DefaultParamsWritable {
 
   // Transformer Params
   // Defining a Param requires 3 elements:
@@ -359,4 +365,9 @@ class GLMExplainTransformer(override val uid: String) extends Transformer {
     * @param extra  Param values which will overwrite Params in the copy.
     */
   override def copy(extra: ParamMap): Transformer = defaultCopy(extra)
+}
+
+object GLMExplainTransformer
+    extends DefaultParamsReadable[GLMExplainTransformer] {
+  override def load(path: String): GLMExplainTransformer = super.load(path)
 }
