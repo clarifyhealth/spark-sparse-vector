@@ -90,7 +90,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
   test("test powerHalfLink") {
 
     spark.sharedState.cacheManager.clearCache()
-    val nested = false
+    val nested = true
 
     val (predictionDF, featureCoefficients) = initialize()
 
@@ -184,7 +184,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
   test("test identityLink") {
 
     spark.sharedState.cacheManager.clearCache()
-    val nested = false
+    val nested = true
 
     val (predictionDF, featureCoefficients) = initialize()
 
