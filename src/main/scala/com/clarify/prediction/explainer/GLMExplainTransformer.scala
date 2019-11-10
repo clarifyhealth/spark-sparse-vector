@@ -64,7 +64,7 @@ class GLMExplainTransformer(override val uid: String)
     s"log(${x})"
   }
   private val logitLink: String => String = { x: String =>
-    s"1 / (1 + exp(-${x}))"
+    s"(1 / (1 + exp(-${x})))"
   }
   private val powerHalfLink: String => String = { x: String =>
     s"pow(${x},2)"
@@ -81,11 +81,12 @@ class GLMExplainTransformer(override val uid: String)
   def buildLinkFunction(linkFunctionType: String): String => String =
     (x: String) => {
       linkFunctionType match {
-        case "logLink"      => logLink(x)
-        case "expLink"      => expLink(x)
-        case "logitLink"    => logitLink(x)
-        case "identityLink" => identityLink(x)
-        case _              => powerHalfLink(x)
+        case "logLink"       => logLink(x)
+        case "expLink"       => expLink(x)
+        case "logitLink"     => logitLink(x)
+        case "identityLink"  => identityLink(x)
+        case "powerHalfLink" => powerHalfLink(x)
+        case _               => powerHalfLink(x)
       }
     }
 
