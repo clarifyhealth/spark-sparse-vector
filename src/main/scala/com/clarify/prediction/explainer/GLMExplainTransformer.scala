@@ -43,18 +43,35 @@ class GLMExplainTransformer(override val uid: String)
     set(linkFunctionType, value)
 
   final val nested: Param[Boolean] =
-    new Param[Boolean](this, "nested", "results nested vs flattened")
+    new Param[Boolean](
+      this,
+      "nested",
+      "results nested vs flattened toggle control"
+    )
 
   final def getNested: Boolean = $(nested)
 
   final def setNested(value: Boolean): GLMExplainTransformer =
     set(nested, value)
 
+  final val calculateSum: Param[Boolean] =
+    new Param[Boolean](
+      this,
+      "calculateSum",
+      "sum of all contributions to calculate toggle control"
+    )
+
+  final def getCalculateSum: Boolean = $(calculateSum)
+
+  final def setCalculateSum(value: Boolean): GLMExplainTransformer =
+    set(calculateSum, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     coefficientView -> "coefficient",
     linkFunctionType -> "powerHalfLink",
-    nested -> false
+    nested -> false,
+    calculateSum -> false
   )
 
   private val logLink: String => String = { x: String =>
@@ -292,7 +309,18 @@ class GLMExplainTransformer(override val uid: String)
         "linear_contrib",
         $(nested)
       )
-    contributionsDF
+
+    if ($(calculateSum)) {
+      val contributionTotalDF = calculateTotalContrib(
+        contributionsDF,
+        featureCoefficients,
+        "contrib",
+        $(nested)
+      )
+      contributionTotalDF
+    } else {
+      contributionsDF
+    }
   }
 
   /**
@@ -529,6 +557,47 @@ class GLMExplainTransformer(override val uid: String)
       featureName -> (keepPositive(linearContribution) * contribPos / sigmaPosZeroReplace +
         keepNegative(linearContribution) * contribNeg / sigmaNegZeroReplace)
     }
+
+  def calculateTotalContrib(
+      df: DataFrame,
+      featureCoefficients: Map[String, Double],
+      prefixOrColumnName: String,
+      nested: Boolean
+  ): DataFrame = {
+    val encoder =
+      RowEncoder.apply(getSchema(df, List("contrib_sum")))
+    df.map(
+      mappingSumRows(df.schema, nested)(prefixOrColumnName, featureCoefficients)
+    )(
+      encoder
+    )
+  }
+
+  private val mappingSumRows
+      : (StructType, Boolean) => (String, Map[String, Double]) => Row => Row =
+    (schema, nested) =>
+      (prefixOrColumnName, featureCoefficients) =>
+        (row) => {
+          val calculate =
+            if (nested)
+              row
+                .getMap[String, Double](schema.fieldIndex(prefixOrColumnName))
+                .toMap
+                .values
+                .sum
+            else
+              featureCoefficients.map {
+                case (featureName, _) =>
+                  row
+                    .getDouble(
+                      schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
+                    )
+              }.sum
+          val total = calculate + row.getDouble(
+            schema.fieldIndex(s"contrib_intercept")
+          )
+          Row.merge(row, Row(total))
+        }
 
   /**
     * Check transform validity and derive the output schema from the input schema.

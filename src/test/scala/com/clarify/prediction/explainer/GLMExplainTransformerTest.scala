@@ -1,64 +1,9 @@
 package com.clarify.prediction.explainer
 
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.test.SharedSparkSession
-import org.apache.spark.sql.types.{DataTypes, StructType}
-import org.apache.spark.sql.{DataFrame, QueryTest, Row}
+import org.apache.spark.sql.{DataFrame, QueryTest}
 
 class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
-
-  def calculateTotalContrib(
-      df: DataFrame,
-      featureCoefficients: Map[String, Double],
-      prefixOrColumnName: String,
-      nested: Boolean
-  ): DataFrame = {
-    val encoder =
-      RowEncoder.apply(getSchema(df, List("contrib_sum")))
-    df.map(
-      mappingSumRows(df.schema, nested)(prefixOrColumnName, featureCoefficients)
-    )(
-      encoder
-    )
-  }
-
-  private val mappingSumRows
-      : (StructType, Boolean) => (String, Map[String, Double]) => Row => Row =
-    (schema, nested) =>
-      (prefixOrColumnName, featureCoefficients) =>
-        (row) => {
-          val calculate =
-            if (nested)
-              row
-                .getMap[String, Double](schema.fieldIndex(prefixOrColumnName))
-                .toMap
-                .values
-                .sum
-            else
-              featureCoefficients.map {
-                case (featureName, _) =>
-                  row
-                    .getDouble(
-                      schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
-                    )
-              }.sum
-          val total = calculate + row.getDouble(
-            schema.fieldIndex(s"contrib_intercept")
-          )
-          Row.merge(row, Row(total))
-        }
-
-  private def getSchema(
-      df: DataFrame,
-      columnNames: List[String]
-  ): StructType = {
-    var schema: StructType = df.schema
-    columnNames.foreach {
-      case (featureName) =>
-        schema = schema.add(s"${featureName}", DataTypes.DoubleType, false)
-    }
-    schema
-  }
 
   def initialize(): (DataFrame, Map[String, Double]) = {
     val predictionDF = spark.read
@@ -98,16 +43,9 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     explainTransformer.setCoefficientView("my_coefficients")
     explainTransformer.setLinkFunctionType("powerHalfLink")
     explainTransformer.setNested(nested)
+    explainTransformer.setCalculateSum(true)
 
     val resultDF = explainTransformer.transform(predictionDF)
-
-    val contribDF =
-      calculateTotalContrib(
-        resultDF,
-        featureCoefficients,
-        "contrib",
-        nested
-      )
 
     val contribPowerHalfLink = spark.read
       .option("header", "true")
@@ -122,7 +60,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       .orderBy("ccg_id")
 
     checkAnswer(
-      contribDF
+      resultDF
         .selectExpr(
           "ccg_id",
           "bround(contrib_intercept,3) as contrib_intercept",
@@ -145,16 +83,9 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     explainTransformer.setCoefficientView("my_coefficients")
     explainTransformer.setLinkFunctionType("logLink")
     explainTransformer.setNested(nested)
+    explainTransformer.setCalculateSum(true)
 
     val resultDF = explainTransformer.transform(predictionDF)
-
-    val contribDF =
-      calculateTotalContrib(
-        resultDF,
-        featureCoefficients,
-        "contrib",
-        nested
-      )
 
     val logLinkDF = spark.read
       .option("header", "true")
@@ -169,7 +100,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       .orderBy("ccg_id")
 
     checkAnswer(
-      contribDF
+      resultDF
         .selectExpr(
           "ccg_id",
           "bround(contrib_intercept,3) as contrib_intercept",
@@ -192,16 +123,9 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     explainTransformer.setCoefficientView("my_coefficients")
     explainTransformer.setLinkFunctionType("identityLink")
     explainTransformer.setNested(nested)
+    explainTransformer.setCalculateSum(true)
 
     val resultDF = explainTransformer.transform(predictionDF)
-
-    val contribDF =
-      calculateTotalContrib(
-        resultDF,
-        featureCoefficients,
-        "contrib",
-        nested
-      )
 
     val identityLinkDF = spark.read
       .option("header", "true")
@@ -216,7 +140,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       .orderBy("ccg_id")
 
     checkAnswer(
-      contribDF
+      resultDF
         .selectExpr(
           "ccg_id",
           "bround(contrib_intercept,3) as contrib_intercept",
@@ -240,16 +164,9 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     explainTransformer.setCoefficientView("my_coefficients")
     explainTransformer.setLinkFunctionType("logitLink")
     explainTransformer.setNested(nested)
+    explainTransformer.setCalculateSum(true)
 
     val resultDF = explainTransformer.transform(predictionDF)
-
-    val contribDF =
-      calculateTotalContrib(
-        resultDF,
-        featureCoefficients,
-        "contrib",
-        nested
-      )
 
     val logitLinkDF = spark.read
       .option("header", "true")
@@ -264,7 +181,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       .orderBy("ccg_id")
 
     checkAnswer(
-      contribDF
+      resultDF
         .selectExpr(
           "ccg_id",
           "bround(contrib_intercept,3) as contrib_intercept",
