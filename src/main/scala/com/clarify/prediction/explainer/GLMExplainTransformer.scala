@@ -81,7 +81,7 @@ class GLMExplainTransformer(override val uid: String)
     s"log(${x})"
   }
   private val logitLink: String => String = { x: String =>
-    s"(1 / (1 + exp(-${x})))"
+    s"1 / (1 + exp(-(${x})))"
   }
   private val powerHalfLink: String => String = { x: String =>
     s"pow(${x},2)"
