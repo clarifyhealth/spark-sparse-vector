@@ -153,7 +153,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
 
   }
 
-  ignore("test logitLink") {
+  test("test logitLink") {
 
     spark.sharedState.cacheManager.clearCache()
     val nested = false
