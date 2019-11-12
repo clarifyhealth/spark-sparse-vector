@@ -185,7 +185,7 @@ class GLMExplainTransformer(override val uid: String)
     var schema: StructType = df.schema
     schema = schema.add(
       columnName,
-      DataTypes.createMapType(DataTypes.StringType, DataTypes.DoubleType),
+      DataTypes.createArrayType(DataTypes.DoubleType),
       false
     )
     schema
@@ -254,7 +254,7 @@ class GLMExplainTransformer(override val uid: String)
       allCoefficients.find(x => x._1 == "Intercept").get._2
 
     val featureCoefficients =
-      allCoefficients.filter(x => x._1 != "Intercept").toMap
+      allCoefficients.filter(x => x._1 != "Intercept").sortBy(_._1).toMap
 
     val df = calculateLinearContributions(
       dataset.toDF(),
@@ -354,17 +354,17 @@ class GLMExplainTransformer(override val uid: String)
     (schema, nested) =>
       (featureCoefficients) =>
         (row) => {
-          val calculate: Map[String, Double] = featureCoefficients.map {
+          val calculate: List[Double] = featureCoefficients.map {
             case (featureName, coefficient) =>
-              featureName -> row
+              row
                 .get(schema.fieldIndex(featureName))
                 .toString
                 .toDouble * coefficient
-          }
+          }.toList
           if (nested) {
             Row.merge(row, Row(calculate))
           } else {
-            Row.merge(row, Row.fromSeq(calculate.values.toList))
+            Row.merge(row, Row.fromSeq(calculate))
           }
         }
 
@@ -438,22 +438,18 @@ class GLMExplainTransformer(override val uid: String)
         (row) => {
           // retrieve the linear contributions from Map(key -> value)
           val linearContributions =
-            row
-              .getMap[String, Double](schema.fieldIndex(prefixOrColumnName))
-              .toMap
+            row.getSeq[Double](schema.fieldIndex(prefixOrColumnName))
           val calculate: List[Double] = List(
             // sum of all linear contributions
-            linearContributions.map {
-              case (_, linearContrib) => linearContrib
-            }.sum,
+            linearContributions.sum,
             // sum of all positive linear contributions
             linearContributions.map {
-              case (_, linearContrib) =>
+              case (linearContrib) =>
                 keepPositive(linearContrib)
             }.sum,
             // sum of all negative linear contributions
             linearContributions.map {
-              case (_, linearContrib) =>
+              case (linearContrib) =>
                 keepNegative(linearContrib)
             }.sum
           )
@@ -502,13 +498,12 @@ class GLMExplainTransformer(override val uid: String)
               val linearContribution = row.getDouble(
                 schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
               )
-              // pay attention _2 only selecting the contribution double for flattened mode
+              // contribution double for flattened mode
               calculateContributionsInternal(
-                featureName,
                 linearContribution,
                 row,
                 schema
-              )._2
+              )
           }.toList
           Row.merge(row, Row.fromSeq(calculate))
         }
@@ -521,17 +516,14 @@ class GLMExplainTransformer(override val uid: String)
     (schema) =>
       (prefixOrColumnName) =>
         (row) => {
-          // retrieve the linear contributions from Map(key -> value)
+          // retrieve the linear contributions from Seq(value)
           val linearContributions =
-            row
-              .getMap[String, Double](schema.fieldIndex(prefixOrColumnName))
-              .toMap
+            row.getSeq[Double](schema.fieldIndex(prefixOrColumnName))
 
-          val calculate: Map[String, Double] = linearContributions.map {
-            // pay attention selecting the feature name and contribution double for nested mode
-            case (featureName, linearContribution) =>
+          val calculate: Seq[Double] = linearContributions.map {
+            // contribution double for nested mode
+            case (linearContribution) =>
               calculateContributionsInternal(
-                featureName,
                 linearContribution,
                 row,
                 schema
@@ -541,9 +533,8 @@ class GLMExplainTransformer(override val uid: String)
         }
 
   private val calculateContributionsInternal
-      : (String, Double, Row, StructType) => (String, Double) =
+      : (Double, Row, StructType) => Double =
     (
-        featureName: String,
         linearContribution: Double,
         row: Row,
         schema: StructType
@@ -554,7 +545,7 @@ class GLMExplainTransformer(override val uid: String)
       val contribPos = contribPositive(row, schema)
       val contribNeg = contribNegative(row, schema)
 
-      featureName -> (keepPositive(linearContribution) * contribPos / sigmaPosZeroReplace +
+      (keepPositive(linearContribution) * contribPos / sigmaPosZeroReplace +
         keepNegative(linearContribution) * contribNeg / sigmaNegZeroReplace)
     }
 
@@ -580,11 +571,7 @@ class GLMExplainTransformer(override val uid: String)
         (row) => {
           val calculate =
             if (nested)
-              row
-                .getMap[String, Double](schema.fieldIndex(prefixOrColumnName))
-                .toMap
-                .values
-                .sum
+              row.getSeq[Double](schema.fieldIndex(prefixOrColumnName)).sum
             else
               featureCoefficients.map {
                 case (featureName, _) =>
