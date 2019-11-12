@@ -20,7 +20,6 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
 
     val coefficients = coefficientsDF
       .select("Feature", "Coefficient")
-      .filter("not Feature RLIKE '^.*_OHE___unknown$'")
       .collect()
 
     val allCoefficients = coefficients

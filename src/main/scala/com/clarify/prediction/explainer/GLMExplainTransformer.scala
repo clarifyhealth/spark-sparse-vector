@@ -244,7 +244,6 @@ class GLMExplainTransformer(override val uid: String)
     val coefficients = dataset.sqlContext
       .table($(coefficientView))
       .select("Feature", "Coefficient")
-      .filter("not Feature RLIKE '^.*_OHE___unknown$'")
       .collect()
 
     val allCoefficients = coefficients
