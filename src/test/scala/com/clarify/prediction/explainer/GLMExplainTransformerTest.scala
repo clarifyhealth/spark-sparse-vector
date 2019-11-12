@@ -1,7 +1,6 @@
 package com.clarify.prediction.explainer
 
 import org.apache.spark.sql.test.SharedSparkSession
-import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, QueryTest}
 
 class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
