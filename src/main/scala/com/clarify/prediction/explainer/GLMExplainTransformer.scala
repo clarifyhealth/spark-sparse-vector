@@ -269,17 +269,18 @@ class GLMExplainTransformer(override val uid: String)
 
     val coefficients = dataset.sqlContext
       .table($(coefficientView))
-      .select("Feature", "Coefficient")
+      .select("Feature_Index", "Feature", "Coefficient")
+      .orderBy("Feature_Index")
       .collect()
 
     val allCoefficients = coefficients
-      .map(row => (row.getAs[String](0) -> row.getAs[Double](1)))
+      .map(row => (row.getAs[String](1) -> row.getAs[Double](2)))
 
     val intercept =
       allCoefficients.find(x => x._1 == "Intercept").get._2
 
     val featureCoefficients =
-      allCoefficients.filter(x => x._1 != "Intercept").sortBy(_._1).toMap
+      allCoefficients.filter(x => x._1 != "Intercept").toMap
 
     val predictions = dataset.sqlContext.table($(predictionView))
 
