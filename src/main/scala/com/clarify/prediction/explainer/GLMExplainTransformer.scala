@@ -516,7 +516,7 @@ class GLMExplainTransformer(override val uid: String)
     (schema) =>
       (prefixOrColumnName) =>
         (row) => {
-          // retrieve the linear contributions from Map(key -> value)
+          // retrieve the linear contributions from Seq(value)
           val linearContributions =
             row.getSeq[Double](schema.fieldIndex(prefixOrColumnName))
 
