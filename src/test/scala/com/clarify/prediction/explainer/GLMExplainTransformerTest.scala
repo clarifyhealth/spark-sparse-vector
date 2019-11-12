@@ -1,15 +1,18 @@
 package com.clarify.prediction.explainer
 
 import org.apache.spark.sql.test.SharedSparkSession
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, QueryTest}
 
 class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
 
-  def initialize(): (DataFrame, Map[String, Double]) = {
+  def initialize(): (DataFrame, DataFrame) = {
     val predictionDF = spark.read
       .option("header", "true")
       .option("inferSchema", "true")
       .csv(getClass.getResource("/basic/predictions.csv").getPath)
+
+    predictionDF.createOrReplaceTempView("my_predictions")
 
     val coefficientsDF = spark.read
       .option("header", "true")
@@ -18,17 +21,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
 
     coefficientsDF.createOrReplaceTempView("my_coefficients")
 
-    val coefficients = coefficientsDF
-      .select("Feature", "Coefficient")
-      .collect()
-
-    val allCoefficients = coefficients
-      .map(row => (row.getAs[String](0) -> row.getAs[Double](1)))
-
-    val featureCoefficients =
-      allCoefficients.filter(x => x._1 != "Intercept").toMap
-
-    (predictionDF, featureCoefficients)
+    (predictionDF, coefficientsDF)
   }
 
   test("test powerHalfLink") {
@@ -36,15 +29,17 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     spark.sharedState.cacheManager.clearCache()
     val nested = true
 
-    val (predictionDF, featureCoefficients) = initialize()
+    val (predictionDF, coefficientsDF) = initialize()
 
     val explainTransformer = new GLMExplainTransformer()
     explainTransformer.setCoefficientView("my_coefficients")
+    explainTransformer.setPredictionView("my_predictions")
     explainTransformer.setLinkFunctionType("powerHalfLink")
     explainTransformer.setNested(nested)
     explainTransformer.setCalculateSum(true)
 
-    val resultDF = explainTransformer.transform(predictionDF)
+    val df = spark.emptyDataFrame
+    val resultDF = explainTransformer.transform(df)
 
     val contribPowerHalfLink = spark.read
       .option("header", "true")
@@ -76,15 +71,17 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     spark.sharedState.cacheManager.clearCache()
     val nested = false
 
-    val (predictionDF, featureCoefficients) = initialize()
+    val (predictionDF, coefficientsDF) = initialize()
 
     val explainTransformer = new GLMExplainTransformer()
     explainTransformer.setCoefficientView("my_coefficients")
+    explainTransformer.setPredictionView("my_predictions")
     explainTransformer.setLinkFunctionType("logLink")
     explainTransformer.setNested(nested)
     explainTransformer.setCalculateSum(true)
 
-    val resultDF = explainTransformer.transform(predictionDF)
+    val df = spark.emptyDataFrame
+    val resultDF = explainTransformer.transform(df)
 
     val logLinkDF = spark.read
       .option("header", "true")
@@ -116,15 +113,17 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     spark.sharedState.cacheManager.clearCache()
     val nested = true
 
-    val (predictionDF, featureCoefficients) = initialize()
+    val (predictionDF, coefficientsDF) = initialize()
 
     val explainTransformer = new GLMExplainTransformer()
     explainTransformer.setCoefficientView("my_coefficients")
+    explainTransformer.setPredictionView("my_predictions")
     explainTransformer.setLinkFunctionType("identityLink")
     explainTransformer.setNested(nested)
     explainTransformer.setCalculateSum(true)
 
-    val resultDF = explainTransformer.transform(predictionDF)
+    val df = spark.emptyDataFrame
+    val resultDF = explainTransformer.transform(df)
 
     val identityLinkDF = spark.read
       .option("header", "true")
@@ -157,15 +156,17 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     spark.sharedState.cacheManager.clearCache()
     val nested = false
 
-    val (predictionDF, featureCoefficients) = initialize()
+    val (predictionDF, coefficientsDF) = initialize()
 
     val explainTransformer = new GLMExplainTransformer()
     explainTransformer.setCoefficientView("my_coefficients")
+    explainTransformer.setPredictionView("my_predictions")
     explainTransformer.setLinkFunctionType("logitLink")
     explainTransformer.setNested(nested)
     explainTransformer.setCalculateSum(true)
 
-    val resultDF = explainTransformer.transform(predictionDF)
+    val df = spark.emptyDataFrame
+    val resultDF = explainTransformer.transform(df)
 
     val logitLinkDF = spark.read
       .option("header", "true")
