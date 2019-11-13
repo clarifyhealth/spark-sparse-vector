@@ -30,7 +30,7 @@ class GLMExplainTransformer(override val uid: String)
   final val predictionView: Param[String] =
     new Param[String](
       this,
-      "predictionViewView",
+      "predictionView",
       "input predictionView view name"
     )
 
@@ -218,7 +218,7 @@ class GLMExplainTransformer(override val uid: String)
   }
 
   /**
-    * To set nested Map(key->Val) schema
+    * To set nested array(val) schema
     * @param df
     * @param columnName
     * @return
@@ -486,7 +486,7 @@ class GLMExplainTransformer(override val uid: String)
     (schema) =>
       (prefixOrColumnName) =>
         (row) => {
-          // retrieve the linear contributions from Map(key -> value)
+          // retrieve the linear contributions from row(feature_index)
           val linearContributions =
             row.getSeq[Double](schema.fieldIndex(prefixOrColumnName))
           val calculate: List[Double] = List(
