@@ -8,12 +8,14 @@ import org.apache.spark.ml.util.{
   Identifiable
 }
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
+import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.{DataTypes, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
-import org.apache.spark.sql.functions.expr
 class GLMExplainTransformer(override val uid: String)
     extends Transformer
     with DefaultParamsWritable {
+
+  def this() = this(Identifiable.randomUID("GLMExplainTransformer"))
 
   // Transformer Params
   // Defining a Param requires 3 elements:
@@ -21,10 +23,24 @@ class GLMExplainTransformer(override val uid: String)
   //  - Param getter method
   //  - Param setter method
   // (The getter and setter are technically not required, but they are nice standards to follow.)
-  def this() = this(Identifiable.randomUID("GLMExplainTransformer"))
 
   /**
-    * Param for input column name.
+    * Param for predictionView view name.
+    */
+  final val predictionView: Param[String] =
+    new Param[String](
+      this,
+      "predictionView",
+      "input predictionView view name"
+    )
+
+  final def getPredictionView: String = $(predictionView)
+
+  final def setPredictionView(value: String): GLMExplainTransformer =
+    set(predictionView, value)
+
+  /**
+    * Param for coefficientView name.
     */
   final val coefficientView: Param[String] =
     new Param[String](this, "coefficientView", "input coefficient view name")
@@ -34,14 +50,20 @@ class GLMExplainTransformer(override val uid: String)
   final def setCoefficientView(value: String): GLMExplainTransformer =
     set(coefficientView, value)
 
+  /**
+    * Param for link function type .
+    */
   final val linkFunctionType: Param[String] =
-    new Param[String](this, "linkFunctionType", "input linkFunction name")
+    new Param[String](this, "linkFunctionType", "input linkFunction type")
 
   final def getLinkFunctionType: String = $(linkFunctionType)
 
   final def setLinkFunctionType(value: String): GLMExplainTransformer =
     set(linkFunctionType, value)
 
+  /**
+    * Param for control the output flattens vs nested in array .
+    */
   final val nested: Param[Boolean] =
     new Param[Boolean](
       this,
@@ -54,6 +76,9 @@ class GLMExplainTransformer(override val uid: String)
   final def setNested(value: Boolean): GLMExplainTransformer =
     set(nested, value)
 
+  /**
+    * Param to calculate sum of contributions .
+    */
   final val calculateSum: Param[Boolean] =
     new Param[Boolean](
       this,
@@ -66,12 +91,29 @@ class GLMExplainTransformer(override val uid: String)
   final def setCalculateSum(value: Boolean): GLMExplainTransformer =
     set(calculateSum, value)
 
+  /**
+    * Param for label name.
+    */
+  final val label: Param[String] =
+    new Param[String](
+      this,
+      "label",
+      "training label name"
+    )
+
+  final def getLabel: String = $(label)
+
+  final def setLabel(value: String): GLMExplainTransformer =
+    set(label, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
+    predictionView -> "predictions",
     coefficientView -> "coefficient",
     linkFunctionType -> "powerHalfLink",
     nested -> false,
-    calculateSum -> false
+    calculateSum -> false,
+    label -> "some_label"
   )
 
   private val logLink: String => String = { x: String =>
@@ -176,7 +218,7 @@ class GLMExplainTransformer(override val uid: String)
   }
 
   /**
-    * To set nested Map(key->Val) schema
+    * To set nested array(val) schema
     * @param df
     * @param columnName
     * @return
@@ -243,20 +285,23 @@ class GLMExplainTransformer(override val uid: String)
 
     val coefficients = dataset.sqlContext
       .table($(coefficientView))
-      .select("Feature", "Coefficient")
+      .select("Feature_Index", "Feature", "Coefficient")
+      .orderBy("Feature_Index")
       .collect()
 
     val allCoefficients = coefficients
-      .map(row => (row.getAs[String](0) -> row.getAs[Double](1)))
+      .map(row => (row.getAs[String](1) -> row.getAs[Double](2)))
 
     val intercept =
       allCoefficients.find(x => x._1 == "Intercept").get._2
 
     val featureCoefficients =
-      allCoefficients.filter(x => x._1 != "Intercept").sortBy(_._1).toMap
+      allCoefficients.filter(x => x._1 != "Intercept").toMap
+
+    val predictions = dataset.sqlContext.table($(predictionView))
 
     val df = calculateLinearContributions(
-      dataset.toDF(),
+      predictions,
       featureCoefficients,
       "linear_contrib",
       $(nested)
@@ -301,6 +346,9 @@ class GLMExplainTransformer(override val uid: String)
       expr("prediction_negative - contrib_intercept + deficit / 2")
     )
 
+    /*
+     calculate contribution of each feature in a row
+     */
     val contributionsDF =
       calculateContributions(
         contribNegsDF,
@@ -309,6 +357,9 @@ class GLMExplainTransformer(override val uid: String)
         $(nested)
       )
 
+    /*
+     calculate contribution of each prediction in a row
+     */
     if ($(calculateSum)) {
       val contributionTotalDF = calculateTotalContrib(
         contributionsDF,
@@ -337,11 +388,9 @@ class GLMExplainTransformer(override val uid: String)
   ): DataFrame = {
     val encoder =
       buildEncoder(df, featureCoefficients, prefixOrColumnName, nested)
-    df.map(
+    val func =
       mappingLinearContributionsRows(df.schema, nested)(featureCoefficients)
-    )(
-      encoder
-    )
+    df.mapPartitions(x => x.map(func))(encoder)
   }
 
   /*
@@ -383,12 +432,14 @@ class GLMExplainTransformer(override val uid: String)
       RowEncoder.apply(
         getSchema(df, List("sigma", "sigma_positive", "sigma_negative"))
       )
-    if (nested)
-      df.map(mappingNestedSigmaRows(df.schema)(prefixOrColumnName))(encoder)
-    else
-      df.map(
+    if (nested) {
+      val func = mappingNestedSigmaRows(df.schema)(prefixOrColumnName)
+      df.mapPartitions(x => x.map(func))(encoder)
+    } else {
+      val func =
         mappingSigmaRows(df.schema)(prefixOrColumnName, featureCoefficients)
-      )(encoder)
+      df.mapPartitions(x => x.map(func))(encoder)
+    }
   }
   /*
     Map over Rows and features to calculate sigma, sigma+ve, sigma-ve in flattened mode
@@ -435,7 +486,7 @@ class GLMExplainTransformer(override val uid: String)
     (schema) =>
       (prefixOrColumnName) =>
         (row) => {
-          // retrieve the linear contributions from Map(key -> value)
+          // retrieve the linear contributions from row(feature_index)
           val linearContributions =
             row.getSeq[Double](schema.fieldIndex(prefixOrColumnName))
           val calculate: List[Double] = List(
@@ -470,17 +521,16 @@ class GLMExplainTransformer(override val uid: String)
   ): DataFrame = {
     val encoder =
       buildEncoder(df, featureCoefficients, "contrib", nested)
-    if (nested)
-      df.map(mappingContributionsNestedRows(df.schema)(prefixOrColumnName))(
-        encoder
+    if (nested) {
+      val func = mappingContributionsNestedRows(df.schema)(prefixOrColumnName)
+      df.mapPartitions(x => x.map(func))(encoder)
+    } else {
+      val func = mappingContributionsRows(df.schema)(
+        prefixOrColumnName,
+        featureCoefficients
       )
-    else
-      df.map(
-        mappingContributionsRows(df.schema)(
-          prefixOrColumnName,
-          featureCoefficients
-        )
-      )(encoder)
+      df.mapPartitions(x => x.map(func))(encoder)
+    }
   }
   /*
     Map over Rows and features to calculate final contribution of each feature flattened mode
@@ -556,11 +606,9 @@ class GLMExplainTransformer(override val uid: String)
   ): DataFrame = {
     val encoder =
       RowEncoder.apply(getSchema(df, List("contrib_sum")))
-    df.map(
+    val func =
       mappingSumRows(df.schema, nested)(prefixOrColumnName, featureCoefficients)
-    )(
-      encoder
-    )
+    df.mapPartitions(x => x.map(func))(encoder)
   }
 
   private val mappingSumRows
