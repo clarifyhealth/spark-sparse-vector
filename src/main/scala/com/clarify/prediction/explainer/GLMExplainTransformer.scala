@@ -91,13 +91,29 @@ class GLMExplainTransformer(override val uid: String)
   final def setCalculateSum(value: Boolean): GLMExplainTransformer =
     set(calculateSum, value)
 
+  /**
+    * Param for label name.
+    */
+  final val label: Param[String] =
+    new Param[String](
+      this,
+      "label",
+      "training label name"
+    )
+
+  final def getLabel: String = $(label)
+
+  final def setLabel(value: String): GLMExplainTransformer =
+    set(label, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
     coefficientView -> "coefficient",
     linkFunctionType -> "powerHalfLink",
     nested -> false,
-    calculateSum -> false
+    calculateSum -> false,
+    label -> "some_label"
   )
 
   private val logLink: String => String = { x: String =>
