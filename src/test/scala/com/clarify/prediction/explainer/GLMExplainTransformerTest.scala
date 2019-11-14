@@ -210,7 +210,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)
 
-    val logitLinkDF = spark.read
+    val inverseLinkDF = spark.read
       .option("header", "true")
       .option("inferSchema", "true")
       .csv(getClass.getResource("/basic/contribs_inverse_link.csv").getPath)
@@ -231,7 +231,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
-      logitLinkDF
+      inverseLinkDF
     )
 
   }
