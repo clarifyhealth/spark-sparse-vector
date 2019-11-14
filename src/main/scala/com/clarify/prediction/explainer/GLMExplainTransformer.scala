@@ -131,6 +131,9 @@ class GLMExplainTransformer(override val uid: String)
   private val identityLink: String => String = { x: String =>
     s"cast(${x} as double)"
   }
+  private val inverseLink: String => String = { x: String =>
+    s"1 / cast(${x} as double)"
+  }
 
   /**
     * Build link function expression dynamically based linkFunctionType
@@ -145,6 +148,7 @@ class GLMExplainTransformer(override val uid: String)
         case "logitLink"     => logitLink(x)
         case "identityLink"  => identityLink(x)
         case "powerHalfLink" => powerHalfLink(x)
+        case "inverseLink"   => inverseLink(x)
         case _               => powerHalfLink(x)
       }
     }

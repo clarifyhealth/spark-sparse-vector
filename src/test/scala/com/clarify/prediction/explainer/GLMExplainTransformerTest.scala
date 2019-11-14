@@ -193,4 +193,47 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
 
   }
 
+  test("test inverseLink") {
+
+    spark.sharedState.cacheManager.clearCache()
+    val nested = false
+
+    val (predictionDF, coefficientsDF) = initialize()
+
+    val explainTransformer = new GLMExplainTransformer()
+    explainTransformer.setCoefficientView("my_coefficients")
+    explainTransformer.setPredictionView("my_predictions")
+    explainTransformer.setLinkFunctionType("inverseLink")
+    explainTransformer.setNested(nested)
+    explainTransformer.setCalculateSum(true)
+
+    val df = spark.emptyDataFrame
+    val resultDF = explainTransformer.transform(df)
+
+    val logitLinkDF = spark.read
+      .option("header", "true")
+      .option("inferSchema", "true")
+      .csv(getClass.getResource("/basic/contribs_inverse_link.csv").getPath)
+      .selectExpr(
+        "ccg_id",
+        "bround(contrib_intercept,3) as contrib_intercept",
+        "bround(contrib_sum,3) as contrib_sum",
+        "bround(calculated_prediction,3) as calculated_prediction"
+      )
+      .orderBy("ccg_id")
+
+    checkAnswer(
+      resultDF
+        .selectExpr(
+          "ccg_id",
+          "bround(contrib_intercept,3) as contrib_intercept",
+          "bround(contrib_sum,3) as contrib_sum",
+          "bround(calculated_prediction,3) as calculated_prediction"
+        )
+        .orderBy("ccg_id"),
+      logitLinkDF
+    )
+
+  }
+
 }
