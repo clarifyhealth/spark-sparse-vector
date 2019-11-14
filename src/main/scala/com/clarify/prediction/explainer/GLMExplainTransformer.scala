@@ -106,6 +106,21 @@ class GLMExplainTransformer(override val uid: String)
   final def setLabel(value: String): GLMExplainTransformer =
     set(label, value)
 
+  /**
+    * Param for family name.
+    */
+  final val family: Param[String] =
+    new Param[String](
+      this,
+      "family",
+      "glm family name"
+    )
+
+  final def getFamily: String = $(family)
+
+  final def setFamily(value: String): GLMExplainTransformer =
+    set(family, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
@@ -113,7 +128,8 @@ class GLMExplainTransformer(override val uid: String)
     linkFunctionType -> "powerHalfLink",
     nested -> false,
     calculateSum -> false,
-    label -> "some_label"
+    label -> "some_label",
+    family -> "gaussian"
   )
 
   private val logLink: String => String = { x: String =>
