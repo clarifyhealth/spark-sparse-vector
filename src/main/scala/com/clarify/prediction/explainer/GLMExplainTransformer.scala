@@ -371,8 +371,10 @@ class GLMExplainTransformer(override val uid: String)
         "contrib",
         $(nested)
       )
+      contributionTotalDF.createOrReplaceTempView($(predictionView))
       contributionTotalDF
     } else {
+      contributionsDF.createOrReplaceTempView($(predictionView))
       contributionsDF
     }
   }
