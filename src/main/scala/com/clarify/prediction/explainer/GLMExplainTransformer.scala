@@ -128,7 +128,7 @@ class GLMExplainTransformer(override val uid: String)
     linkFunctionType -> "powerHalfLink",
     nested -> false,
     calculateSum -> false,
-    label -> "some_label",
+    label -> "test",
     family -> "gaussian"
   )
 
@@ -380,7 +380,7 @@ class GLMExplainTransformer(override val uid: String)
     /*
      calculate contribution of each prediction in a row
      */
-    if ($(calculateSum)) {
+    val final_df = if ($(calculateSum)) {
       val contributionTotalDF = calculateTotalContrib(
         contributionsDF,
         featureCoefficients,
@@ -393,6 +393,16 @@ class GLMExplainTransformer(override val uid: String)
       contributionsDF.createOrReplaceTempView($(predictionView))
       contributionsDF
     }
+    val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
+
+    val exprColumns = final_df.columns.map(
+      x =>
+        if (contribColumns.contains(x))
+          s"${x} as prediction_${x}_${getLabel}"
+        else x
+    )
+
+    final_df.selectExpr(exprColumns: _*)
   }
 
   /**
