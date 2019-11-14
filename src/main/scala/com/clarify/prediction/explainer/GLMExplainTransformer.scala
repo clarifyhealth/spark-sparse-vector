@@ -377,32 +377,34 @@ class GLMExplainTransformer(override val uid: String)
         $(nested)
       )
 
-    /*
-     calculate contribution of each prediction in a row
-     */
-    val final_df = if ($(calculateSum)) {
+    val finalDF = if ($(calculateSum)) {
+      /*
+        calculate sum(contribution of each feature) in a row
+       */
       val contributionTotalDF = calculateTotalContrib(
         contributionsDF,
         featureCoefficients,
         "contrib",
         $(nested)
       )
-      contributionTotalDF.createOrReplaceTempView($(predictionView))
       contributionTotalDF
     } else {
-      contributionsDF.createOrReplaceTempView($(predictionView))
       contributionsDF
     }
     val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
 
-    val exprColumns = final_df.columns.map(
+    val exprColumns = finalDF.columns.map(
       x =>
         if (contribColumns.contains(x))
           s"${x} as prediction_${x}_${getLabel}"
         else x
     )
 
-    final_df.selectExpr(exprColumns: _*)
+    val finalColRenamedDF = finalDF.selectExpr(exprColumns: _*)
+    finalColRenamedDF.createOrReplaceTempView($(predictionView))
+
+    finalColRenamedDF
+
   }
 
   /**
