@@ -106,6 +106,21 @@ class GLMExplainTransformer(override val uid: String)
   final def setLabel(value: String): GLMExplainTransformer =
     set(label, value)
 
+  /**
+    * Param for family name.
+    */
+  final val family: Param[String] =
+    new Param[String](
+      this,
+      "family",
+      "glm family name"
+    )
+
+  final def getFamily: String = $(family)
+
+  final def setFamily(value: String): GLMExplainTransformer =
+    set(family, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
@@ -113,7 +128,8 @@ class GLMExplainTransformer(override val uid: String)
     linkFunctionType -> "powerHalfLink",
     nested -> false,
     calculateSum -> false,
-    label -> "some_label"
+    label -> "test",
+    family -> "gaussian"
   )
 
   private val logLink: String => String = { x: String =>
@@ -131,6 +147,9 @@ class GLMExplainTransformer(override val uid: String)
   private val identityLink: String => String = { x: String =>
     s"cast(${x} as double)"
   }
+  private val inverseLink: String => String = { x: String =>
+    s"1 / cast(${x} as double)"
+  }
 
   /**
     * Build link function expression dynamically based linkFunctionType
@@ -145,6 +164,7 @@ class GLMExplainTransformer(override val uid: String)
         case "logitLink"     => logitLink(x)
         case "identityLink"  => identityLink(x)
         case "powerHalfLink" => powerHalfLink(x)
+        case "inverseLink"   => inverseLink(x)
         case _               => powerHalfLink(x)
       }
     }
@@ -357,10 +377,10 @@ class GLMExplainTransformer(override val uid: String)
         $(nested)
       )
 
-    /*
-     calculate contribution of each prediction in a row
-     */
-    if ($(calculateSum)) {
+    val finalDF = if ($(calculateSum)) {
+      /*
+        calculate sum(contribution of each feature) in a row
+       */
       val contributionTotalDF = calculateTotalContrib(
         contributionsDF,
         featureCoefficients,
@@ -371,6 +391,20 @@ class GLMExplainTransformer(override val uid: String)
     } else {
       contributionsDF
     }
+    val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
+
+    val exprColumns = finalDF.columns.map(
+      x =>
+        if (contribColumns.contains(x))
+          s"${x} as prediction_${x}_${getLabel}"
+        else x
+    )
+
+    val finalColRenamedDF = finalDF.selectExpr(exprColumns: _*)
+    finalColRenamedDF.createOrReplaceTempView($(predictionView))
+
+    finalColRenamedDF
+
   }
 
   /**

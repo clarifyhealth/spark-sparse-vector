@@ -36,6 +36,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     explainTransformer.setLinkFunctionType("powerHalfLink")
     explainTransformer.setNested(nested)
     explainTransformer.setCalculateSum(true)
+    explainTransformer.setLabel("test")
 
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)
@@ -56,8 +57,8 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(contrib_intercept,3) as contrib_intercept",
-          "bround(contrib_sum,3) as contrib_sum",
+          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
+          "bround(prediction_contrib_sum_test,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
@@ -78,6 +79,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     explainTransformer.setLinkFunctionType("logLink")
     explainTransformer.setNested(nested)
     explainTransformer.setCalculateSum(true)
+    explainTransformer.setLabel("test")
 
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)
@@ -98,8 +100,8 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(contrib_intercept,3) as contrib_intercept",
-          "bround(contrib_sum,3) as contrib_sum",
+          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
+          "bround(prediction_contrib_sum_test,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
@@ -120,6 +122,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     explainTransformer.setLinkFunctionType("identityLink")
     explainTransformer.setNested(nested)
     explainTransformer.setCalculateSum(true)
+    explainTransformer.setLabel("test")
 
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)
@@ -140,8 +143,8 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(contrib_intercept,3) as contrib_intercept",
-          "bround(contrib_sum,3) as contrib_sum",
+          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
+          "bround(prediction_contrib_sum_test,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
@@ -163,6 +166,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     explainTransformer.setLinkFunctionType("logitLink")
     explainTransformer.setNested(nested)
     explainTransformer.setCalculateSum(true)
+    explainTransformer.setLabel("test")
 
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)
@@ -183,12 +187,56 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(contrib_intercept,3) as contrib_intercept",
-          "bround(contrib_sum,3) as contrib_sum",
+          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
+          "bround(prediction_contrib_sum_test,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
       logitLinkDF
+    )
+
+  }
+
+  test("test inverseLink") {
+
+    spark.sharedState.cacheManager.clearCache()
+    val nested = false
+
+    val (predictionDF, coefficientsDF) = initialize()
+
+    val explainTransformer = new GLMExplainTransformer()
+    explainTransformer.setCoefficientView("my_coefficients")
+    explainTransformer.setPredictionView("my_predictions")
+    explainTransformer.setLinkFunctionType("inverseLink")
+    explainTransformer.setNested(nested)
+    explainTransformer.setCalculateSum(true)
+    explainTransformer.setLabel("test")
+
+    val df = spark.emptyDataFrame
+    val resultDF = explainTransformer.transform(df)
+
+    val inverseLinkDF = spark.read
+      .option("header", "true")
+      .option("inferSchema", "true")
+      .csv(getClass.getResource("/basic/contribs_inverse_link.csv").getPath)
+      .selectExpr(
+        "ccg_id",
+        "bround(contrib_intercept,3) as contrib_intercept",
+        "bround(contrib_sum,3) as contrib_sum",
+        "bround(calculated_prediction,3) as calculated_prediction"
+      )
+      .orderBy("ccg_id")
+
+    checkAnswer(
+      resultDF
+        .selectExpr(
+          "ccg_id",
+          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
+          "bround(prediction_contrib_sum_test,3) as contrib_sum",
+          "bround(calculated_prediction,3) as calculated_prediction"
+        )
+        .orderBy("ccg_id"),
+      inverseLinkDF
     )
 
   }
