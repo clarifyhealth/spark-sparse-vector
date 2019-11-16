@@ -446,7 +446,7 @@ class GLMExplainTransformer(override val uid: String)
     val exprColumns = finalDF.columns.map(
       x =>
         if (contribColumns.contains(x))
-          s"${x} as prediction_${x}_${getLabel}"
+          s"`${x}` as `prediction_${x}_${getLabel}`"
         else x
     )
 
