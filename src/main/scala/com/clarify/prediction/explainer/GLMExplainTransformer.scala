@@ -161,7 +161,7 @@ class GLMExplainTransformer(override val uid: String)
     label -> "test",
     family -> "gaussian",
     linkPower -> 0.0,
-    variancePower -> 0.0
+    variancePower -> -1.0
   )
 
   private val logLink: String => String = { x: String =>
@@ -199,18 +199,19 @@ class GLMExplainTransformer(override val uid: String)
   )(linkPower: Double, variancePower: Double): String => String =
     (x: String) => {
       (family, linkFunctionType, linkPower, variancePower) match {
-        case ("tweedie", _, 0.0, _)     => logLink(x)
-        case ("tweedie", _, 1.0, _)     => identityLink(x)
-        case ("tweedie", _, 0.5, _)     => powerHalfLink(x)
-        case ("tweedie", _, -1.0, _)    => inverseLink(x)
-        case ("tweedie", _, y, _)       => otherPowerLink(x, y)
-        case (_, "logLink", _, _)       => logLink(x)
-        case (_, "expLink", _, _)       => expLink(x)
-        case (_, "logitLink", _, _)     => logitLink(x)
-        case (_, "identityLink", _, _)  => identityLink(x)
-        case (_, "powerHalfLink", _, _) => powerHalfLink(x)
-        case (_, "inverseLink", _, _)   => inverseLink(x)
-        case _                          => identityLink(x)
+        case ("tweedie", _, 0.0, _)      => logLink(x)
+        case ("tweedie", _, 1.0, _)      => identityLink(x)
+        case ("tweedie", _, 0.5, _)      => powerHalfLink(x)
+        case ("tweedie", _, -1.0, _)     => inverseLink(x)
+        case ("tweedie", _, y, _)        => otherPowerLink(x, y)
+        case (_, "logLink", _, _)        => logLink(x)
+        case (_, "expLink", _, _)        => expLink(x)
+        case (_, "logitLink", _, _)      => logitLink(x)
+        case (_, "identityLink", _, _)   => identityLink(x)
+        case (_, "powerHalfLink", _, _)  => powerHalfLink(x)
+        case (_, "inverseLink", _, _)    => inverseLink(x)
+        case (_, "otherPowerLink", y, _) => otherPowerLink(x, y)
+        case _                           => identityLink(x)
       }
     }
 
@@ -354,7 +355,7 @@ class GLMExplainTransformer(override val uid: String)
 
     val coefficients = dataset.sqlContext
       .table($(coefficientView))
-      .select("Feature_Index", "Feature", "Coefficient")
+      .select("Feature_Index", "Original_Feature", "Coefficient")
       .orderBy("Feature_Index")
       .collect()
 
