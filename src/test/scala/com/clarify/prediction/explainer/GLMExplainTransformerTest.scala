@@ -57,8 +57,8 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
-          "bround(prediction_contrib_sum_test,3) as contrib_sum",
+          "bround(prediction_test_contrib_intercept,3) as contrib_intercept",
+          "bround(prediction_test_contrib_sum,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
@@ -100,8 +100,8 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
-          "bround(prediction_contrib_sum_test,3) as contrib_sum",
+          "bround(prediction_test_contrib_intercept,3) as contrib_intercept",
+          "bround(prediction_test_contrib_sum,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
@@ -143,8 +143,8 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
-          "bround(prediction_contrib_sum_test,3) as contrib_sum",
+          "bround(prediction_test_contrib_intercept,3) as contrib_intercept",
+          "bround(prediction_test_contrib_sum,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
@@ -187,8 +187,8 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
-          "bround(prediction_contrib_sum_test,3) as contrib_sum",
+          "bround(prediction_test_contrib_intercept,3) as contrib_intercept",
+          "bround(prediction_test_contrib_sum,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),
@@ -231,8 +231,8 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
       resultDF
         .selectExpr(
           "ccg_id",
-          "bround(prediction_contrib_intercept_test,3) as contrib_intercept",
-          "bround(prediction_contrib_sum_test,3) as contrib_sum",
+          "bround(prediction_test_contrib_intercept,3) as contrib_intercept",
+          "bround(prediction_test_contrib_sum,3) as contrib_sum",
           "bround(calculated_prediction,3) as calculated_prediction"
         )
         .orderBy("ccg_id"),

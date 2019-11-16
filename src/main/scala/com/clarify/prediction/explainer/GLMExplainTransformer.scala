@@ -455,7 +455,7 @@ class GLMExplainTransformer(override val uid: String)
     val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
     val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
     filteredColumns.foldLeft(df) { (memoDF, colName) =>
-      memoDF.withColumnRenamed(colName, s"prediction_${colName}_${label}")
+      memoDF.withColumnRenamed(colName, s"prediction_${label}_${colName}")
     }
   }
 
