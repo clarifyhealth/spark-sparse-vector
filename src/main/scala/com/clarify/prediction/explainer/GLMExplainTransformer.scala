@@ -441,20 +441,22 @@ class GLMExplainTransformer(override val uid: String)
     } else {
       contributionsDF
     }
-    val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
 
-    val exprColumns = finalDF.columns.map(
-      x =>
-        if (contribColumns.contains(x))
-          s"`${x}` as `prediction_${x}_${getLabel}`"
-        else x
-    )
+    val finalColRenamedDF =
+      finalDF.transform(appendLabelToColumnNames($(label)))
 
-    val finalColRenamedDF = finalDF.selectExpr(exprColumns: _*)
     finalColRenamedDF.createOrReplaceTempView($(predictionView))
 
     finalColRenamedDF
 
+  }
+
+  def appendLabelToColumnNames(label: String)(df: DataFrame): DataFrame = {
+    val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
+    val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
+    filteredColumns.foldLeft(df) { (memoDF, colName) =>
+      memoDF.withColumnRenamed(colName, s"prediction_${colName}_${label}")
+    }
   }
 
   /**
