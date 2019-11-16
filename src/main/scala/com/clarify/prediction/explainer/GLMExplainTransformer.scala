@@ -121,6 +121,36 @@ class GLMExplainTransformer(override val uid: String)
   final def setFamily(value: String): GLMExplainTransformer =
     set(family, value)
 
+  /**
+    * Param for variancePower.
+    */
+  final val variancePower: Param[Double] =
+    new Param[Double](
+      this,
+      "variancePower",
+      "tweedie variancePower"
+    )
+
+  final def getVariancePower: Double = $(variancePower)
+
+  final def setVariancePower(value: Double): GLMExplainTransformer =
+    set(variancePower, value)
+
+  /**
+    * Param for linkPower.
+    */
+  final val linkPower: Param[Double] =
+    new Param[Double](
+      this,
+      "linkPower",
+      "tweedie linkPower"
+    )
+
+  final def getLinkPower: Double = $(linkPower)
+
+  final def setLinkPower(value: Double): GLMExplainTransformer =
+    set(linkPower, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
@@ -129,7 +159,9 @@ class GLMExplainTransformer(override val uid: String)
     nested -> false,
     calculateSum -> false,
     label -> "test",
-    family -> "gaussian"
+    family -> "gaussian",
+    linkPower -> 0.0,
+    variancePower -> -1.0
   )
 
   private val logLink: String => String = { x: String =>
@@ -151,21 +183,35 @@ class GLMExplainTransformer(override val uid: String)
     s"1 / cast(${x} as double)"
   }
 
+  private val otherPowerLink: (String, Double) => String = {
+    (x: String, y: Double) =>
+      s"pow(${x},${y})"
+  }
+
   /**
     * Build link function expression dynamically based linkFunctionType
     * @param linkFunctionType types of link function to use
     * @return
     */
-  def buildLinkFunction(linkFunctionType: String): String => String =
+  def buildLinkFunction(
+      family: String,
+      linkFunctionType: String
+  )(linkPower: Double, variancePower: Double): String => String =
     (x: String) => {
-      linkFunctionType match {
-        case "logLink"       => logLink(x)
-        case "expLink"       => expLink(x)
-        case "logitLink"     => logitLink(x)
-        case "identityLink"  => identityLink(x)
-        case "powerHalfLink" => powerHalfLink(x)
-        case "inverseLink"   => inverseLink(x)
-        case _               => powerHalfLink(x)
+      (family, linkFunctionType, linkPower, variancePower) match {
+        case ("tweedie", _, 0.0, _)      => logLink(x)
+        case ("tweedie", _, 1.0, _)      => identityLink(x)
+        case ("tweedie", _, 0.5, _)      => powerHalfLink(x)
+        case ("tweedie", _, -1.0, _)     => inverseLink(x)
+        case ("tweedie", _, y, _)        => otherPowerLink(x, y)
+        case (_, "logLink", _, _)        => logLink(x)
+        case (_, "expLink", _, _)        => expLink(x)
+        case (_, "logitLink", _, _)      => logitLink(x)
+        case (_, "identityLink", _, _)   => identityLink(x)
+        case (_, "powerHalfLink", _, _)  => powerHalfLink(x)
+        case (_, "inverseLink", _, _)    => inverseLink(x)
+        case (_, "otherPowerLink", y, _) => otherPowerLink(x, y)
+        case _                           => identityLink(x)
       }
     }
 
@@ -301,11 +347,15 @@ class GLMExplainTransformer(override val uid: String)
     */
   override def transform(dataset: Dataset[_]): DataFrame = {
 
-    val linkFunction = buildLinkFunction($(linkFunctionType))
+    val linkFunction =
+      buildLinkFunction($(family), $(linkFunctionType))(
+        $(linkPower),
+        $(variancePower)
+      )
 
     val coefficients = dataset.sqlContext
       .table($(coefficientView))
-      .select("Feature_Index", "Feature", "Coefficient")
+      .select("Feature_Index", "Original_Feature", "Coefficient")
       .orderBy("Feature_Index")
       .collect()
 
