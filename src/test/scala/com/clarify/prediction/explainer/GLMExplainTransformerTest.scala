@@ -33,7 +33,7 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
     val explainTransformer = new GLMExplainTransformer()
     explainTransformer.setCoefficientView("my_coefficients")
     explainTransformer.setPredictionView("my_predictions")
-    # explainTransformer.setLinkFunctionType("powerHalfLink")
+    // explainTransformer.setLinkFunctionType("powerHalfLink")
     explainTransformer.setFamily("tweedie")
     explainTransformer.setLinkPower(0.5)
     explainTransformer.setVariancePower(1.0)
