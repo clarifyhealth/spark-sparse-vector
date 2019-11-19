@@ -366,7 +366,7 @@ class GLMExplainTransformer(override val uid: String)
 
     val coefficients = dataset.sqlContext
       .table($(coefficientView))
-      .select("Feature_Index", "Original_Feature", "Coefficient")
+      .select("Feature_Index", "Feature", "Coefficient")
       .orderBy("Feature_Index")
       .collect()
 
