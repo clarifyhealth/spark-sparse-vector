@@ -164,28 +164,39 @@ class GLMExplainTransformer(override val uid: String)
     variancePower -> -1.0
   )
 
-  private val logLink: String => String = { x: String =>
-    s"exp(${x})"
-  }
-  private val expLink: String => String = { x: String =>
-    s"log(${x})"
-  }
-  private val logitLink: String => String = { x: String =>
-    s"1 / (1 + exp(-(${x})))"
-  }
-  private val powerHalfLink: String => String = { x: String =>
-    s"pow(${x},2)"
-  }
-  private val identityLink: String => String = { x: String =>
-    s"cast(${x} as double)"
-  }
-  private val inverseLink: String => String = { x: String =>
-    s"1 / cast(${x} as double)"
+  private val logLink: (String, String) => String = {
+    case ("tweedie", x) => s"greatest(exp(${x}),0.1)"
+    case (_, x)         => s"exp(${x})"
   }
 
-  private val otherPowerLink: (String, Double) => String = {
-    (x: String, y: Double) =>
-      s"pow(${x},${y})"
+  private val expLink: (String, String) => String = {
+    case ("tweedie", x) => s"greatest(log(${x}),0.1)"
+    case (_, x)         => s"log(${x})"
+  }
+
+  private val logitLink: (String, String) => String = {
+    case ("tweedie", x) => s"greatest(1 / (1 + exp(-(${x}))),0.1)"
+    case (_, x)         => s"1 / (1 + exp(-(${x})))"
+  }
+
+  private val powerHalfLink: (String, String) => String = {
+    case ("tweedie", x) => s"greatest(pow(${x},2),0.1)"
+    case (_, x)         => s"pow(${x},2)"
+  }
+
+  private val identityLink: (String, String) => String = {
+    case ("tweedie", x) => s"greatest(cast(${x} as double),0.1)"
+    case (_, x)         => s"cast(${x} as double)"
+  }
+
+  private val inverseLink: (String, String) => String = {
+    case ("tweedie", x) => s"greatest(1 / cast(${x} as double),0.1)"
+    case (_, x)         => s"1 / cast(${x} as double)"
+  }
+
+  private val otherPowerLink: (String, String, Double) => String = {
+    case ("tweedie", x, y) => s"greatest(pow(${x},${y}),0.1)"
+    case (_, x, y)         => s"pow(${x},${y})"
   }
 
   /**
@@ -199,19 +210,19 @@ class GLMExplainTransformer(override val uid: String)
   )(linkPower: Double, variancePower: Double): String => String =
     (x: String) => {
       (family, linkFunctionType, linkPower, variancePower) match {
-        case ("tweedie", _, 0.0, _)      => logLink(x)
-        case ("tweedie", _, 1.0, _)      => identityLink(x)
-        case ("tweedie", _, 0.5, _)      => powerHalfLink(x)
-        case ("tweedie", _, -1.0, _)     => inverseLink(x)
-        case ("tweedie", _, y, _)        => otherPowerLink(x, y)
-        case (_, "logLink", _, _)        => logLink(x)
-        case (_, "expLink", _, _)        => expLink(x)
-        case (_, "logitLink", _, _)      => logitLink(x)
-        case (_, "identityLink", _, _)   => identityLink(x)
-        case (_, "powerHalfLink", _, _)  => powerHalfLink(x)
-        case (_, "inverseLink", _, _)    => inverseLink(x)
-        case (_, "otherPowerLink", y, _) => otherPowerLink(x, y)
-        case _                           => identityLink(x)
+        case ("tweedie", _, 0.0, _)      => logLink(family, x)
+        case ("tweedie", _, 1.0, _)      => identityLink(family, x)
+        case ("tweedie", _, 0.5, _)      => powerHalfLink(family, x)
+        case ("tweedie", _, -1.0, _)     => inverseLink(family, x)
+        case ("tweedie", _, y, _)        => otherPowerLink(family, x, y)
+        case (_, "logLink", _, _)        => logLink(family, x)
+        case (_, "expLink", _, _)        => expLink(family, x)
+        case (_, "logitLink", _, _)      => logitLink(family, x)
+        case (_, "identityLink", _, _)   => identityLink(family, x)
+        case (_, "powerHalfLink", _, _)  => powerHalfLink(family, x)
+        case (_, "inverseLink", _, _)    => inverseLink(family, x)
+        case (_, "otherPowerLink", y, _) => otherPowerLink(family, x, y)
+        case _                           => identityLink(family, x)
       }
     }
 
@@ -355,7 +366,7 @@ class GLMExplainTransformer(override val uid: String)
 
     val coefficients = dataset.sqlContext
       .table($(coefficientView))
-      .select("Feature_Index", "Original_Feature", "Coefficient")
+      .select("Feature_Index", "Feature", "Coefficient")
       .orderBy("Feature_Index")
       .collect()
 
