@@ -308,9 +308,9 @@ class GLMExplainTransformer(override val uid: String)
          |else pow(${x},${y}) end""".stripMargin
 
     case ("binomial", x, y, _) =>
-      s"""case when  pow(${x},${y}) < ${epsilon} then ${epsilon}
-         |when  pow(${x},${y}) > 1.0-${epsilon} then 1.0-${epsilon}
-         |else  pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},${y}) < ${epsilon} then ${epsilon}
+         |when pow(${x},${y}) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else pow(${x},${y}) end""".stripMargin
 
     case ("tweedie" | "poisson" | "gamma", x, y, _) =>
       s"""case when pow(${x},${y})  < ${epsilon} then ${epsilon} 
