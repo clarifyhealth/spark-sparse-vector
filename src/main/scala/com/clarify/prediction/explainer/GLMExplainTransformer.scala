@@ -220,31 +220,6 @@ class GLMExplainTransformer(override val uid: String)
     case (_, x, _) => s"1/(1+exp(-(${x})))"
   }
 
-  private val powerHalfLink: (String, String, Double) => String = {
-
-    case ("tweedie", x, 0.0) =>
-      s"""case when pow(${x},2) = '-Infinity' then ${Double.MinValue} 
-         |when pow(${x},2) = '+Infinity' then ${Double.MaxValue} 
-         |else pow(${x},2) end""".stripMargin
-
-    case ("gaussian", x, _) =>
-      s"""case when pow(${x},2) = '-Infinity' then ${Double.MinValue}
-         |when pow(${x},2) = '+Infinity' then ${Double.MaxValue}
-         |else pow(${x},2) end""".stripMargin
-
-    case ("binomial", x, _) =>
-      s"""case when pow(${x},2) < ${epsilon} then ${epsilon}
-         |when pow(${x},2) > 1.0-${epsilon} then 1.0-${epsilon}
-         |else exp(${x}) end""".stripMargin
-
-    case ("tweedie" | "poisson" | "gamma", x, _) =>
-      s"""case when pow(${x},2)  < ${epsilon} then ${epsilon} 
-         |when pow(${x},2) = 'Infinity' then ${Double.MaxValue} 
-         |else pow(${x},2) end""".stripMargin
-
-    case (_, x, _) => s"pow(${x},2)"
-  }
-
   private val identityLink: (String, String, Double) => String = {
 
     case ("tweedie", x, 0.0) =>
@@ -331,15 +306,16 @@ class GLMExplainTransformer(override val uid: String)
   )(linkPower: Double, variancePower: Double): String => String =
     (x: String) => {
       (family, linkFunctionType, linkPower, variancePower) match {
-        case ("tweedie", _, 0.0, _)      => logLink(family, x, variancePower)
-        case ("tweedie", _, 1.0, _)      => identityLink(family, x, variancePower)
-        case ("tweedie", _, 0.5, _)      => powerHalfLink(family, x, variancePower)
+        case ("tweedie", _, 0.0, _) => logLink(family, x, variancePower)
+        case ("tweedie", _, 1.0, _) => identityLink(family, x, variancePower)
+        case ("tweedie", _, 0.5, _) =>
+          otherPowerLink(family, x, 2, variancePower)
         case ("tweedie", _, -1.0, _)     => inverseLink(family, x, variancePower)
         case ("tweedie", _, y, _)        => otherPowerLink(family, x, y, variancePower)
         case (_, "logLink", _, _)        => logLink(family, x, -1.0)
         case (_, "logitLink", _, _)      => logitLink(family, x, -1.0)
         case (_, "identityLink", _, _)   => identityLink(family, x, -1.0)
-        case (_, "powerHalfLink", _, _)  => powerHalfLink(family, x, -1.0)
+        case (_, "powerHalfLink", _, _)  => otherPowerLink(family, x, 2, -1.0)
         case (_, "inverseLink", _, _)    => inverseLink(family, x, -1.0)
         case (_, "otherPowerLink", y, _) => otherPowerLink(family, x, y, -1.0)
         case _                           => identityLink(family, x, -1.0)
