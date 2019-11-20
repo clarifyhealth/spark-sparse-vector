@@ -164,39 +164,160 @@ class GLMExplainTransformer(override val uid: String)
     variancePower -> -1.0
   )
 
-  private val logLink: (String, String) => String = {
-    case ("tweedie", x) => s"greatest(exp(${x}),0.1)"
-    case (_, x)         => s"exp(${x})"
+  val epsilon: Double = 1e-16
+
+  Double.PositiveInfinity
+
+  private val logLink: (String, String, Double) => String = {
+
+    case ("tweedie", x, 0.0) =>
+      s"""case when exp(${x}) = '-Infinity' then ${Double.MinValue} 
+         |when exp(${x}) = '+Infinity' then ${Double.MaxValue} 
+         |else exp(${x}) 
+         |end""".stripMargin
+
+    case ("gaussian", x, _) =>
+      s"""case when exp(${x}) = '-Infinity' then ${Double.MinValue}
+         |when exp(${x}) = '+Infinity' then ${Double.MaxValue}
+         |else exp(${x}) 
+         |end""".stripMargin
+
+    case ("binomial", x, _) =>
+      s"""case when exp(${x}) < ${epsilon} then ${epsilon}
+         |when exp(${x}) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else exp(${x}) end""".stripMargin
+
+    case ("tweedie" | "poisson" | "gamma", x, _) =>
+      s"""case when exp(${x}) < ${epsilon} then ${epsilon} 
+         |when exp(${x}) = 'Infinity' then ${Double.MaxValue} 
+         |else exp(${x}) end""".stripMargin
+
+    case (_, x, _) => s"exp(${x})"
   }
 
-  private val expLink: (String, String) => String = {
-    case ("tweedie", x) => s"greatest(log(${x}),0.1)"
-    case (_, x)         => s"log(${x})"
+  private val logitLink: (String, String, Double) => String = {
+
+    case ("tweedie", x, 0.0) =>
+      s"""case when 1/(1+exp(-(${x}))) = '-Infinity' then ${Double.MinValue} 
+         |when 1/(1+exp(-(${x}))) = '+Infinity' then ${Double.MaxValue} 
+         |else 1/(1+exp(-(${x}))) end""".stripMargin
+
+    case ("gaussian", x, _) =>
+      s"""case when 1/(1+exp(-(${x}))) = '-Infinity' then ${Double.MinValue}
+         |when 1/(1+exp(-(${x}))) = '+Infinity' then ${Double.MaxValue}
+         |else 1/(1+exp(-(${x}))) end""".stripMargin
+
+    case ("binomial", x, _) =>
+      s"""case when 1/(1+exp(-(${x}))) < ${epsilon} then ${epsilon}
+         |when 1/(1+exp(-(${x}))) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else 1/(1+exp(-(${x}))) end""".stripMargin
+
+    case ("tweedie" | "poisson" | "gamma", x, _) =>
+      s"""case when 1/(1+exp(-(${x}))) < ${epsilon} then ${epsilon} 
+         |when 1/(1+exp(-(${x}))) = 'Infinity' then ${Double.MaxValue} 
+         |else 1/(1+exp(-(${x}))) end""".stripMargin
+
+    case (_, x, _) => s"1/(1+exp(-(${x})))"
   }
 
-  private val logitLink: (String, String) => String = {
-    case ("tweedie", x) => s"greatest(1 / (1 + exp(-(${x}))),0.1)"
-    case (_, x)         => s"1 / (1 + exp(-(${x})))"
+  private val powerHalfLink: (String, String, Double) => String = {
+
+    case ("tweedie", x, 0.0) =>
+      s"""case when pow(${x},2) = '-Infinity' then ${Double.MinValue} 
+         |when pow(${x},2) = '+Infinity' then ${Double.MaxValue} 
+         |else pow(${x},2) end""".stripMargin
+
+    case ("gaussian", x, _) =>
+      s"""case when pow(${x},2) = '-Infinity' then ${Double.MinValue}
+         |when pow(${x},2) = '+Infinity' then ${Double.MaxValue}
+         |else pow(${x},2) end""".stripMargin
+
+    case ("binomial", x, _) =>
+      s"""case when pow(${x},2) < ${epsilon} then ${epsilon}
+         |when pow(${x},2) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else exp(${x}) end""".stripMargin
+
+    case ("tweedie" | "poisson" | "gamma", x, _) =>
+      s"""case when pow(${x},2)  < ${epsilon} then ${epsilon} 
+         |when pow(${x},2) = 'Infinity' then ${Double.MaxValue} 
+         |else pow(${x},2) end""".stripMargin
+
+    case (_, x, _) => s"pow(${x},2)"
   }
 
-  private val powerHalfLink: (String, String) => String = {
-    case ("tweedie", x) => s"greatest(pow(${x},2),0.1)"
-    case (_, x)         => s"pow(${x},2)"
+  private val identityLink: (String, String, Double) => String = {
+
+    case ("tweedie", x, 0.0) =>
+      s"""case when cast(${x} as double) = '-Infinity' then ${Double.MinValue} 
+         |when cast(${x} as double) = '+Infinity' then ${Double.MaxValue} 
+         |else cast(${x} as double) end""".stripMargin
+
+    case ("gaussian", x, _) =>
+      s"""case when cast(${x} as double) = '-Infinity' then ${Double.MinValue}
+         |when cast(${x} as double) = '+Infinity' then ${Double.MaxValue}
+         |else cast(${x} as double) end""".stripMargin
+
+    case ("binomial", x, _) =>
+      s"""case when cast(${x} as double) < ${epsilon} then ${epsilon}
+         |when cast(${x} as double) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else cast(${x} as double) end""".stripMargin
+
+    case ("tweedie" | "poisson" | "gamma", x, _) =>
+      s"""case when cast(${x} as double) < ${epsilon} then ${epsilon} 
+         |when cast(${x} as double) = 'Infinity' then ${Double.MaxValue} 
+         |else cast(${x} as double) end""".stripMargin
+
+    case (_, x, _) => s"cast(${x} as double)"
   }
 
-  private val identityLink: (String, String) => String = {
-    case ("tweedie", x) => s"greatest(cast(${x} as double),0.1)"
-    case (_, x)         => s"cast(${x} as double)"
+  private val inverseLink: (String, String, Double) => String = {
+
+    case ("tweedie", x, 0.0) =>
+      s"""case when 1/cast(${x} as double) = '-Infinity' then ${Double.MinValue} 
+         |when 1/cast(${x} as double) = '+Infinity' then ${Double.MaxValue} 
+         |else 1/cast(${x} as double) end""".stripMargin
+
+    case ("gaussian", x, _) =>
+      s"""case when 1/cast(${x} as double)  = '-Infinity' then ${Double.MinValue}
+         |when 1/cast(${x} as double)  = '+Infinity' then ${Double.MaxValue}
+         |else 1/cast(${x} as double) end""".stripMargin
+
+    case ("binomial", x, _) =>
+      s"""case when 1/cast(${x} as double) < ${epsilon} then ${epsilon}
+         |when 1/cast(${x} as double) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else 1/cast(${x} as double) end""".stripMargin
+
+    case ("tweedie" | "poisson" | "gamma", x, _) =>
+      s"""case when 1/cast(${x} as double) < ${epsilon} then ${epsilon} 
+         |when 1/cast(${x} as double)  = 'Infinity' then ${Double.MaxValue} 
+         |else 1/cast(${x} as double) end""".stripMargin
+
+    case (_, x, _) => s"1/cast(${x} as double)"
   }
 
-  private val inverseLink: (String, String) => String = {
-    case ("tweedie", x) => s"greatest(1 / cast(${x} as double),0.1)"
-    case (_, x)         => s"1 / cast(${x} as double)"
-  }
+  private val otherPowerLink: (String, String, Double, Double) => String = {
 
-  private val otherPowerLink: (String, String, Double) => String = {
-    case ("tweedie", x, y) => s"greatest(pow(${x},${y}),0.1)"
-    case (_, x, y)         => s"pow(${x},${y})"
+    case ("tweedie", x, y, 0.0) =>
+      s"""case when pow(${x},${y}) = '-Infinity' then ${Double.MinValue} 
+         |when pow(${x},${y}) = '+Infinity' then ${Double.MaxValue} 
+         |else pow(${x},${y}) end""".stripMargin
+
+    case ("gaussian", x, y, _) =>
+      s"""case when pow(${x},${y}) = '-Infinity' then ${Double.MinValue}
+         |when pow(${x},${y}) = '+Infinity' then ${Double.MaxValue}
+         |else pow(${x},${y}) end""".stripMargin
+
+    case ("binomial", x, y, _) =>
+      s"""case when  pow(${x},${y}) < ${epsilon} then ${epsilon}
+         |when  pow(${x},${y}) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else  pow(${x},${y}) end""".stripMargin
+
+    case ("tweedie" | "poisson" | "gamma", x, y, _) =>
+      s"""case when pow(${x},${y})  < ${epsilon} then ${epsilon} 
+         |when pow(${x},${y}) = 'Infinity' then ${Double.MaxValue} 
+         |else pow(${x},${y}) end""".stripMargin
+
+    case (_, x, y, _) => s"pow(${x},${y})"
   }
 
   /**
@@ -210,19 +331,18 @@ class GLMExplainTransformer(override val uid: String)
   )(linkPower: Double, variancePower: Double): String => String =
     (x: String) => {
       (family, linkFunctionType, linkPower, variancePower) match {
-        case ("tweedie", _, 0.0, _)      => logLink(family, x)
-        case ("tweedie", _, 1.0, _)      => identityLink(family, x)
-        case ("tweedie", _, 0.5, _)      => powerHalfLink(family, x)
-        case ("tweedie", _, -1.0, _)     => inverseLink(family, x)
-        case ("tweedie", _, y, _)        => otherPowerLink(family, x, y)
-        case (_, "logLink", _, _)        => logLink(family, x)
-        case (_, "expLink", _, _)        => expLink(family, x)
-        case (_, "logitLink", _, _)      => logitLink(family, x)
-        case (_, "identityLink", _, _)   => identityLink(family, x)
-        case (_, "powerHalfLink", _, _)  => powerHalfLink(family, x)
-        case (_, "inverseLink", _, _)    => inverseLink(family, x)
-        case (_, "otherPowerLink", y, _) => otherPowerLink(family, x, y)
-        case _                           => identityLink(family, x)
+        case ("tweedie", _, 0.0, _)      => logLink(family, x, variancePower)
+        case ("tweedie", _, 1.0, _)      => identityLink(family, x, variancePower)
+        case ("tweedie", _, 0.5, _)      => powerHalfLink(family, x, variancePower)
+        case ("tweedie", _, -1.0, _)     => inverseLink(family, x, variancePower)
+        case ("tweedie", _, y, _)        => otherPowerLink(family, x, y, variancePower)
+        case (_, "logLink", _, _)        => logLink(family, x, -1.0)
+        case (_, "logitLink", _, _)      => logitLink(family, x, -1.0)
+        case (_, "identityLink", _, _)   => identityLink(family, x, -1.0)
+        case (_, "powerHalfLink", _, _)  => powerHalfLink(family, x, -1.0)
+        case (_, "inverseLink", _, _)    => inverseLink(family, x, -1.0)
+        case (_, "otherPowerLink", y, _) => otherPowerLink(family, x, y, -1.0)
+        case _                           => identityLink(family, x, -1.0)
       }
     }
 
@@ -393,17 +513,17 @@ class GLMExplainTransformer(override val uid: String)
 
     val predDf = dfWithSigma.withColumn(
       "calculated_prediction",
-      expr(linkFunction(s"sigma + $intercept"))
+      expr(linkFunction(s"sigma+$intercept"))
     )
 
     val predPosDF = predDf.withColumn(
       "prediction_positive",
-      expr(linkFunction(s"sigma_positive + $intercept"))
+      expr(linkFunction(s"sigma_positive+$intercept"))
     )
 
     val predNegDF = predPosDF.withColumn(
       "prediction_negative",
-      expr(linkFunction(s"sigma_negative + $intercept"))
+      expr(linkFunction(s"sigma_negative+$intercept"))
     )
 
     val contribInterceptDF = predNegDF.withColumn(
