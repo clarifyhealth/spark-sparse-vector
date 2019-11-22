@@ -571,7 +571,7 @@ class GLMExplainTransformer(override val uid: String)
   }
 
   /**
-    *
+    * The method to prefix column with label
     * @param label
     * @param df
     * @return
