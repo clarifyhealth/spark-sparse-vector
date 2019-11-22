@@ -11,6 +11,8 @@ import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.{DataTypes, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.Vectors
 class GLMExplainTransformer(override val uid: String)
     extends Transformer
     with DefaultParamsWritable {
@@ -417,24 +419,32 @@ class GLMExplainTransformer(override val uid: String)
       df: DataFrame,
       featureCoefficients: Map[String, Double],
       prefixOrColumnName: String,
-      nested: Boolean
+      nested: Boolean,
+      addVector: Boolean
   ): ExpressionEncoder[Row] = {
-    if (nested)
-      RowEncoder.apply(
+    val schema =
+      if (nested)
         getSchema(
           df,
           prefixOrColumnName
         )
-      )
-    else
-      RowEncoder.apply(
+      else
         getSchema(
           df,
           featureCoefficients.keys
             .map(x => s"${prefixOrColumnName}_${x}")
             .toList
         )
+    val schemaWithVector = if (addVector) {
+      schema.add(
+        s"${prefixOrColumnName}_vector",
+        VectorType,
+        false
       )
+    } else {
+      schema
+    }
+    RowEncoder.apply(schemaWithVector)
   }
 
   // Transformer requires 3 methods:
@@ -571,6 +581,7 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients
     * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateLinearContributions(
@@ -580,7 +591,7 @@ class GLMExplainTransformer(override val uid: String)
       nested: Boolean
   ): DataFrame = {
     val encoder =
-      buildEncoder(df, featureCoefficients, prefixOrColumnName, nested)
+      buildEncoder(df, featureCoefficients, prefixOrColumnName, nested, false)
     val func =
       mappingLinearContributionsRows(df.schema, nested)(featureCoefficients)
     df.mapPartitions(x => x.map(func))(encoder)
@@ -704,6 +715,7 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients
     * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateContributions(
@@ -713,7 +725,7 @@ class GLMExplainTransformer(override val uid: String)
       nested: Boolean
   ): DataFrame = {
     val encoder =
-      buildEncoder(df, featureCoefficients, "contrib", nested)
+      buildEncoder(df, featureCoefficients, "contrib", nested, true)
     if (nested) {
       val func = mappingContributionsNestedRows(df.schema)(prefixOrColumnName)
       df.mapPartitions(x => x.map(func))(encoder)
@@ -747,7 +759,10 @@ class GLMExplainTransformer(override val uid: String)
                 schema
               )
           }.toList
-          Row.merge(row, Row.fromSeq(calculate))
+          Row.merge(
+            row,
+            Row.fromSeq(calculate :+ Vectors.dense(calculate.toArray))
+          )
         }
   /*
     Map over Rows and features to calculate final contribution of each feature nested mode
@@ -771,7 +786,10 @@ class GLMExplainTransformer(override val uid: String)
                 schema
               )
           }
-          Row.merge(row, Row(calculate))
+          Row.merge(
+            row,
+            Row.fromSeq(List(calculate, Vectors.dense(calculate.toArray)))
+          )
         }
 
   private val calculateContributionsInternal
