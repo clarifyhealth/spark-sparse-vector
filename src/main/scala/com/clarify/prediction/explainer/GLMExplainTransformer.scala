@@ -413,6 +413,8 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients Map(featureName->Double Value)
     * @param prefixOrColumnName act as prefix when flattened mode else column name when nested mode
+    * @param nested
+    * @param addVector
     * @return
     */
   private def buildEncoder(
@@ -568,6 +570,12 @@ class GLMExplainTransformer(override val uid: String)
 
   }
 
+  /**
+    *
+    * @param label
+    * @param df
+    * @return
+    */
   def appendLabelToColumnNames(label: String)(df: DataFrame): DataFrame = {
     val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
     val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
@@ -624,6 +632,8 @@ class GLMExplainTransformer(override val uid: String)
     * This is the main entry point to calculate sigma, sigma+ve, sigma-ve
     * @param df
     * @param featureCoefficients
+    * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateSigma(
