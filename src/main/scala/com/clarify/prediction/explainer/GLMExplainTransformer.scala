@@ -1,6 +1,8 @@
 package com.clarify.prediction.explainer
 
 import org.apache.spark.ml.Transformer
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{
   DefaultParamsReadable,
@@ -11,8 +13,6 @@ import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.{DataTypes, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
-import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
-import org.apache.spark.ml.linalg.Vectors
 class GLMExplainTransformer(override val uid: String)
     extends Transformer
     with DefaultParamsWritable {
