@@ -577,7 +577,8 @@ class GLMExplainTransformer(override val uid: String)
     * @return
     */
   def appendLabelToColumnNames(label: String)(df: DataFrame): DataFrame = {
-    val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
+    val contribColumns =
+      List("sigma", "contrib", "contrib_intercept", "contrib_sum")
     val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
     filteredColumns.foldLeft(df) { (memoDF, colName) =>
       memoDF.withColumnRenamed(colName, s"prediction_${label}_${colName}")
