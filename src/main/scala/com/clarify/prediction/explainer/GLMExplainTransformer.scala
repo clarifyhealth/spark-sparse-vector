@@ -1,6 +1,8 @@
 package com.clarify.prediction.explainer
 
 import org.apache.spark.ml.Transformer
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{
   DefaultParamsReadable,
@@ -411,30 +413,40 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients Map(featureName->Double Value)
     * @param prefixOrColumnName act as prefix when flattened mode else column name when nested mode
+    * @param nested
+    * @param addVector
     * @return
     */
   private def buildEncoder(
       df: DataFrame,
       featureCoefficients: Map[String, Double],
       prefixOrColumnName: String,
-      nested: Boolean
+      nested: Boolean,
+      addVector: Boolean
   ): ExpressionEncoder[Row] = {
-    if (nested)
-      RowEncoder.apply(
+    val schema =
+      if (nested)
         getSchema(
           df,
           prefixOrColumnName
         )
-      )
-    else
-      RowEncoder.apply(
+      else
         getSchema(
           df,
           featureCoefficients.keys
             .map(x => s"${prefixOrColumnName}_${x}")
             .toList
         )
+    val schemaWithVector = if (addVector) {
+      schema.add(
+        s"${prefixOrColumnName}_vector",
+        VectorType,
+        false
       )
+    } else {
+      schema
+    }
+    RowEncoder.apply(schemaWithVector)
   }
 
   // Transformer requires 3 methods:
@@ -558,8 +570,15 @@ class GLMExplainTransformer(override val uid: String)
 
   }
 
+  /**
+    * The method to prefix column with label
+    * @param label
+    * @param df
+    * @return
+    */
   def appendLabelToColumnNames(label: String)(df: DataFrame): DataFrame = {
-    val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
+    val contribColumns =
+      List("sigma", "contrib", "contrib_intercept", "contrib_sum")
     val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
     filteredColumns.foldLeft(df) { (memoDF, colName) =>
       memoDF.withColumnRenamed(colName, s"prediction_${label}_${colName}")
@@ -571,6 +590,7 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients
     * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateLinearContributions(
@@ -580,7 +600,7 @@ class GLMExplainTransformer(override val uid: String)
       nested: Boolean
   ): DataFrame = {
     val encoder =
-      buildEncoder(df, featureCoefficients, prefixOrColumnName, nested)
+      buildEncoder(df, featureCoefficients, prefixOrColumnName, nested, false)
     val func =
       mappingLinearContributionsRows(df.schema, nested)(featureCoefficients)
     df.mapPartitions(x => x.map(func))(encoder)
@@ -613,6 +633,8 @@ class GLMExplainTransformer(override val uid: String)
     * This is the main entry point to calculate sigma, sigma+ve, sigma-ve
     * @param df
     * @param featureCoefficients
+    * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateSigma(
@@ -704,6 +726,7 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients
     * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateContributions(
@@ -713,7 +736,7 @@ class GLMExplainTransformer(override val uid: String)
       nested: Boolean
   ): DataFrame = {
     val encoder =
-      buildEncoder(df, featureCoefficients, "contrib", nested)
+      buildEncoder(df, featureCoefficients, "contrib", nested, true)
     if (nested) {
       val func = mappingContributionsNestedRows(df.schema)(prefixOrColumnName)
       df.mapPartitions(x => x.map(func))(encoder)
@@ -747,7 +770,10 @@ class GLMExplainTransformer(override val uid: String)
                 schema
               )
           }.toList
-          Row.merge(row, Row.fromSeq(calculate))
+          Row.merge(
+            row,
+            Row.fromSeq(calculate :+ Vectors.dense(calculate.toArray))
+          )
         }
   /*
     Map over Rows and features to calculate final contribution of each feature nested mode
@@ -771,7 +797,10 @@ class GLMExplainTransformer(override val uid: String)
                 schema
               )
           }
-          Row.merge(row, Row(calculate))
+          Row.merge(
+            row,
+            Row.fromSeq(List(calculate, Vectors.dense(calculate.toArray)))
+          )
         }
 
   private val calculateContributionsInternal
