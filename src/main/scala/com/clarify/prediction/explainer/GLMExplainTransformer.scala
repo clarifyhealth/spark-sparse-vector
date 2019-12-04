@@ -499,7 +499,12 @@ class GLMExplainTransformer(override val uid: String)
     val dfWithSigma =
       calculateSigma(df, featureCoefficients, "linear_contrib", $(nested))
 
-    val predDf = dfWithSigma.withColumn(
+    val linearSumDf = dfWithSigma.withColumn(
+      "linear_sum",
+      expr(s"sigma+$intercept")
+    )
+
+    val predDf = linearSumDf.withColumn(
       "calculated_prediction",
       expr(linkFunction(s"sigma+$intercept"))
     )
@@ -578,7 +583,7 @@ class GLMExplainTransformer(override val uid: String)
     */
   def appendLabelToColumnNames(label: String)(df: DataFrame): DataFrame = {
     val contribColumns =
-      List("sigma", "contrib", "contrib_intercept", "contrib_sum")
+      List("sigma", "linear_sum", "contrib", "contrib_intercept", "contrib_sum")
     val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
     filteredColumns.foldLeft(df) { (memoDF, colName) =>
       memoDF.withColumnRenamed(colName, s"prediction_${label}_${colName}")
