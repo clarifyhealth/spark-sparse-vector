@@ -310,7 +310,8 @@ class GLMExplainTransformer(override val uid: String)
       (family, linkFunctionType, linkPower, variancePower) match {
         case ("tweedie", _, 0.0, _) => logLink(family, x, variancePower)
         case ("tweedie", _, 1.0, _) => identityLink(family, x, variancePower)
-
+        case ("tweedie", _, 0.5, _) =>
+          otherPowerLink(family, x, 0.5, variancePower)
         case ("tweedie", _, -1.0, _)     => inverseLink(family, x, variancePower)
         case ("tweedie", _, y, _)        => otherPowerLink(family, x, y, variancePower)
         case (_, "logLink", _, _)        => logLink(family, x, -1.0)
