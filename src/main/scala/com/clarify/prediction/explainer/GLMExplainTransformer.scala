@@ -275,26 +275,26 @@ class GLMExplainTransformer(override val uid: String)
   private val otherPowerLink: (String, String, Double, Double) => String = {
 
     case ("tweedie", x, y, 0.0) =>
-      s"""case when pow(${x},${y}) = '-Infinity' then ${Double.MinValue} 
-         |when pow(${x},${y}) = '+Infinity' then ${Double.MaxValue} 
-         |else pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},1/${y}) = '-Infinity' then ${Double.MinValue} 
+         |when pow(${x},1/${y}) = '+Infinity' then ${Double.MaxValue} 
+         |else pow(${x},1/${y}) end""".stripMargin
 
     case ("gaussian", x, y, _) =>
-      s"""case when pow(${x},${y}) = '-Infinity' then ${Double.MinValue}
-         |when pow(${x},${y}) = '+Infinity' then ${Double.MaxValue}
-         |else pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},1/${y}) = '-Infinity' then ${Double.MinValue}
+         |when pow(${x},1/${y}) = '+Infinity' then ${Double.MaxValue}
+         |else pow(${x},1/${y}) end""".stripMargin
 
     case ("binomial", x, y, _) =>
-      s"""case when pow(${x},${y}) < ${epsilon} then ${epsilon}
-         |when pow(${x},${y}) > 1.0-${epsilon} then 1.0-${epsilon}
-         |else pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},1/${y}) < ${epsilon} then ${epsilon}
+         |when pow(${x},1/${y}) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else pow(${x},1/${y}) end""".stripMargin
 
     case ("tweedie" | "poisson" | "gamma", x, y, _) =>
-      s"""case when pow(${x},${y})  < ${epsilon} then ${epsilon} 
-         |when pow(${x},${y}) = 'Infinity' then ${Double.MaxValue} 
-         |else pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},1/${y})  < ${epsilon} then ${epsilon} 
+         |when pow(${x},1/${y}) = 'Infinity' then ${Double.MaxValue} 
+         |else pow(${x},1/${y}) end""".stripMargin
 
-    case (_, x, y, _) => s"pow(${x},${y})"
+    case (_, x, y, _) => s"pow(${x},1/${y})"
   }
 
   /**
