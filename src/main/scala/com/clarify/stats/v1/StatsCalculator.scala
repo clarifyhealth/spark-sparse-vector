@@ -93,7 +93,7 @@ object StatsCalculator {
     val isNumeric: DataType => Boolean = (temp: DataType) => {
       val out = temp match {
         case _: ShortType | _: IntegerType | _: LongType | _: FloatType |
-            _: DoubleType | _: DoubleType | _: DecimalType =>
+            _: DoubleType | _: DecimalType =>
           true
         case _ => false
       }
