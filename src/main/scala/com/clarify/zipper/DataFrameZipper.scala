@@ -80,13 +80,15 @@ object DataFrameZipper {
 
       column_indexes.foreach {
         column_index: Int =>
-          left_rdd = left_rdd.zip(b.rdd).map {
-            case (rowLeft, rowRight) => Row.fromSeq(rowLeft.toSeq :+ rowRight(column_index))
-          }
+          if (column_index < b.columns.length)
+            {
+              left_rdd = left_rdd.zip(b.rdd).map {
+                case (rowLeft, rowRight) => Row.fromSeq(rowLeft.toSeq :+ rowRight(column_index))
+              }
 
-          left_schema_fields = left_schema_fields :+ b.schema.fields(column_index)
+              left_schema_fields = left_schema_fields :+ b.schema.fields(column_index)
+            }
       }
-
       true
     }
 
