@@ -1,6 +1,8 @@
 package com.clarify.prediction.explainer
 
 import org.apache.spark.ml.Transformer
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{
   DefaultParamsReadable,
@@ -273,26 +275,26 @@ class GLMExplainTransformer(override val uid: String)
   private val otherPowerLink: (String, String, Double, Double) => String = {
 
     case ("tweedie", x, y, 0.0) =>
-      s"""case when pow(${x},${y}) = '-Infinity' then ${Double.MinValue} 
-         |when pow(${x},${y}) = '+Infinity' then ${Double.MaxValue} 
-         |else pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},1/${y}) = '-Infinity' then ${Double.MinValue} 
+         |when pow(${x},1/${y}) = '+Infinity' then ${Double.MaxValue} 
+         |else pow(${x},1/${y}) end""".stripMargin
 
     case ("gaussian", x, y, _) =>
-      s"""case when pow(${x},${y}) = '-Infinity' then ${Double.MinValue}
-         |when pow(${x},${y}) = '+Infinity' then ${Double.MaxValue}
-         |else pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},1/${y}) = '-Infinity' then ${Double.MinValue}
+         |when pow(${x},1/${y}) = '+Infinity' then ${Double.MaxValue}
+         |else pow(${x},1/${y}) end""".stripMargin
 
     case ("binomial", x, y, _) =>
-      s"""case when pow(${x},${y}) < ${epsilon} then ${epsilon}
-         |when pow(${x},${y}) > 1.0-${epsilon} then 1.0-${epsilon}
-         |else pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},1/${y}) < ${epsilon} then ${epsilon}
+         |when pow(${x},1/${y}) > 1.0-${epsilon} then 1.0-${epsilon}
+         |else pow(${x},1/${y}) end""".stripMargin
 
     case ("tweedie" | "poisson" | "gamma", x, y, _) =>
-      s"""case when pow(${x},${y})  < ${epsilon} then ${epsilon} 
-         |when pow(${x},${y}) = 'Infinity' then ${Double.MaxValue} 
-         |else pow(${x},${y}) end""".stripMargin
+      s"""case when pow(${x},1/${y})  < ${epsilon} then ${epsilon} 
+         |when pow(${x},1/${y}) = 'Infinity' then ${Double.MaxValue} 
+         |else pow(${x},1/${y}) end""".stripMargin
 
-    case (_, x, y, _) => s"pow(${x},${y})"
+    case (_, x, y, _) => s"pow(${x},1/${y})"
   }
 
   /**
@@ -309,13 +311,13 @@ class GLMExplainTransformer(override val uid: String)
         case ("tweedie", _, 0.0, _) => logLink(family, x, variancePower)
         case ("tweedie", _, 1.0, _) => identityLink(family, x, variancePower)
         case ("tweedie", _, 0.5, _) =>
-          otherPowerLink(family, x, 2, variancePower)
+          otherPowerLink(family, x, 0.5, variancePower)
         case ("tweedie", _, -1.0, _)     => inverseLink(family, x, variancePower)
         case ("tweedie", _, y, _)        => otherPowerLink(family, x, y, variancePower)
         case (_, "logLink", _, _)        => logLink(family, x, -1.0)
         case (_, "logitLink", _, _)      => logitLink(family, x, -1.0)
         case (_, "identityLink", _, _)   => identityLink(family, x, -1.0)
-        case (_, "powerHalfLink", _, _)  => otherPowerLink(family, x, 2, -1.0)
+        case (_, "powerHalfLink", _, _)  => otherPowerLink(family, x, 0.5, -1.0)
         case (_, "inverseLink", _, _)    => inverseLink(family, x, -1.0)
         case (_, "otherPowerLink", y, _) => otherPowerLink(family, x, y, -1.0)
         case _                           => identityLink(family, x, -1.0)
@@ -411,30 +413,40 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients Map(featureName->Double Value)
     * @param prefixOrColumnName act as prefix when flattened mode else column name when nested mode
+    * @param nested
+    * @param addVector
     * @return
     */
   private def buildEncoder(
       df: DataFrame,
       featureCoefficients: Map[String, Double],
       prefixOrColumnName: String,
-      nested: Boolean
+      nested: Boolean,
+      addVector: Boolean
   ): ExpressionEncoder[Row] = {
-    if (nested)
-      RowEncoder.apply(
+    val schema =
+      if (nested)
         getSchema(
           df,
           prefixOrColumnName
         )
-      )
-    else
-      RowEncoder.apply(
+      else
         getSchema(
           df,
           featureCoefficients.keys
             .map(x => s"${prefixOrColumnName}_${x}")
             .toList
         )
+    val schemaWithVector = if (addVector) {
+      schema.add(
+        s"${prefixOrColumnName}_vector",
+        VectorType,
+        false
       )
+    } else {
+      schema
+    }
+    RowEncoder.apply(schemaWithVector)
   }
 
   // Transformer requires 3 methods:
@@ -487,7 +499,12 @@ class GLMExplainTransformer(override val uid: String)
     val dfWithSigma =
       calculateSigma(df, featureCoefficients, "linear_contrib", $(nested))
 
-    val predDf = dfWithSigma.withColumn(
+    val linearSumDf = dfWithSigma.withColumn(
+      "linear_sum",
+      expr(s"sigma+$intercept")
+    )
+
+    val predDf = linearSumDf.withColumn(
       "calculated_prediction",
       expr(linkFunction(s"sigma+$intercept"))
     )
@@ -558,8 +575,15 @@ class GLMExplainTransformer(override val uid: String)
 
   }
 
+  /**
+    * The method to prefix column with label
+    * @param label
+    * @param df
+    * @return
+    */
   def appendLabelToColumnNames(label: String)(df: DataFrame): DataFrame = {
-    val contribColumns = List("contrib", "contrib_intercept", "contrib_sum")
+    val contribColumns =
+      List("sigma", "linear_sum", "contrib", "contrib_intercept", "contrib_sum")
     val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
     filteredColumns.foldLeft(df) { (memoDF, colName) =>
       memoDF.withColumnRenamed(colName, s"prediction_${label}_${colName}")
@@ -571,6 +595,7 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients
     * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateLinearContributions(
@@ -580,7 +605,7 @@ class GLMExplainTransformer(override val uid: String)
       nested: Boolean
   ): DataFrame = {
     val encoder =
-      buildEncoder(df, featureCoefficients, prefixOrColumnName, nested)
+      buildEncoder(df, featureCoefficients, prefixOrColumnName, nested, false)
     val func =
       mappingLinearContributionsRows(df.schema, nested)(featureCoefficients)
     df.mapPartitions(x => x.map(func))(encoder)
@@ -613,6 +638,8 @@ class GLMExplainTransformer(override val uid: String)
     * This is the main entry point to calculate sigma, sigma+ve, sigma-ve
     * @param df
     * @param featureCoefficients
+    * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateSigma(
@@ -704,6 +731,7 @@ class GLMExplainTransformer(override val uid: String)
     * @param df
     * @param featureCoefficients
     * @param prefixOrColumnName
+    * @param nested
     * @return
     */
   private def calculateContributions(
@@ -713,7 +741,7 @@ class GLMExplainTransformer(override val uid: String)
       nested: Boolean
   ): DataFrame = {
     val encoder =
-      buildEncoder(df, featureCoefficients, "contrib", nested)
+      buildEncoder(df, featureCoefficients, "contrib", nested, true)
     if (nested) {
       val func = mappingContributionsNestedRows(df.schema)(prefixOrColumnName)
       df.mapPartitions(x => x.map(func))(encoder)
@@ -747,7 +775,10 @@ class GLMExplainTransformer(override val uid: String)
                 schema
               )
           }.toList
-          Row.merge(row, Row.fromSeq(calculate))
+          Row.merge(
+            row,
+            Row.fromSeq(calculate :+ Vectors.dense(calculate.toArray))
+          )
         }
   /*
     Map over Rows and features to calculate final contribution of each feature nested mode
@@ -771,7 +802,10 @@ class GLMExplainTransformer(override val uid: String)
                 schema
               )
           }
-          Row.merge(row, Row(calculate))
+          Row.merge(
+            row,
+            Row.fromSeq(List(calculate, Vectors.dense(calculate.toArray)))
+          )
         }
 
   private val calculateContributionsInternal
