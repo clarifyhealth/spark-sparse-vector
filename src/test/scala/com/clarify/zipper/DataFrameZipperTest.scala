@@ -169,6 +169,8 @@ class DataFrameZipperTest extends QueryTest with SparkSessionTestWrapper {
     val column_indexes = new util.ArrayList[Int]()
     column_indexes.add(1)
     column_indexes.add(2)
+//    now add an index that does not exist
+    column_indexes.add(3)
 
     //val result_table = "result_table"
     DataFrameZipper.zipDataFramesListMultipleColumns(df1.sqlContext, table1, views_to_zip, table1, column_indexes, 1, 1)
