@@ -1,6 +1,7 @@
 package com.clarify.zipper
 
 import java.util
+import scala.collection.JavaConversions._
 
 import com.clarify.Helpers
 import org.apache.spark.sql.types.StructType
@@ -51,6 +52,42 @@ object DataFrameZipper {
       }
 
       left_schema_fields = left_schema_fields :+ b.schema.fields(column_index)
+    }
+
+    val result_df: DataFrame = a.sqlContext.createDataFrame(left_rdd, StructType(left_schema_fields))
+
+    Helpers.log(f"Finished zipping data frames: $view1 with $views")
+    result_df.createOrReplaceTempView(result_view)
+    Helpers.log(f"Returning result into $result_view")
+
+    true
+  }
+
+
+  def zipDataFramesListMultipleColumns(sql_ctx: SQLContext, view1: String, views: util.ArrayList[String],
+                                       result_view: String, column_indexes: util.ArrayList[Int],
+                                       chunk_number: Int, total_chunks: Int): Boolean = {
+
+    val a: DataFrame = sql_ctx.table(view1)
+    val len = views.size()
+    var i: Int = 0
+    var left_rdd = a.rdd
+    var left_schema_fields = a.schema.fields
+    for (view_to_zip <- Helpers.getSeqString(views)) {
+      i = i + 1
+      val b: DataFrame = sql_ctx.table(view_to_zip)
+      Helpers.log(f"Zipping data frame $i of $len (chunk $chunk_number of $total_chunks): $view1 <- $view_to_zip")
+
+      column_indexes.foreach {
+        column_index: Int =>
+          left_rdd = left_rdd.zip(b.rdd).map {
+            case (rowLeft, rowRight) => Row.fromSeq(rowLeft.toSeq :+ rowRight(column_index))
+          }
+
+          left_schema_fields = left_schema_fields :+ b.schema.fields(column_index)
+      }
+
+      true
     }
 
     val result_df: DataFrame = a.sqlContext.createDataFrame(left_rdd, StructType(left_schema_fields))
