@@ -1,5 +1,8 @@
 package com.clarify.sparklistener
 
+import java.math.{MathContext, RoundingMode}
+import java.util.Locale
+
 import org.apache.spark.executor.TaskMetrics
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler._
@@ -17,7 +20,36 @@ class ClarifySparkListener extends SparkListener with Logging {
 
   private val taskInfoMetrics = mutable.Buffer[(TaskInfo, TaskMetrics)]()
 
-  override def onTaskEnd(taskEnd: SparkListenerTaskEnd) {
+  private val SPARK_JOB_DESCRIPTION = "spark.job.description"
+  private val SPARK_JOB_GROUP_ID = "spark.jobGroup.id"
+
+  override def onJobStart(jobStart: SparkListenerJobStart) {
+    val lastStageInfo = jobStart.stageInfos.sortBy(_.stageId).lastOption
+    val jobName = lastStageInfo.map(_.name).getOrElse("")
+    val jobGroup = Option(jobStart.properties)
+      .flatMap { p => Option(p.getProperty(SPARK_JOB_GROUP_ID)) }
+    val jobDescription = Option(jobStart.properties)
+      .flatMap { p => Option(p.getProperty(SPARK_JOB_DESCRIPTION)) }
+    println(s"[ClarifySparkListener] Job ${jobStart.jobId} jobName=$jobName description=$jobDescription group=$jobGroup"
+      + s" started with ${jobStart.stageInfos.size} tasks:")
+    for (stage <- jobStart.stageInfos) {
+      println(s"[ClarifySparkListener] Task id=${stage.stageId} name=${stage.name} tasks=${stage.numTasks}")
+    }
+  }
+
+  override def onJobEnd(jobEnd: SparkListenerJobEnd) {
+    println(s"[ClarifySparkListener] Job ${jobEnd.jobId} ended with ${jobEnd.jobResult} ${jobEnd.time}")
+  }
+
+  override def onStageSubmitted(stageSubmitted: SparkListenerStageSubmitted): Unit = {
+    val description = Option(stageSubmitted.properties).flatMap { p =>
+      Option(p.getProperty(SPARK_JOB_DESCRIPTION))
+    }
+    println(s"[ClarifySparkListener] Stage ${stageSubmitted.stageInfo.stageId} Submitted ${stageSubmitted.stageInfo.name}"
+      + s" desc=$description ${stageSubmitted.stageInfo.name}")
+  }
+
+  override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit = {
     val info = taskEnd.taskInfo
     val metrics = taskEnd.taskMetrics
     if (info != null && metrics != null) {
@@ -25,9 +57,9 @@ class ClarifySparkListener extends SparkListener with Logging {
     }
   }
 
-  override def onStageCompleted(stageCompleted: SparkListenerStageCompleted) {
+  override def onStageCompleted(stageCompleted: SparkListenerStageCompleted): Unit = {
     implicit val sc: SparkListenerStageCompleted = stageCompleted
-    this.logInfo(s"Finished stage: ${getStatusDetail(stageCompleted.stageInfo)}")
+    println(s"[ClarifySparkListener] Finished stage: ${getStatusDetail(stageCompleted.stageInfo)}")
     showMillisDistribution("task runtime:", (info, _) => info.duration, taskInfoMetrics)
 
     // Shuffle write
@@ -46,11 +78,11 @@ class ClarifySparkListener extends SparkListener with Logging {
     val runtimePcts = taskInfoMetrics.map { case (info, metrics) =>
       RuntimePercentage(info.duration, metrics)
     }
-    showDistribution("executor (non-fetch) time pct: ",
-      Distribution(runtimePcts.map(_.executorPct * 100)), "%2.0f %%")
-    showDistribution("fetch wait time pct: ",
-      Distribution(runtimePcts.flatMap(_.fetchPct.map(_ * 100))), "%2.0f %%")
-    showDistribution("other time pct: ", Distribution(runtimePcts.map(_.other * 100)), "%2.0f %%")
+//    showDistribution("executor (non-fetch) time pct: ",
+//      Distribution(runtimePcts.map(_.executorPct * 100)), "%2.0f %%")
+//    showDistribution("fetch wait time pct: ",
+//      Distribution(runtimePcts.flatMap(_.fetchPct.map(_ * 100))), "%2.0f %%")
+//    showDistribution("other time pct: ", Distribution(runtimePcts.map(_.other * 100)), "%2.0f %%")
     taskInfoMetrics.clear()
   }
 
@@ -60,8 +92,8 @@ class ClarifySparkListener extends SparkListener with Logging {
       x => info.completionTime.getOrElse(System.currentTimeMillis()) - x
     ).getOrElse("-")
 
-    s"Stage(${info.stageId}, ${info.attemptNumber}); Name: '${info.name}'; " +
-//      s"Status: ${info.getStatusString}$failureReason; numTasks: ${info.numTasks}; " +
+    s"[ClarifySparkListener] Stage(${info.stageId}, ${info.attemptNumber}); Name: '${info.name}'; " +
+      //      s"Status: ${info.getStatusString}$failureReason; numTasks: ${info.numTasks}; " +
       s"Took: $timeTaken msec"
   }
 
@@ -86,26 +118,34 @@ private object StatsReportListener extends Logging {
                                getMetric: (TaskInfo, TaskMetrics) => Long): Option[Distribution] = {
     extractDoubleDistribution(
       taskInfoMetrics,
-      (info, metric) => { getMetric(info, metric).toDouble })
+      (info, metric) => {
+        getMetric(info, metric).toDouble
+      })
   }
 
   def showDistribution(heading: String, d: Distribution, formatNumber: Double => String) {
     val stats = d.statCounter
     val quantiles = d.getQuantiles(probabilities).map(formatNumber)
-    logInfo(heading + stats)
-    logInfo(percentilesHeader)
-    logInfo("\t" + quantiles.mkString("\t"))
+    println("[ClarifySparkListener] showDistribution: "+ heading + stats)
+    println("skewness:" + d.skewness)
+    if (d.hasSkew) {
+      println("===== WARNING: HasSkew:" + d.hasSkew + " median=" )
+    }
+
+    println(percentilesHeader)
+    println("\t" + quantiles.mkString("\t"))
   }
 
   def showDistribution(
                         heading: String,
                         dOpt: Option[Distribution],
                         formatNumber: Double => String) {
-    dOpt.foreach { d => showDistribution(heading, d, formatNumber)}
+    dOpt.foreach { d => showDistribution(heading, d, formatNumber) }
   }
 
   def showDistribution(heading: String, dOpt: Option[Distribution], format: String) {
     def f(d: Double): String = format.format(d)
+
     showDistribution(heading, dOpt, f _)
   }
 
@@ -129,7 +169,7 @@ private object StatsReportListener extends Logging {
   }
 
   def showBytesDistribution(heading: String, dist: Distribution) {
-//    showDistribution(heading, dist, (d => Utils.bytesToString(d.toLong)): Double => String)
+        showDistribution(heading, dist, (d => bytesToString(d.toLong)): Double => String)
   }
 
   def showMillisDistribution(heading: String, dOpt: Option[Distribution]) {
@@ -164,6 +204,45 @@ private object StatsReportListener extends Logging {
       }
     "%.1f %s".format(size, units)
   }
+
+  /**
+   * Convert a quantity in bytes to a human-readable string such as "4.0 MiB".
+   */
+  def bytesToString(size: Long): String = bytesToString(BigInt(size))
+
+  def bytesToString(size: BigInt): String = {
+    val EiB = 1L << 60
+    val PiB = 1L << 50
+    val TiB = 1L << 40
+    val GiB = 1L << 30
+    val MiB = 1L << 20
+    val KiB = 1L << 10
+
+    if (size >= BigInt(1L << 11) * EiB) {
+      // The number is too large, show it in scientific notation.
+      BigDecimal(size, new MathContext(3, RoundingMode.HALF_UP)).toString() + " B"
+    } else {
+      val (value, unit) = {
+        if (size >= 2 * EiB) {
+          (BigDecimal(size) / EiB, "EiB")
+        } else if (size >= 2 * PiB) {
+          (BigDecimal(size) / PiB, "PiB")
+        } else if (size >= 2 * TiB) {
+          (BigDecimal(size) / TiB, "TiB")
+        } else if (size >= 2 * GiB) {
+          (BigDecimal(size) / GiB, "GiB")
+        } else if (size >= 2 * MiB) {
+          (BigDecimal(size) / MiB, "MiB")
+        } else if (size >= 2 * KiB) {
+          (BigDecimal(size) / KiB, "KiB")
+        } else {
+          (BigDecimal(size), "B")
+        }
+      }
+      "%.1f %s".formatLocal(Locale.US, value, unit)
+    }
+  }
+
 }
 
 private case class RuntimePercentage(executorPct: Double, fetchPct: Option[Double], other: Double)
