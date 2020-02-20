@@ -102,4 +102,46 @@ class StructToVectorTest extends QueryTest with SparkSessionTestWrapper {
     )
     assert(2 == out_df.count())
   }
+  test("struct to vector data frame sparse and dense vectors and null") {
+    spark.sharedState.cacheManager.clearCache()
+
+    val rdd = spark.sparkContext.parallelize(
+      Row(0.toByte, 2, List(0, 1).toArray, List(1.0, 2.0).toArray) ::
+        Row(1.toByte, 0, Nil, List(3.0, 4.0, 5.0).toArray) ::
+        Nil)
+
+    val schema = StructType(
+      StructField("type", ByteType, nullable = false) ::
+        StructField("size", IntegerType, nullable = false) ::
+        StructField("indices", ArrayType(IntegerType, containsNull = false), nullable = false) ::
+        StructField("values", ArrayType(DoubleType, containsNull = false), nullable = false) ::
+        Nil)
+
+    val df: DataFrame = spark.createDataFrame(rdd, schema).select(struct("type", "size", "indices", "values").alias("v1"))
+
+    df.printSchema()
+    df.show()
+    df.createOrReplaceTempView("my_table2")
+    val convert_struct_to_vector_function = new StructToVector().call _
+
+    spark.udf.register("convert_struct_to_vector", convert_struct_to_vector_function)
+
+    val out_df = spark.sql(
+      "select convert_struct_to_vector(v1) as result from my_table2"
+    ).union(spark.sql("select null as result from my_table2"))
+
+    out_df.show(truncate = false)
+    out_df.printSchema()
+
+    checkAnswer(
+      out_df.selectExpr("result"),
+      Seq(
+        Row(new SparseVector(2, Array(0, 1), Array(1.0, 2.0))),
+        Row(new DenseVector(Array(3.0, 4.0, 5.0))),
+        Row(null),
+        Row(null)
+      )
+    )
+    assert(4 == out_df.count())
+  }
 }

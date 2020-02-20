@@ -28,6 +28,7 @@ class StructToVector extends UDF1[Any, Vector] {
             val values = row.getAs[Seq[Double]](3).toArray
             new DenseVector(values)
         }
+      case null => null
     }
   }
 }
