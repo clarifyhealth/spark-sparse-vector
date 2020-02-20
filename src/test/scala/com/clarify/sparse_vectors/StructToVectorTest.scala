@@ -12,10 +12,10 @@ class StructToVectorTest extends QueryTest with SparkSessionTestWrapper {
   test("struct to vector simple") {
     spark.sharedState.cacheManager.clearCache()
     val schema = StructType(
-      StructField("type", ByteType, false) ::
-        StructField("size", IntegerType, false) ::
-        StructField("indices", ArrayType(IntegerType, false), false) ::
-        StructField("values", ArrayType(DoubleType, false), false) ::
+      StructField("type", ByteType, nullable = false) ::
+        StructField("size", IntegerType, nullable = false) ::
+        StructField("indices", ArrayType(IntegerType, containsNull = false), nullable = false) ::
+        StructField("values", ArrayType(DoubleType, containsNull = false), nullable = false) ::
         Nil)
     val values = Array(0.toByte, 3, Array(0, 1, 2).toSeq, Array(3.0, 4.0, 5.0).toSeq)
     val v1 = new GenericRowWithSchema(values, schema)
@@ -31,10 +31,10 @@ class StructToVectorTest extends QueryTest with SparkSessionTestWrapper {
         Nil)
 
     val schema = StructType(
-      StructField("type", ByteType, false) ::
-        StructField("size", IntegerType, false) ::
-        StructField("indices", ArrayType(IntegerType, false), false) ::
-        StructField("values", ArrayType(DoubleType, false), false) ::
+      StructField("type", ByteType, nullable = false) ::
+        StructField("size", IntegerType, nullable = false) ::
+        StructField("indices", ArrayType(IntegerType, containsNull = false), nullable = false) ::
+        StructField("values", ArrayType(DoubleType, containsNull = false), nullable = false) ::
         Nil)
 
     val df: DataFrame = spark.createDataFrame(rdd, schema).select(struct("type", "size", "indices", "values").alias("v1"))
@@ -71,10 +71,10 @@ class StructToVectorTest extends QueryTest with SparkSessionTestWrapper {
         Nil)
 
     val schema = StructType(
-      StructField("type", ByteType, false) ::
-        StructField("size", IntegerType, false) ::
-        StructField("indices", ArrayType(IntegerType, false), false) ::
-        StructField("values", ArrayType(DoubleType, false), false) ::
+      StructField("type", ByteType, nullable = false) ::
+        StructField("size", IntegerType, nullable = false) ::
+        StructField("indices", ArrayType(IntegerType, containsNull = false), nullable = false) ::
+        StructField("values", ArrayType(DoubleType, containsNull = false), nullable = false) ::
         Nil)
 
     val df: DataFrame = spark.createDataFrame(rdd, schema).select(struct("type", "size", "indices", "values").alias("v1"))
