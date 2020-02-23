@@ -20,7 +20,7 @@ class ModelMetaTransformer(override val uid: String)
     extends Transformer
     with DefaultParamsWritable {
 
-  val logger = Logger.getLogger(getClass)
+  val logger: Logger = Logger.getLogger(getClass)
 
   def this() = this(Identifiable.randomUID("ModelMetaTransformer"))
 
