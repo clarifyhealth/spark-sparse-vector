@@ -1,5 +1,6 @@
 package com.clarify.model.meta
 
+import org.apache.log4j.Logger
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.{Param, ParamMap}
@@ -18,6 +19,8 @@ import org.json4s.jackson.Json
 class ModelMetaTransformer(override val uid: String)
     extends Transformer
     with DefaultParamsWritable {
+
+  val logger = Logger.getLogger(getClass)
 
   def this() = this(Identifiable.randomUID("ModelMetaTransformer"))
 
@@ -166,13 +169,28 @@ class ModelMetaTransformer(override val uid: String)
   override def transform(dataset: Dataset[_]): DataFrame = {
     import dataset.sqlContext.implicits._
 
+    logger.info(
+      s"""All parameters 
+         | predictionView=${predictionView} ,
+         | coefficientView=${coefficientView} ,
+         | modelMetaView=${modelMetaView} , 
+         | linkFunction=${linkFunction} , 
+         | label=${label} ,
+         | family=${family} ,
+         | linkPower=${linkPower} ,
+         | variancePower= ${variancePower}""".stripMargin
+    )
+
+    logger.info(s"Loading CoefficientView ${coefficientView}")
     // Load coefficientView
     val coefficientsDF = dataset.sqlContext
       .table($(coefficientView))
 
+    logger.info(s"Loading PredictionView ${predictionView}")
     // Load predictionView
     val predictionsDF = dataset.sqlContext.table($(predictionView))
 
+    logger.info(s"Loading cms_hcc_descriptions")
     // Load cms_hcc_descriptions
     val hccDescriptionsDF = dataset.sqlContext.table("cms_hcc_descriptions")
 
@@ -182,6 +200,9 @@ class ModelMetaTransformer(override val uid: String)
       .orderBy("Feature_Index")
       .collect()
 
+    logger.info(
+      s"Start ${predictionView} population feature and contrib means calculation"
+    )
     // The most expensive operation
     val population_means = predictionsDF
       .select(
@@ -190,6 +211,9 @@ class ModelMetaTransformer(override val uid: String)
         avg(s"prediction_${label}_sigma").alias("sigma_mean")
       )
       .collect()(0)
+    logger.info(
+      s"Done ${predictionView} population feature and contrib means calculation"
+    )
 
     // Calculate the population feature and contrib means
     val pop_mean = population_means.getAs[Vector]("pop_mean").toArray
@@ -235,6 +259,13 @@ class ModelMetaTransformer(override val uid: String)
 
     val hccDescriptionsJson = Json(DefaultFormats).write(hccDescriptionsMap)
 
+    logger.info(
+      s"Done ${predictionView} HCC Description mapping ${hccDescriptionsJson}"
+    )
+
+    logger.info(
+      s"Start ${predictionView}  Coefficient Summary"
+    )
     val summaryRow = coefficientsDF.select($"model_id").limit(1)
 
     val summaryRowCoefficientsDF = summaryRow
@@ -251,6 +282,13 @@ class ModelMetaTransformer(override val uid: String)
       .withColumn("ohe_features", lit(oheFeatures))
       .withColumn("feature_coefficients", lit(hccDescriptionsJson))
 
+    logger.info(
+      s"Done ${predictionView} Coefficient Summary"
+    )
+
+    logger.info(
+      s"Start ${predictionView} Prediction Summary"
+    )
     val predictionsOneRowDF = predictionsDF.limit(1)
 
     val regressionMetric = fetchRegressionMetric(predictionsOneRowDF)
@@ -266,12 +304,16 @@ class ModelMetaTransformer(override val uid: String)
 
     finalDF.createOrReplaceTempView($(modelMetaView))
 
+    logger.info(
+      s"Done ${predictionView} Prediction Summary"
+    )
+
     finalDF
   }
 
   /**
     * Extract the regression metric from a single row prediction DataFrame
-    * @param prediction
+    * @param prediction This is one Row DataFrame
     * @return
     */
   def fetchRegressionMetric(prediction: DataFrame): Map[String, Double] = {
@@ -301,7 +343,7 @@ class ModelMetaTransformer(override val uid: String)
 
   /**
     * Extract the classification metric from a single row prediction DataFrame
-    * @param prediction
+    * @param prediction This is one Row DataFrame
     * @return
     */
   def fetchClassificationMetric(prediction: DataFrame): Map[String, Double] = {
