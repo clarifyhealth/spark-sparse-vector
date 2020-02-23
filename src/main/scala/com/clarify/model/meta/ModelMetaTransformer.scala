@@ -269,6 +269,11 @@ class ModelMetaTransformer(override val uid: String)
     finalDF
   }
 
+  /**
+    * Extract the regression metric from a single row prediction DataFrame
+    * @param prediction
+    * @return
+    */
   def fetchRegressionMetric(prediction: DataFrame): Map[String, Double] = {
     if (prediction.columns.contains("bias_avg")) {
       val oneRow = prediction
@@ -293,6 +298,12 @@ class ModelMetaTransformer(override val uid: String)
       )
     }
   }
+
+  /**
+    * Extract the classification metric from a single row prediction DataFrame
+    * @param prediction
+    * @return
+    */
   def fetchClassificationMetric(prediction: DataFrame): Map[String, Double] = {
     if (prediction.columns.contains("accuracy")) {
       val oneRow = prediction
