@@ -95,6 +95,21 @@ class ModelMetaTransformer(override val uid: String)
     set(label, value)
 
   /**
+    * Param for features name.
+    */
+  final val features: Param[String] =
+    new Param[String](
+      this,
+      "features",
+      "training features col name"
+    )
+
+  final def getFeatures: String = $(features)
+
+  final def setFeatures(value: String): ModelMetaTransformer =
+    set(features, value)
+
+  /**
     * Param for family name.
     */
   final val family: Param[String] =
@@ -206,7 +221,7 @@ class ModelMetaTransformer(override val uid: String)
     // The most expensive operation
     val population_means = predictionsDF
       .select(
-        Summarizer.mean($"features").alias("pop_mean"),
+        Summarizer.mean($"${features}").alias("pop_mean"),
         Summarizer.mean($"contrib_vector").alias("pop_contribution"),
         avg(s"prediction_${label}_sigma").alias("sigma_mean")
       )
