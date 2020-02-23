@@ -1,7 +1,9 @@
 package com.clarify.model.meta
 
 import org.apache.spark.ml.Transformer
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.ml.stat.Summarizer
 import org.apache.spark.ml.util.{
   DefaultParamsReadable,
   DefaultParamsWritable,
@@ -9,6 +11,10 @@ import org.apache.spark.ml.util.{
 }
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.functions.{avg, lit, substring_index}
+import org.json4s._
+import org.json4s.jackson.Json
+
 class ModelMetaTransformer(override val uid: String)
     extends Transformer
     with DefaultParamsWritable {
@@ -158,7 +164,158 @@ class ModelMetaTransformer(override val uid: String)
     * in each row as it expands to multiple rows in the flatMap.  We do (a) for simplicity.
     */
   override def transform(dataset: Dataset[_]): DataFrame = {
-    dataset.toDF()
+    import dataset.sqlContext.implicits._
+
+    // Load coefficientView
+    val coefficientsDF = dataset.sqlContext
+      .table($(coefficientView))
+
+    // Load predictionView
+    val predictionsDF = dataset.sqlContext.table($(predictionView))
+
+    // Load cms_hcc_descriptions
+    val hccDescriptionsDF = dataset.sqlContext.table("cms_hcc_descriptions")
+
+    val coefficients = coefficientsDF
+      .select("Feature_Index", "Feature", "Coefficient")
+      .withColumn("ohe_features", substring_index($"Feature", "_OHE", 1))
+      .orderBy("Feature_Index")
+      .collect()
+
+    // The most expensive operation
+    val population_means = predictionsDF
+      .select(
+        Summarizer.mean($"features").alias("pop_mean"),
+        Summarizer.mean($"contrib_vector").alias("pop_contribution"),
+        avg(s"prediction_${label}_sigma").alias("sigma_mean")
+      )
+      .collect()(0)
+
+    // Calculate the population feature and contrib means
+    val pop_mean = population_means.getAs[Vector]("pop_mean").toArray
+    val pop_contribution =
+      population_means.getAs[Vector]("pop_contribution").toArray
+    val sigma_mean = population_means.getAs[Double]("sigma_mean")
+
+    val coefficientsMap = coefficients
+      .map(
+        row =>
+          (row.getAs[String]("Feature") -> row.getAs[Double]("Coefficient"))
+      )
+      .toMap
+
+    // Intercept
+    val intercept = coefficientsMap.getOrElse("Intercept", 0.0)
+
+    // Feature and Coefficient
+    val featureCoefficients = coefficientsMap.filter {
+      case (feature, _) => feature != "Intercept"
+    }
+
+    // OHE Feature
+    val oheFeatures = coefficients
+      .map(
+        row => (row.getAs[String]("ohe_features"))
+      )
+      .filter(x => x != "Intercept")
+
+    // hcc descriptions handling
+    val hccDescriptions = hccDescriptionsDF
+      .collect()
+      .map(
+        row =>
+          (row.getAs[String]("hcc_code") -> row.getAs[String]("description"))
+      )
+      .toMap
+
+    val hccDescriptionsMap = featureCoefficients.map {
+      case (feature, coefficient) =>
+        s"${feature} (${hccDescriptions.getOrElse(feature, "")})" -> coefficient
+    }
+
+    val hccDescriptionsJson = Json(DefaultFormats).write(hccDescriptionsMap)
+
+    val summaryRow = coefficientsDF.select($"model_id").limit(1)
+
+    val summaryRowCoefficientsDF = summaryRow
+      .withColumn("pop_mean", lit(pop_mean))
+      .withColumn("pop_contribution", lit(pop_contribution))
+      .withColumn("sigma_mean", lit(sigma_mean))
+      .withColumn("link_function", lit($(linkFunction)))
+      .withColumn("family", lit($(family)))
+      .withColumn("link_power", lit($(linkPower)))
+      .withColumn("variance_power", lit($(variancePower)))
+      .withColumn("intercept", lit(intercept))
+      .withColumn("coefficients", lit(featureCoefficients.values.toArray))
+      .withColumn("features", lit(featureCoefficients.keys.toArray))
+      .withColumn("ohe_features", lit(oheFeatures))
+      .withColumn("feature_coefficients", lit(hccDescriptionsJson))
+
+    val predictionsOneRowDF = predictionsDF.limit(1)
+
+    val regressionMetric = fetchRegressionMetric(predictionsOneRowDF)
+    val classificationMetric = fetchClassificationMetric(predictionsOneRowDF)
+
+    val projections = Seq("*") ++ regressionMetric.map {
+      case (key, value) => s"${value} as ${key}"
+    } ++ classificationMetric.map {
+      case (key, value) => s"${value} as ${key}"
+    }
+
+    val finalDF = summaryRowCoefficientsDF.selectExpr(projections: _*)
+
+    finalDF.createOrReplaceTempView($(modelMetaView))
+
+    finalDF
+  }
+
+  def fetchRegressionMetric(prediction: DataFrame): Map[String, Double] = {
+    if (prediction.columns.contains("bias_avg")) {
+      val oneRow = prediction
+        .selectExpr(
+          "r2",
+          s"prediction_${label}_rmse as rmse",
+          "mae",
+          "bias_avg",
+          "zero_residuals",
+          "count_total"
+        )
+        .collect()(0)
+      oneRow.getValuesMap[Double](oneRow.schema.fieldNames)
+    } else {
+      Map(
+        "r2" -> -1.0,
+        "rmse" -> -1.0,
+        "mae" -> -1.0,
+        "bias_avg" -> -1.0,
+        "zero_residuals" -> -1.0,
+        "count_total" -> -1.0
+      )
+    }
+  }
+  def fetchClassificationMetric(prediction: DataFrame): Map[String, Double] = {
+    if (prediction.columns.contains("accuracy")) {
+      val oneRow = prediction
+        .select(
+          "accuracy",
+          "f1",
+          "aucROC",
+          "aucPR",
+          "weightedPrecision",
+          "weightedRecall"
+        )
+        .collect()(0)
+      oneRow.getValuesMap[Double](oneRow.schema.fieldNames)
+    } else {
+      Map(
+        "accuracy" -> -1.0,
+        "f1" -> -1.0,
+        "aucROC" -> -1.0,
+        "aucPR" -> -1.0,
+        "weightedPrecision" -> -1.0,
+        "weightedRecall" -> -1.0
+      )
+    }
   }
 
   /**
