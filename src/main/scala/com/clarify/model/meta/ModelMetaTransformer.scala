@@ -312,12 +312,14 @@ class ModelMetaTransformer(override val uid: String)
     val classificationMetric = fetchClassificationMetric(predictionsOneRowDF)
 
     val projections = Seq("*") ++ regressionMetric.map {
-      case (key, value) => s"${value} as ${key}"
+      case (key, value) => s"cast(${value} as double) as ${key}"
     } ++ classificationMetric.map {
-      case (key, value) => s"${value} as ${key}"
+      case (key, value) => s"cast(${value} as double) as ${key}"
     }
 
     val finalDF = summaryRowCoefficientsDF.selectExpr(projections: _*)
+
+    finalDF.show(truncate = false)
 
     finalDF.createOrReplaceTempView(getModelMetaView)
 
@@ -333,7 +335,7 @@ class ModelMetaTransformer(override val uid: String)
     * @param prediction This is one Row DataFrame
     * @return
     */
-  def fetchRegressionMetric(prediction: DataFrame): Map[String, Double] = {
+  def fetchRegressionMetric(prediction: DataFrame): Map[String, AnyVal] = {
     if (prediction.columns.contains("bias_avg")) {
       val oneRow = prediction
         .selectExpr(
@@ -345,7 +347,7 @@ class ModelMetaTransformer(override val uid: String)
           "count_total"
         )
         .collect()(0)
-      oneRow.getValuesMap[Double](oneRow.schema.fieldNames)
+      oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
     } else {
       Map(
         "r2" -> -1.0,
@@ -363,7 +365,7 @@ class ModelMetaTransformer(override val uid: String)
     * @param prediction This is one Row DataFrame
     * @return
     */
-  def fetchClassificationMetric(prediction: DataFrame): Map[String, Double] = {
+  def fetchClassificationMetric(prediction: DataFrame): Map[String, AnyVal] = {
     if (prediction.columns.contains("accuracy")) {
       val oneRow = prediction
         .select(
@@ -375,7 +377,7 @@ class ModelMetaTransformer(override val uid: String)
           "weightedRecall"
         )
         .collect()(0)
-      oneRow.getValuesMap[Double](oneRow.schema.fieldNames)
+      oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
     } else {
       Map(
         "accuracy" -> -1.0,
