@@ -168,8 +168,6 @@ class GLMExplainTransformer(override val uid: String)
 
   val epsilon: Double = 1e-16
 
-  Double.PositiveInfinity
-
   private val logLink: (String, String, Double) => String = {
 
     case ("tweedie", x, 0.0) =>
