@@ -86,7 +86,7 @@ class ModelMetaTransformer(override val uid: String)
     new Param[String](
       this,
       "labelCol",
-      "training label name" n
+      "training label name"
     )
 
   final def getLabelCol: String = $(labelCol)
