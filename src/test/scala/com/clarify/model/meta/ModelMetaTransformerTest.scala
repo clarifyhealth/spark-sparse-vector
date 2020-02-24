@@ -145,6 +145,7 @@ class ModelMetaTransformerTest extends QueryTest with SharedSparkSession {
 
     val (predictionDF, _, _) = initialize()
 
+    // Simulate real values for testing. Note the rmse column name below
     predictionDF
       .selectExpr(
         "*",
