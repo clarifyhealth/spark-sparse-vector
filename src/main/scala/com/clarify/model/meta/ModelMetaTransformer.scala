@@ -85,7 +85,7 @@ class ModelMetaTransformer(override val uid: String)
   final val labelCol: Param[String] =
     new Param[String](
       this,
-      "label",
+      "labelCol",
       "training label name"
     )
 
@@ -100,7 +100,7 @@ class ModelMetaTransformer(override val uid: String)
   final val featuresCol: Param[String] =
     new Param[String](
       this,
-      "features",
+      "featuresCol",
       "training features col name"
     )
 
