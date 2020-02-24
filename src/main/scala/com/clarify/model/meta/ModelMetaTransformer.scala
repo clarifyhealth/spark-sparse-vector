@@ -319,7 +319,7 @@ class ModelMetaTransformer(override val uid: String)
 
     val finalDF = summaryRowCoefficientsDF.selectExpr(projections: _*)
 
-    finalDF.show(truncate = false)
+    // finalDF.show(truncate = false)
 
     finalDF.createOrReplaceTempView(getModelMetaView)
 
