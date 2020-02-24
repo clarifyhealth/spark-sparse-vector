@@ -82,32 +82,32 @@ class ModelMetaTransformer(override val uid: String)
   /**
     * Param for label name.
     */
-  final val label: Param[String] =
+  final val labelCol: Param[String] =
     new Param[String](
       this,
       "label",
       "training label name"
     )
 
-  final def getLabel: String = $(label)
+  final def getLabelCol: String = $(labelCol)
 
-  final def setLabel(value: String): ModelMetaTransformer =
-    set(label, value)
+  final def setLabelCol(value: String): ModelMetaTransformer =
+    set(labelCol, value)
 
   /**
     * Param for features name.
     */
-  final val features: Param[String] =
+  final val featuresCol: Param[String] =
     new Param[String](
       this,
       "features",
       "training features col name"
     )
 
-  final def getFeatures: String = $(features)
+  final def getFeaturesCol: String = $(featuresCol)
 
-  final def setFeatures(value: String): ModelMetaTransformer =
-    set(features, value)
+  final def setFeaturesCol(value: String): ModelMetaTransformer =
+    set(featuresCol, value)
 
   /**
     * Param for family name.
@@ -160,7 +160,8 @@ class ModelMetaTransformer(override val uid: String)
     coefficientView -> "coefficient",
     modelMetaView -> "modelMeta",
     linkFunction -> "other",
-    label -> "test",
+    labelCol -> "test",
+    featuresCol -> "features",
     family -> "gaussian",
     linkPower -> 0.0,
     variancePower -> -1.0
@@ -186,24 +187,25 @@ class ModelMetaTransformer(override val uid: String)
 
     logger.info(
       s"""All parameters 
-         | predictionView=${predictionView} ,
-         | coefficientView=${coefficientView} ,
-         | modelMetaView=${modelMetaView} , 
-         | linkFunction=${linkFunction} , 
-         | label=${label} ,
-         | family=${family} ,
-         | linkPower=${linkPower} ,
-         | variancePower= ${variancePower}""".stripMargin
+         | predictionView=${getPredictionView} ,
+         | coefficientView=${getCoefficientView} ,
+         | modelMetaView=${getModelMetaView} , 
+         | linkFunction=${getLinkFunction} , 
+         | labelCol=${getLabelCol} ,
+         | featuresCol=${getFeaturesCol} ,
+         | family=${getFamily} ,
+         | linkPower=${getLinkPower} ,
+         | variancePower= ${getVariancePower}""".stripMargin
     )
 
-    logger.info(s"Loading CoefficientView ${coefficientView}")
+    logger.info(s"Loading CoefficientView ${getCoefficientView}")
     // Load coefficientView
     val coefficientsDF = dataset.sqlContext
-      .table($(coefficientView))
+      .table(getCoefficientView)
 
-    logger.info(s"Loading PredictionView ${predictionView}")
+    logger.info(s"Loading PredictionView ${getPredictionView}")
     // Load predictionView
-    val predictionsDF = dataset.sqlContext.table($(predictionView))
+    val predictionsDF = dataset.sqlContext.table(getPredictionView)
 
     logger.info(s"Loading cms_hcc_descriptions")
     // Load cms_hcc_descriptions
@@ -216,18 +218,18 @@ class ModelMetaTransformer(override val uid: String)
       .collect()
 
     logger.info(
-      s"Start ${predictionView} population feature and contrib means calculation"
+      s"Start ${getPredictionView} population feature and contrib means calculation"
     )
     // The most expensive operation
     val population_means = predictionsDF
       .select(
-        Summarizer.mean($"${features}").alias("pop_mean"),
+        Summarizer.mean($"${getFeaturesCol}").alias("pop_mean"),
         Summarizer.mean($"contrib_vector").alias("pop_contribution"),
-        avg(s"prediction_${label}_sigma").alias("sigma_mean")
+        avg(s"prediction_${getLabelCol}_sigma").alias("sigma_mean")
       )
       .collect()(0)
     logger.info(
-      s"Done ${predictionView} population feature and contrib means calculation"
+      s"Done ${getPredictionView} population feature and contrib means calculation"
     )
 
     // Calculate the population feature and contrib means
@@ -275,11 +277,11 @@ class ModelMetaTransformer(override val uid: String)
     val hccDescriptionsJson = Json(DefaultFormats).write(hccDescriptionsMap)
 
     logger.info(
-      s"Done ${predictionView} HCC Description mapping ${hccDescriptionsJson}"
+      s"Done ${getPredictionView} HCC Description mapping ${hccDescriptionsJson}"
     )
 
     logger.info(
-      s"Start ${predictionView}  Coefficient Summary"
+      s"Start ${getPredictionView}  Coefficient Summary"
     )
     val summaryRow = coefficientsDF.select($"model_id").limit(1)
 
@@ -287,10 +289,10 @@ class ModelMetaTransformer(override val uid: String)
       .withColumn("pop_mean", lit(pop_mean))
       .withColumn("pop_contribution", lit(pop_contribution))
       .withColumn("sigma_mean", lit(sigma_mean))
-      .withColumn("link_function", lit($(linkFunction)))
-      .withColumn("family", lit($(family)))
-      .withColumn("link_power", lit($(linkPower)))
-      .withColumn("variance_power", lit($(variancePower)))
+      .withColumn("link_function", lit(getLinkFunction))
+      .withColumn("family", lit(getFamily))
+      .withColumn("link_power", lit(getLinkPower))
+      .withColumn("variance_power", lit(getLinkPower))
       .withColumn("intercept", lit(intercept))
       .withColumn("coefficients", lit(featureCoefficients.values.toArray))
       .withColumn("features", lit(featureCoefficients.keys.toArray))
@@ -298,11 +300,11 @@ class ModelMetaTransformer(override val uid: String)
       .withColumn("feature_coefficients", lit(hccDescriptionsJson))
 
     logger.info(
-      s"Done ${predictionView} Coefficient Summary"
+      s"Done ${getPredictionView} Coefficient Summary"
     )
 
     logger.info(
-      s"Start ${predictionView} Prediction Summary"
+      s"Start ${getPredictionView} Prediction Summary"
     )
     val predictionsOneRowDF = predictionsDF.limit(1)
 
@@ -317,10 +319,10 @@ class ModelMetaTransformer(override val uid: String)
 
     val finalDF = summaryRowCoefficientsDF.selectExpr(projections: _*)
 
-    finalDF.createOrReplaceTempView($(modelMetaView))
+    finalDF.createOrReplaceTempView(getModelMetaView)
 
     logger.info(
-      s"Done ${predictionView} Prediction Summary"
+      s"Done ${getPredictionView} Prediction Summary"
     )
 
     finalDF
@@ -336,7 +338,7 @@ class ModelMetaTransformer(override val uid: String)
       val oneRow = prediction
         .selectExpr(
           "r2",
-          s"prediction_${label}_rmse as rmse",
+          s"prediction_${getLabelCol}_rmse as rmse",
           "mae",
           "bias_avg",
           "zero_residuals",
