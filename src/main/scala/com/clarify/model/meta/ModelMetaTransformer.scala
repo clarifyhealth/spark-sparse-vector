@@ -206,6 +206,7 @@ class ModelMetaTransformer(override val uid: String)
     logger.info(s"Loading PredictionView ${getPredictionView}")
     // Load predictionView
     val predictionsDF = dataset.sqlContext.table(getPredictionView)
+    val predictionsSampleDF = getRandomNSample(predictionsDF)
 
     logger.info(s"Loading cms_hcc_descriptions")
     // Load cms_hcc_descriptions
@@ -221,7 +222,7 @@ class ModelMetaTransformer(override val uid: String)
       s"Start ${getPredictionView} population feature and contrib means calculation"
     )
     // The most expensive operation
-    val population_means = predictionsDF
+    val population_means = predictionsSampleDF
       .select(
         Summarizer.mean($"${getFeaturesCol}").alias("pop_mean"),
         Summarizer.mean($"contrib_vector").alias("pop_contribution"),
@@ -306,7 +307,7 @@ class ModelMetaTransformer(override val uid: String)
     logger.info(
       s"Start ${getPredictionView} Prediction Summary"
     )
-    val predictionsOneRowDF = predictionsDF.limit(1)
+    val predictionsOneRowDF = predictionsSampleDF.limit(1)
 
     val regressionMetric = fetchRegressionMetric(predictionsOneRowDF)
     val classificationMetric = fetchClassificationMetric(predictionsOneRowDF)
@@ -388,6 +389,15 @@ class ModelMetaTransformer(override val uid: String)
         "weightedRecall" -> -1.0
       )
     }
+  }
+
+  def getRandomNSample(inputDF: DataFrame, n: Int = 1000000): DataFrame = {
+    val count = inputDF.count()
+    val howManyTake = if (count > n) n else count
+    inputDF
+      .sample(withReplacement = false, fraction = 1.0 * howManyTake / count)
+      .limit(n)
+      .toDF()
   }
 
   /**
