@@ -14,11 +14,13 @@ import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.{
   DataTypes,
+  DoubleType,
   IntegerType,
   StructField,
   StructType
 }
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
+
 import scala.collection.immutable.Nil
 
 class EnsembleTreeExplainTransformer(override val uid: String)
@@ -148,9 +150,10 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     var schema: StructType = df.schema
     schema = schema.add(
       columnName,
-      DataTypes.createArrayType(DataTypes.DoubleType),
+      DataTypes.createArrayType(DoubleType),
       false
     )
+    schema = schema.add(s"${columnName}_sum", DoubleType, false)
     schema = schema.add(s"${columnName}_vector", VectorType, false)
     schema
   }
@@ -237,7 +240,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     */
   def appendLabelToColumnNames(label: String)(df: DataFrame): DataFrame = {
     val contribColumns =
-      List("contrib", "contrib_intercept")
+      List("contrib", "contrib_intercept", "contrib_sum")
     val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
     filteredColumns.foldLeft(df) { (memoDF, colName) =>
       memoDF.withColumnRenamed(colName, s"prediction_${label}_${colName}")
@@ -343,7 +346,11 @@ class EnsembleTreeExplainTransformer(override val uid: String)
           Row.merge(
             row,
             Row.fromSeq(
-              List(contributions, Vectors.dense(contributions.toArray))
+              List(
+                contributions,
+                contributions.sum,
+                Vectors.dense(contributions.toArray)
+              )
             )
           )
         }
