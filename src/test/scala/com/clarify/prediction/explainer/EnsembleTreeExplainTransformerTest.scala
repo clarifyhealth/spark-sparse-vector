@@ -46,12 +46,13 @@ class EnsembleTreeExplainTransformerTest
       .selectExpr(
         "*",
         "bround(glm_contrib_intercept+glm_contribs_sum,3) as glm_predict",
-        "bround(prediction_label_contrib_intercept+prediction_label_contrib_sum,3) as rf_prediction"
+        "bround(prediction_label_contrib_intercept+prediction_label_contrib_sum,3) as rf_prediction",
+        "size(paths) as path_size"
       )
 
-    outDF.show()
-
     assert(predictionDF.count() == outDF.count())
+
+    outDF.show()
 
     val model = RandomForestRegressionModel.load(rf_model_path)
     print(model.featureImportances)
