@@ -34,6 +34,9 @@ class EnsembleTreeExplainTransformerTest
     explainTransformer.setCoefficientView("my_coefficients")
     explainTransformer.setPredictionView("my_predictions")
     explainTransformer.setLabel("label")
+    explainTransformer.setModelPath(
+      getClass.getResource("/test_rf_model").getPath
+    )
 
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)

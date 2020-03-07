@@ -1,14 +1,17 @@
 package com.clarify.prediction.explainer
 
 import org.apache.spark.ml.Transformer
-import org.apache.spark.ml.linalg.{SQLDataTypes, Vectors}
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.{SQLDataTypes, Vector, Vectors}
 import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.ml.regression.RandomForestRegressionModel
 import org.apache.spark.ml.util.{
   DefaultParamsReadable,
   DefaultParamsWritable,
   Identifiable
 }
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.{
   DataTypes,
   IntegerType,
@@ -16,8 +19,8 @@ import org.apache.spark.sql.types.{
   StructType
 }
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
-
 import scala.collection.immutable.Nil
+
 class EnsembleTreeExplainTransformer(override val uid: String)
     extends Transformer
     with DefaultParamsWritable {
@@ -72,11 +75,27 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   final def setLabel(value: String): EnsembleTreeExplainTransformer =
     set(label, value)
 
+  /**
+    * Param for modelPath.
+    */
+  final val modelPath: Param[String] =
+    new Param[String](
+      this,
+      "modelPath",
+      "fitted model path"
+    )
+
+  final def getModelPath: String = $(modelPath)
+
+  final def setModelPath(value: String): EnsembleTreeExplainTransformer =
+    set(modelPath, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
     coefficientView -> "coefficient",
-    label -> "test"
+    label -> "test",
+    modelPath -> "modelPath"
   )
 
   /**
@@ -85,7 +104,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     * @param columnName
     * @return
     */
-  private def getSchema(df: DataFrame, columnName: String): StructType = {
+  private def getPathsSchema(df: DataFrame, columnName: String): StructType = {
     var schema: StructType = df.schema
     schema = schema.add(
       columnName,
@@ -108,14 +127,47 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     * @param columnName act as prefix when flattened mode else column name when nested mode
     * @return
     */
-  private def buildEncoder(
+  private def buildPathsEncoder(
       df: DataFrame,
       columnName: String
   ): ExpressionEncoder[Row] = {
-    val newSchema = getSchema(df, columnName)
+    val newSchema = getPathsSchema(df, columnName)
     RowEncoder.apply(newSchema)
   }
 
+  /**
+    * To set nested array(val) schema
+    * @param df
+    * @param columnName
+    * @return
+    */
+  private def getContribSchema(
+      df: DataFrame,
+      columnName: String
+  ): StructType = {
+    var schema: StructType = df.schema
+    schema = schema.add(
+      columnName,
+      DataTypes.createArrayType(DataTypes.DoubleType),
+      false
+    )
+    schema = schema.add(s"${columnName}_vector", VectorType, false)
+    schema
+  }
+
+  /**
+    * The encoder applies the schema based on nested vs flattened
+    * @param df
+    * @param columnName act as prefix when flattened mode else column name when nested mode
+    * @return
+    */
+  private def buildContribEncoder(
+      df: DataFrame,
+      columnName: String
+  ): ExpressionEncoder[Row] = {
+    val newSchema = getContribSchema(df, columnName)
+    RowEncoder.apply(newSchema)
+  }
   // Transformer requires 3 methods:
   //  - transform
   //  - transformSchema
@@ -147,12 +199,49 @@ class EnsembleTreeExplainTransformer(override val uid: String)
       .toMap
 
     val predictionsDf = dataset.sqlContext.table($(predictionView))
-    // dataset.toDF().createOrReplaceTempView($(predictionView))
 
-    val newDF =
-      pathGenerator(predictionsDf, featureIndexCoefficient, featureIndexName)
+    val predictionsWithPathsDf =
+      pathGenerator(
+        predictionsDf,
+        featureIndexCoefficient,
+        featureIndexName
+      )
+    val model = RandomForestRegressionModel.load(getModelPath)
 
-    newDF
+    val contributionsDF = calculateContributions(
+      predictionsWithPathsDf,
+      featureIndexCoefficient,
+      model
+    )
+    val contrib_intercept = model.predict(
+      Vectors.sparse(featureIndexCoefficient.size, Array(), Array())
+    )
+    val finalDF =
+      contributionsDF.withColumn(
+        "contrib_intercept",
+        lit(contrib_intercept)
+      )
+    val finalColRenamedDF =
+      finalDF.transform(appendLabelToColumnNames(getLabel))
+
+    finalColRenamedDF.createOrReplaceTempView(getPredictionView)
+
+    finalColRenamedDF
+  }
+
+  /**
+    * The method to prefix column with label
+    * @param label
+    * @param df
+    * @return
+    */
+  def appendLabelToColumnNames(label: String)(df: DataFrame): DataFrame = {
+    val contribColumns =
+      List("contrib", "contrib_intercept")
+    val filteredColumns = df.columns.filter(x => contribColumns.contains(x))
+    filteredColumns.foldLeft(df) { (memoDF, colName) =>
+      memoDF.withColumnRenamed(colName, s"prediction_${label}_${colName}")
+    }
   }
 
   /**
@@ -168,9 +257,12 @@ class EnsembleTreeExplainTransformer(override val uid: String)
       featureIndexName: Map[Int, String]
   ): DataFrame = {
     val encoder =
-      buildEncoder(df, "paths")
+      buildPathsEncoder(df, "paths")
     val func =
-      pathGeneratorRow(df.schema)(featureIndexCoefficient, featureIndexName)
+      pathGeneratorRow(df.schema)(
+        featureIndexCoefficient,
+        featureIndexName
+      )
 
     df.mapPartitions(x => x.map(func))(encoder)
   }
@@ -190,13 +282,13 @@ class EnsembleTreeExplainTransformer(override val uid: String)
               val featureVal =
                 row.get(schema.fieldIndex(featureName.get)).toString.toDouble
               if (featureVal > 0) {
-                val exclusionPath = featureIndexCoefficient.map {
-                  case (_, coefficient) =>
-                    if (coefficient <= outerCoefficient) 0.0 else featureVal
-                }.toArray
                 val inclusionPath = featureIndexCoefficient.map {
                   case (_, coefficient) =>
                     if (coefficient < outerCoefficient) 0.0 else featureVal
+                }.toArray
+                val exclusionPath = featureIndexCoefficient.map {
+                  case (_, coefficient) =>
+                    if (coefficient <= outerCoefficient) 0.0 else featureVal
                 }.toArray
                 Row(
                   outerFeatureNum,
@@ -215,6 +307,45 @@ class EnsembleTreeExplainTransformer(override val uid: String)
               }
           }.toList
           Row.merge(row, Row(calculatedPaths))
+        }
+
+  private def calculateContributions(
+      df: DataFrame,
+      featureIndexCoefficient: Map[Int, Double],
+      model: RandomForestRegressionModel
+  ): DataFrame = {
+    val encoder =
+      buildContribEncoder(df, "contrib")
+    val func =
+      contributionsRows(df.schema)(featureIndexCoefficient, model)
+    df.mapPartitions(x => x.map(func))(encoder)
+  }
+
+  private val contributionsRows: StructType => (
+      Map[Int, Double],
+      RandomForestRegressionModel
+  ) => Row => Row =
+    (schema) =>
+      (featureIndexCoefficient, model) =>
+        (row) => {
+          val path = row.getAs[Seq[Row]](schema.fieldIndex("paths"))
+          val contributions: Seq[Double] = featureIndexCoefficient.map {
+            case (outerFeatureNum, outerCoefficient) =>
+              // val featureNum = path.getInt(0)
+              // val inclusionIndex = path.getInt(1)
+              val inclusionPath = path(outerFeatureNum).getAs[Vector](2)
+              val exclusionPath = path(outerFeatureNum).getAs[Vector](3)
+              val contrib = model.predict(inclusionPath) - model.predict(
+                exclusionPath
+              )
+              contrib
+          }.toSeq
+          Row.merge(
+            row,
+            Row.fromSeq(
+              List(contributions, Vectors.dense(contributions.toArray))
+            )
+          )
         }
 
   /**
