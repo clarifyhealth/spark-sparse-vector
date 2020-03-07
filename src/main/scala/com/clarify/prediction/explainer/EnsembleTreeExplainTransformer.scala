@@ -12,13 +12,7 @@ import org.apache.spark.ml.util.{
 }
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.types.{
-  DataTypes,
-  DoubleType,
-  IntegerType,
-  StructField,
-  StructType
-}
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 
 import scala.collection.immutable.Nil
