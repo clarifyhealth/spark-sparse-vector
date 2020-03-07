@@ -83,7 +83,7 @@ class EnsembleTreeExplainTransformerTest
 
     val outDF = inputDF.selectExpr(contributions: _*)
 
-    outDF.coalesce(1).write.option("header", "true").csv("/tmp/rf_out_1")
+    outDF.coalesce(1).write.option("header", "true").csv("/tmp/rf_out_2")
   }
 
 }

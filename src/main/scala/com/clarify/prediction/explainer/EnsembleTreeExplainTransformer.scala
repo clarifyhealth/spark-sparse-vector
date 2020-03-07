@@ -278,7 +278,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
               val featureName = featureIndexName.get(outerFeatureNum)
               val featureVal =
                 row.get(schema.fieldIndex(featureName.get)).toString.toDouble
-              if (featureVal > 0) {
+              if (featureVal != 0.0) {
                 val exclusionPath = featureIndexCoefficient.map {
                   case (_, coefficient) =>
                     if (coefficient <= outerCoefficient) 0.0 else featureVal
