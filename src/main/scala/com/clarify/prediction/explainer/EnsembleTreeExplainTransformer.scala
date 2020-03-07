@@ -333,10 +333,10 @@ class EnsembleTreeExplainTransformer(override val uid: String)
             case (outerFeatureNum, outerCoefficient) =>
               // val featureNum = path.getInt(0)
               // val inclusionIndex = path.getInt(1)
-              val inclusionPath = path(outerFeatureNum).getAs[Vector](2)
-              val exclusionPath = path(outerFeatureNum).getAs[Vector](3)
-              val contrib = model.predict(inclusionPath) - model.predict(
-                exclusionPath
+              val inclusionVector = path(outerFeatureNum).getAs[Vector](2)
+              val exclusionVector = path(outerFeatureNum).getAs[Vector](3)
+              val contrib = model.predict(inclusionVector) - model.predict(
+                exclusionVector
               )
               contrib
           }.toSeq
