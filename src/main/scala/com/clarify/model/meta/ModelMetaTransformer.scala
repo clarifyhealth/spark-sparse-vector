@@ -222,11 +222,14 @@ class ModelMetaTransformer(override val uid: String)
       s"Start ${getPredictionView} population feature and contrib means calculation"
     )
     // The most expensive operation
+    val sigma_mean_col = s"prediction_${getLabelCol}_sigma"
     val population_means = predictionsSampleDF
       .select(
         Summarizer.mean($"${getFeaturesCol}").alias("pop_mean"),
         Summarizer.mean($"contrib_vector").alias("pop_contribution"),
-        avg(s"prediction_${getLabelCol}_sigma").alias("sigma_mean")
+        if (predictionsSampleDF.columns.contains(sigma_mean_col))
+          avg(sigma_mean_col).alias("sigma_mean")
+        else lit(0.0).alias("sigma_mean")
       )
       .collect()(0)
     logger.info(
