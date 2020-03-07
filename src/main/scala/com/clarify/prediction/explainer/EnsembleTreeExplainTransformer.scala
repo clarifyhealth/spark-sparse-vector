@@ -104,10 +104,10 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     var schema: StructType = df.schema
     schema = schema.add(
       columnName,
-      DataTypes.createArrayType(
+      DataTypes.createMapType(
+        IntegerType,
         StructType(
-          StructField("feature_number", IntegerType) ::
-            StructField("inclusion_index", IntegerType) ::
+          StructField("inclusion_index", IntegerType) ::
             StructField("inclusion_path", SQLDataTypes.VectorType) ::
             StructField("exclusion_path", SQLDataTypes.VectorType) :: Nil
         )
@@ -279,12 +279,12 @@ class EnsembleTreeExplainTransformer(override val uid: String)
               val featureVal =
                 row.get(schema.fieldIndex(featureName.get)).toString.toDouble
               if (featureVal == 0) {
-                Row(
-                  outerFeatureNum,
+                outerFeatureNum -> Row(
                   0,
                   Vectors
                     .sparse(featureIndexCoefficient.size, Array(), Array()),
-                  Vectors.sparse(featureIndexCoefficient.size, Array(), Array())
+                  Vectors
+                    .sparse(featureIndexCoefficient.size, Array(), Array())
                 )
               } else {
                 val exclusionPath = featureIndexCoefficient.map {
@@ -297,14 +297,13 @@ class EnsembleTreeExplainTransformer(override val uid: String)
                     if (coefficient < outerCoefficient) 0.0 else featureVal
                 }.toArray
 
-                Row(
-                  outerFeatureNum,
+                outerFeatureNum -> Row(
                   1,
                   Vectors.dense(inclusionPath).toSparse,
                   Vectors.dense(exclusionPath).toSparse
                 )
               }
-          }.toList
+          }
           Row.merge(row, Row(calculatedPaths))
         }
 
@@ -327,22 +326,27 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     (schema) =>
       (featureIndexCoefficient, model) =>
         (row) => {
-          val path = row.getAs[Seq[Row]](schema.fieldIndex("paths"))
+          val path = row.getMap[Int, Row](schema.fieldIndex("paths"))
           val contributions: Seq[Double] = featureIndexCoefficient.map {
             case (outerFeatureNum, _) =>
-              // val featureNum = path.getInt(0)
-              // val inclusionIndex = path.getInt(1)
-              val inclusionVector = path(outerFeatureNum).getAs[Vector](2)
-              val exclusionVector = path(outerFeatureNum).getAs[Vector](3)
-              val contrib = model.predict(inclusionVector) - model.predict(
-                exclusionVector
-              )
-              contrib
+              path.get(outerFeatureNum) match {
+                case Some(
+                    Row(
+                      _,
+                      inclusionVector: Vector,
+                      exclusionVector: Vector
+                    )
+                    ) =>
+                  val contrib = model.predict(inclusionVector) - model.predict(
+                    exclusionVector
+                  )
+                  contrib
+              }
           }.toSeq
           Row.merge(
             row,
             Row.fromSeq(
-              List(
+              Seq(
                 contributions,
                 contributions.sum,
                 Vectors.dense(contributions.toArray)
