@@ -86,12 +86,28 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   final def setModelPath(value: String): EnsembleTreeExplainTransformer =
     set(modelPath, value)
 
+  /**
+    * Param for control to drop paths column
+    */
+  final val dropPathColumn: Param[Boolean] =
+    new Param[Boolean](
+      this,
+      "dropPathColumn",
+      "control to drop path column"
+    )
+
+  final def getDropPathColumn: Boolean = $(dropPathColumn)
+
+  final def setDropPathColumn(value: Boolean): EnsembleTreeExplainTransformer =
+    set(dropPathColumn, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
     coefficientView -> "coefficient",
     label -> "test",
-    modelPath -> "modelPath"
+    modelPath -> "modelPath",
+    dropPathColumn -> true
   )
 
   /**
@@ -219,7 +235,9 @@ class EnsembleTreeExplainTransformer(override val uid: String)
         lit(contrib_intercept)
       )
     val finalColRenamedDF =
-      finalDF.transform(appendLabelToColumnNames(getLabel))
+      if (getDropPathColumn)
+        finalDF.transform(appendLabelToColumnNames(getLabel)).drop("paths")
+      else finalDF.transform(appendLabelToColumnNames(getLabel))
 
     finalColRenamedDF.createOrReplaceTempView(getPredictionView)
 

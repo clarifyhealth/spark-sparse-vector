@@ -3,7 +3,6 @@ package com.clarify.prediction.explainer
 import org.apache.spark.ml.regression.RandomForestRegressionModel
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.{DataFrame, QueryTest, SaveMode}
-import org.apache.spark.sql.functions.col
 class EnsembleTreeExplainTransformerTest
     extends QueryTest
     with SharedSparkSession {
@@ -38,6 +37,7 @@ class EnsembleTreeExplainTransformerTest
     explainTransformer.setPredictionView("my_predictions")
     explainTransformer.setLabel("label")
     explainTransformer.setModelPath(rf_model_path)
+    explainTransformer.setDropPathColumn(false)
 
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)
