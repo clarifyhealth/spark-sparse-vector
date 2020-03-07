@@ -2,7 +2,7 @@ package com.clarify.prediction.explainer
 
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.{DataFrame, QueryTest}
-
+import org.apache.spark.sql.functions.col
 class EnsembleTreeExplainTransformerTest
     extends QueryTest
     with SharedSparkSession {
@@ -50,5 +50,36 @@ class EnsembleTreeExplainTransformerTest
 
     outDF.show()
 
+    assert(predictionDF.count() == outDF.count())
+
+    // writeToCsv(resultDF)
+
   }
+
+  def writeToCsv(inputDF: DataFrame): Unit = {
+
+    val features =
+      "sex_male,sex_female,age_0,age_1,age_2,age_3,age_4,age_5,age_6,age_7,age_8,age_9,age_10,age_11"
+        .split(",")
+
+    val rfContrib = (0 until features.length)
+      .map(
+        i => s"prediction_label_contrib[${i}] as contrib_${features(i)}_rf"
+      )
+
+    val glmContrib = (0 until features.length)
+      .map(
+        i => s"contrib_${features(i)}"
+      )
+
+    val contributions = Seq("ccg_id") ++ glmContrib ++ rfContrib ++ Seq(
+      "glm_contrib_intercept as contrib_intercept",
+      "prediction_label_contrib_intercept as contrib_intercept_rf"
+    )
+
+    val outDF = inputDF.selectExpr(contributions: _*)
+
+    outDF.coalesce(1).write.option("header", "true").csv("/tmp/rf_out")
+  }
+
 }
