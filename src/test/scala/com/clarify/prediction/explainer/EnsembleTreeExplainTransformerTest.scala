@@ -2,7 +2,7 @@ package com.clarify.prediction.explainer
 
 import org.apache.spark.ml.regression.RandomForestRegressionModel
 import org.apache.spark.sql.test.SharedSparkSession
-import org.apache.spark.sql.{DataFrame, QueryTest}
+import org.apache.spark.sql.{DataFrame, QueryTest, SaveMode}
 import org.apache.spark.sql.functions.col
 class EnsembleTreeExplainTransformerTest
     extends QueryTest
@@ -83,7 +83,12 @@ class EnsembleTreeExplainTransformerTest
 
     val outDF = inputDF.selectExpr(contributions: _*)
 
-    outDF.coalesce(1).write.option("header", "true").csv("/tmp/rf_out_2")
+    outDF
+      .coalesce(1)
+      .write
+      .mode(SaveMode.Overwrite)
+      .option("header", "true")
+      .csv("/tmp/rf_out")
   }
 
 }
