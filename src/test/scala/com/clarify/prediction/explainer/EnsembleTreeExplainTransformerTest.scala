@@ -1,5 +1,6 @@
 package com.clarify.prediction.explainer
 
+import org.apache.spark.ml.regression.RandomForestRegressionModel
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.{DataFrame, QueryTest}
 import org.apache.spark.sql.functions.col
@@ -30,13 +31,13 @@ class EnsembleTreeExplainTransformerTest
 
     val (predictionDF, coefficientsDF) = initialize()
 
+    val rf_model_path = getClass.getResource("/test_rf_model").getPath
+
     val explainTransformer = new EnsembleTreeExplainTransformer()
     explainTransformer.setCoefficientView("my_coefficients")
     explainTransformer.setPredictionView("my_predictions")
     explainTransformer.setLabel("label")
-    explainTransformer.setModelPath(
-      getClass.getResource("/test_rf_model").getPath
-    )
+    explainTransformer.setModelPath(rf_model_path)
 
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)
@@ -52,7 +53,10 @@ class EnsembleTreeExplainTransformerTest
 
     assert(predictionDF.count() == outDF.count())
 
-    // writeToCsv(resultDF)
+    val model = RandomForestRegressionModel.load(rf_model_path)
+    print(model.featureImportances)
+
+    writeToCsv(resultDF)
 
   }
 
@@ -79,7 +83,7 @@ class EnsembleTreeExplainTransformerTest
 
     val outDF = inputDF.selectExpr(contributions: _*)
 
-    outDF.coalesce(1).write.option("header", "true").csv("/tmp/rf_out")
+    outDF.coalesce(1).write.option("header", "true").csv("/tmp/rf_out_1")
   }
 
 }

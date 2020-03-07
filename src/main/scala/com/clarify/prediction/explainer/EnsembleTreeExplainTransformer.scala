@@ -279,14 +279,16 @@ class EnsembleTreeExplainTransformer(override val uid: String)
               val featureVal =
                 row.get(schema.fieldIndex(featureName.get)).toString.toDouble
               if (featureVal > 0) {
-                val inclusionPath = featureIndexCoefficient.map {
-                  case (_, coefficient) =>
-                    if (coefficient < outerCoefficient) 0.0 else featureVal
-                }.toArray
                 val exclusionPath = featureIndexCoefficient.map {
                   case (_, coefficient) =>
                     if (coefficient <= outerCoefficient) 0.0 else featureVal
                 }.toArray
+
+                val inclusionPath = featureIndexCoefficient.map {
+                  case (_, coefficient) =>
+                    if (coefficient < outerCoefficient) 0.0 else featureVal
+                }.toArray
+
                 Row(
                   outerFeatureNum,
                   1,
