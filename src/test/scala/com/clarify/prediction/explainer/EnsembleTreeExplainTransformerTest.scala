@@ -40,6 +40,15 @@ class EnsembleTreeExplainTransformerTest
 
     val df = spark.emptyDataFrame
     val resultDF = explainTransformer.transform(df)
-    resultDF.show()
+
+    val outDF = resultDF
+      .selectExpr(
+        "*",
+        "bround(glm_contrib_intercept+glm_contribs_sum,3) as glm_predict",
+        "bround(prediction_label_contrib_intercept+prediction_label_contrib_sum,3) as rf_prediction"
+      )
+
+    outDF.show()
+
   }
 }

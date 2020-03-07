@@ -1,4 +1,4 @@
-index,sex_male,sex_female,age_0,age_1,age_2,age_3,age_4,age_5,age_6,age_7,age_8,age_9,age_10,age_11,contrib_sex_male,contrib_sex_female,contrib_age_0,contrib_age_1,contrib_age_2,contrib_age_3,contrib_age_4,contrib_age_5,contrib_age_6,contrib_age_7,contrib_age_8,contrib_age_9,contrib_age_10,contrib_age_11,glm_contrib_intercept,glm_contribs_sum,label
+ccg_id,sex_male,sex_female,age_0,age_1,age_2,age_3,age_4,age_5,age_6,age_7,age_8,age_9,age_10,age_11,contrib_sex_male,contrib_sex_female,contrib_age_0,contrib_age_1,contrib_age_2,contrib_age_3,contrib_age_4,contrib_age_5,contrib_age_6,contrib_age_7,contrib_age_8,contrib_age_9,contrib_age_10,contrib_age_11,glm_contrib_intercept,glm_contribs_sum,label
 0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1.4100043270000002,0.0,0.0,0.0,-5.102090208,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.96,-1.7320858809999997,-1.7320858809999997
 1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1.4100043270000002,0.0,0.0,-7.666724954,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.96,-4.296720627,-4.296720627
 2,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1.4100043270000002,0.0,-6.994405055138486e-14,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.96,3.37000432699993,3.37000432699993

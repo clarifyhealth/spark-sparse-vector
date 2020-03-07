@@ -333,7 +333,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
         (row) => {
           val path = row.getAs[Seq[Row]](schema.fieldIndex("paths"))
           val contributions: Seq[Double] = featureIndexCoefficient.map {
-            case (outerFeatureNum, outerCoefficient) =>
+            case (outerFeatureNum, _) =>
               // val featureNum = path.getInt(0)
               // val inclusionIndex = path.getInt(1)
               val inclusionVector = path(outerFeatureNum).getAs[Vector](2)
