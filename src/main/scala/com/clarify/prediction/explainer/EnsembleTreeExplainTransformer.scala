@@ -111,7 +111,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   )
 
   /**
-    * To set nested array(val) schema
+    * To set  map(key,struct) schema for paths column
     * @param df
     * @param columnName
     * @return
@@ -134,9 +134,9 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   }
 
   /**
-    * The encoder applies the schema based on nested vs flattened
+    * The encoder applies the schema to paths column
     * @param df
-    * @param columnName act as prefix when flattened mode else column name when nested mode
+    * @param columnName column name / label as prefix
     * @return
     */
   private def buildPathsEncoder(
@@ -150,7 +150,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   /**
     * To set nested array(val) schema
     * @param df
-    * @param columnName
+    * @param columnName column name / label as prefix
     * @return
     */
   private def getContribSchema(
@@ -283,7 +283,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   }
 
   /*
-    Map over Rows and features to calculate linear contribution of each feature flattened and nested mode
+    Map over Rows and feature to calculate inclusion and exclusion tree path
     ----------------------------------------------------------------------
    */
   private val pathGeneratorRow
@@ -336,7 +336,10 @@ class EnsembleTreeExplainTransformer(override val uid: String)
       contributionsRows(df.schema)(featureIndexCoefficient, model)
     df.mapPartitions(x => x.map(func))(encoder)
   }
-
+  /*
+     Map over Rows and feature to calculate contributions
+     ----------------------------------------------------------------------
+   */
   private val contributionsRows: StructType => (
       Map[Int, Double],
       RandomForestRegressionModel
