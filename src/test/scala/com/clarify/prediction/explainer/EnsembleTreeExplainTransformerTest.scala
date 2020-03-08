@@ -2,7 +2,10 @@ package com.clarify.prediction.explainer
 
 import org.apache.spark.ml.regression.RandomForestRegressionModel
 import org.apache.spark.sql.test.SharedSparkSession
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, QueryTest, SaveMode}
+
+import scala.collection.immutable.Nil
 class EnsembleTreeExplainTransformerTest
     extends QueryTest
     with SharedSparkSession {
@@ -14,10 +17,20 @@ class EnsembleTreeExplainTransformerTest
 
     predictionDF.createOrReplaceTempView("my_predictions")
 
+    val my_schema = StructType(
+      StructField("Feature_Index", LongType) ::
+        StructField("Feature", StringType) ::
+        StructField("Original_Feature", StringType) ::
+        StructField("Coefficient", DoubleType) :: Nil
+    )
+
     val coefficientsDF = spark.read
       .option("header", "true")
-      .option("inferSchema", "true")
+      .schema(my_schema)
       .csv(getClass.getResource("/basic/feature_importances.csv").getPath)
+
+    coefficientsDF.show()
+    coefficientsDF.printSchema()
 
     coefficientsDF.createOrReplaceTempView("my_coefficients")
 

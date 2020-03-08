@@ -121,9 +121,9 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     schema = schema.add(
       columnName,
       DataTypes.createMapType(
-        IntegerType,
+        LongType,
         StructType(
-          StructField("inclusion_index", IntegerType) ::
+          StructField("inclusion_index", LongType) ::
             StructField("inclusion_path", SQLDataTypes.VectorType) ::
             StructField("exclusion_path", SQLDataTypes.VectorType) :: Nil
         )
@@ -205,10 +205,10 @@ class EnsembleTreeExplainTransformer(override val uid: String)
       .collect()
 
     val featureIndexCoefficient = featureImportanceDF
-      .map(row => row.getAs[Int](0) -> row.getAs[Double](2))
+      .map(row => row.getAs[Long](0) -> row.getAs[Double](2))
       .toMap
     val featureIndexName = featureImportanceDF
-      .map(row => row.getAs[Int](0) -> row.getAs[String](1))
+      .map(row => row.getAs[Long](0) -> row.getAs[String](1))
       .toMap
 
     val predictionsDf = dataset.sqlContext.table($(predictionView))
@@ -268,8 +268,8 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     */
   private def pathGenerator(
       df: DataFrame,
-      featureIndexCoefficient: Map[Int, Double],
-      featureIndexName: Map[Int, String]
+      featureIndexCoefficient: Map[Long, Double],
+      featureIndexName: Map[Long, String]
   ): DataFrame = {
     val encoder =
       buildPathsEncoder(df, "paths")
@@ -287,7 +287,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     ----------------------------------------------------------------------
    */
   private val pathGeneratorRow
-      : (StructType) => (Map[Int, Double], Map[Int, String]) => Row => Row =
+      : (StructType) => (Map[Long, Double], Map[Long, String]) => Row => Row =
     (schema) =>
       (featureIndexCoefficient, featureIndexName) =>
         (row) => {
@@ -298,7 +298,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
                 row.get(schema.fieldIndex(featureName.get)).toString.toDouble
               if (featureVal == 0) {
                 outerFeatureNum -> Row(
-                  0,
+                  0L,
                   Vectors
                     .sparse(featureIndexCoefficient.size, Array(), Array()),
                   Vectors
@@ -316,7 +316,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
                 }.toArray
 
                 outerFeatureNum -> Row(
-                  1,
+                  1L,
                   Vectors.dense(inclusionPath).toSparse,
                   Vectors.dense(exclusionPath).toSparse
                 )
@@ -327,7 +327,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
 
   private def calculateContributions(
       df: DataFrame,
-      featureIndexCoefficient: Map[Int, Double],
+      featureIndexCoefficient: Map[Long, Double],
       model: RandomForestRegressionModel
   ): DataFrame = {
     val encoder =
@@ -341,13 +341,13 @@ class EnsembleTreeExplainTransformer(override val uid: String)
      ----------------------------------------------------------------------
    */
   private val contributionsRows: StructType => (
-      Map[Int, Double],
+      Map[Long, Double],
       RandomForestRegressionModel
   ) => Row => Row =
     (schema) =>
       (featureIndexCoefficient, model) =>
         (row) => {
-          val path = row.getMap[Int, Row](schema.fieldIndex("paths"))
+          val path = row.getMap[Long, Row](schema.fieldIndex("paths"))
           val contributions: Seq[Double] = featureIndexCoefficient.map {
             case (outerFeatureNum, _) =>
               path.get(outerFeatureNum) match {
