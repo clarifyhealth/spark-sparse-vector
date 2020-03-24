@@ -106,17 +106,19 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   /**
     * Param for control to model classification vs regression
     */
-  final val isRegression: Param[Boolean] =
+  final val isClassification: Param[Boolean] =
     new Param[Boolean](
       this,
-      "isRegression",
-      "is regression type or else classification "
+      "isClassification",
+      "is classification  type or else regression "
     )
 
-  final def getIsRegression: Boolean = $(isRegression)
+  final def getIsClassification: Boolean = $(isClassification)
 
-  final def setIsRegression(value: Boolean): EnsembleTreeExplainTransformer =
-    set(isRegression, value)
+  final def setIsClassification(
+      value: Boolean
+  ): EnsembleTreeExplainTransformer =
+    set(isClassification, value)
 
   /**
     * Param for predictionView view name.
@@ -140,7 +142,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     label -> "test",
     modelPath -> "modelPath",
     dropPathColumn -> true,
-    isRegression -> true,
+    isClassification -> false,
     ensembleType -> "rf"
   )
 
@@ -254,8 +256,9 @@ class EnsembleTreeExplainTransformer(override val uid: String)
         featureIndexCoefficient
       )
     val model =
-      if (getIsRegression) RandomForestRegressionModel.load(getModelPath)
-      else RandomForestClassificationModel.load(getModelPath)
+      if (getIsClassification)
+        RandomForestClassificationModel.load(getModelPath)
+      else RandomForestRegressionModel.load(getModelPath)
 
     val contributionsDF = calculateContributions(
       predictionsWithPathsDf,
