@@ -10,11 +10,13 @@ import org.apache.spark.ml.util.{
   DefaultParamsWritable,
   Identifiable
 }
+import org.apache.spark.sql.functions.{avg, lit, substring_index}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset}
-import org.apache.spark.sql.functions.{avg, lit, substring_index}
 import org.json4s._
 import org.json4s.jackson.Json
+
+import scala.collection.SortedMap
 
 class ModelMetaTransformer(override val uid: String)
     extends Transformer
@@ -242,27 +244,37 @@ class ModelMetaTransformer(override val uid: String)
       population_means.getAs[Vector]("pop_contribution").toArray
     val sigma_mean = population_means.getAs[Double]("sigma_mean")
 
-    val coefficientsMap = coefficients
-      .map(
-        row =>
-          (row.getAs[String]("Feature") -> row.getAs[Double]("Coefficient"))
-      )
-      .toMap
+    val featureIndexMap = SortedMap(
+      coefficients
+        .map(
+          row =>
+            row.getAs[Long](0) -> (row.getAs[String](1), row
+              .getAs[Double](2), row.getAs[String](3))
+        ): _*
+    )
 
     // Intercept
-    val intercept = coefficientsMap.getOrElse("Intercept", 0.0)
+    val intercept =
+      featureIndexMap.getOrElse(-1, ("Intercept", 0, "Intercept"))._2
 
     // Feature and Coefficient
-    val featureCoefficients = coefficientsMap.filter {
-      case (feature, _) => feature != "Intercept"
-    }
+    val featureCoefficients =
+      featureIndexMap.filter(x => x._2._1 != "Intercept")
+
+    // Original Feature Name
+    val featureArray = featureCoefficients.map {
+      case (_, (featureName, _, _)) => featureName
+    }.toArray
+
+    // Original Feature Coefficient
+    val coefficientArray = featureCoefficients.map {
+      case (_, (_, coefficient, _)) => coefficient
+    }.toArray
 
     // OHE Feature
-    val oheFeatures = coefficients
-      .map(
-        row => (row.getAs[String]("ohe_features"))
-      )
-      .filter(x => x != "Intercept")
+    val oheFeatureArray = featureCoefficients.map {
+      case (_, (_, _, oheFeature)) => oheFeature
+    }.toArray
 
     // hcc descriptions handling
     val hccDescriptions = hccDescriptionsDF
@@ -274,8 +286,8 @@ class ModelMetaTransformer(override val uid: String)
       .toMap
 
     val hccDescriptionsMap = featureCoefficients.map {
-      case (feature, coefficient) =>
-        s"${feature} (${hccDescriptions.getOrElse(feature, "")})" -> coefficient
+      case (_, (featureName, coefficient, _)) =>
+        s"${featureName} (${hccDescriptions.getOrElse(featureName, "")})" -> coefficient
     }
 
     val hccDescriptionsJson = Json(DefaultFormats).write(hccDescriptionsMap)
@@ -298,9 +310,9 @@ class ModelMetaTransformer(override val uid: String)
       .withColumn("link_power", lit(getLinkPower))
       .withColumn("variance_power", lit(getLinkPower))
       .withColumn("intercept", lit(intercept))
-      .withColumn("coefficients", lit(featureCoefficients.values.toArray))
-      .withColumn("features", lit(featureCoefficients.keys.toArray))
-      .withColumn("ohe_features", lit(oheFeatures))
+      .withColumn("coefficients", lit(coefficientArray))
+      .withColumn("features", lit(featureArray))
+      .withColumn("ohe_features", lit(oheFeatureArray))
       .withColumn("feature_coefficients", lit(hccDescriptionsJson))
 
     logger.info(

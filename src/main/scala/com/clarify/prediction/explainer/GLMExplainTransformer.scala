@@ -13,6 +13,8 @@ import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.{DataTypes, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
+
+import scala.collection.SortedMap
 class GLMExplainTransformer(override val uid: String)
     extends Transformer
     with DefaultParamsWritable {
@@ -417,7 +419,7 @@ class GLMExplainTransformer(override val uid: String)
     */
   private def buildEncoder(
       df: DataFrame,
-      featureCoefficients: Map[String, Double],
+      featureCoefficients: SortedMap[Long, (String, Double)],
       prefixOrColumnName: String,
       nested: Boolean,
       addVector: Boolean
@@ -431,8 +433,8 @@ class GLMExplainTransformer(override val uid: String)
       else
         getSchema(
           df,
-          featureCoefficients.keys
-            .map(x => s"${prefixOrColumnName}_${x}")
+          featureCoefficients
+            .map(x => s"${prefixOrColumnName}_${x._2._1}")
             .toList
         )
     val schemaWithVector = if (addVector) {
@@ -476,14 +478,18 @@ class GLMExplainTransformer(override val uid: String)
       .orderBy("Feature_Index")
       .collect()
 
-    val allCoefficients = coefficients
-      .map(row => (row.getAs[String](1) -> row.getAs[Double](2)))
+    val allCoefficients = SortedMap(
+      coefficients
+        .map(
+          row =>
+            row.getAs[Long](0) -> (row.getAs[String](1), row.getAs[Double](2))
+        ): _*
+    )
 
-    val intercept =
-      allCoefficients.find(x => x._1 == "Intercept").get._2
+    val intercept = allCoefficients.getOrElse(-1, ("Intercept", 0))._2
 
     val featureCoefficients =
-      allCoefficients.filter(x => x._1 != "Intercept").toMap
+      allCoefficients.filter(x => x._2._1 != "Intercept")
 
     val predictions = dataset.sqlContext.table($(predictionView))
 
@@ -598,7 +604,7 @@ class GLMExplainTransformer(override val uid: String)
     */
   private def calculateLinearContributions(
       df: DataFrame,
-      featureCoefficients: Map[String, Double],
+      featureCoefficients: SortedMap[Long, (String, Double)],
       prefixOrColumnName: String,
       nested: Boolean
   ): DataFrame = {
@@ -613,13 +619,15 @@ class GLMExplainTransformer(override val uid: String)
     Map over Rows and features to calculate linear contribution of each feature flattened and nested mode
     ----------------------------------------------------------------------
    */
-  private val mappingLinearContributionsRows
-      : (StructType, Boolean) => Map[String, Double] => Row => Row =
+  private val mappingLinearContributionsRows: (
+      StructType,
+      Boolean
+  ) => SortedMap[Long, (String, Double)] => Row => Row =
     (schema, nested) =>
       (featureCoefficients) =>
         (row) => {
           val calculate: List[Double] = featureCoefficients.map {
-            case (featureName, coefficient) =>
+            case (_, (featureName, coefficient)) =>
               row
                 .get(schema.fieldIndex(featureName))
                 .toString
@@ -642,7 +650,7 @@ class GLMExplainTransformer(override val uid: String)
     */
   private def calculateSigma(
       df: DataFrame,
-      featureCoefficients: Map[String, Double],
+      featureCoefficients: SortedMap[Long, (String, Double)],
       prefixOrColumnName: String,
       nested: Boolean
   ): DataFrame = {
@@ -663,21 +671,23 @@ class GLMExplainTransformer(override val uid: String)
     Map over Rows and features to calculate sigma, sigma+ve, sigma-ve in flattened mode
     ----------------------------------------------------------------------
    */
-  private val mappingSigmaRows
-      : StructType => (String, Map[String, Double]) => Row => Row =
+  private val mappingSigmaRows: StructType => (
+      String,
+      SortedMap[Long, (String, Double)]
+  ) => Row => Row =
     (schema) =>
       (prefixOrColumnName, featureCoefficients) =>
         (row) => {
           val calculate: List[Double] = List(
             featureCoefficients.map {
-              case (featureName, _) =>
+              case (_, (featureName, _)) =>
                 row
                   .getDouble(
                     schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
                   )
             }.sum,
             featureCoefficients.map {
-              case (featureName, _) =>
+              case (_, (featureName, _)) =>
                 val temp =
                   row.getDouble(
                     schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
@@ -685,7 +695,7 @@ class GLMExplainTransformer(override val uid: String)
                 keepPositive(temp)
             }.sum,
             featureCoefficients.map {
-              case (featureName, _) =>
+              case (_, (featureName, _)) =>
                 val temp =
                   row.getDouble(
                     schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
@@ -734,7 +744,7 @@ class GLMExplainTransformer(override val uid: String)
     */
   private def calculateContributions(
       df: DataFrame,
-      featureCoefficients: Map[String, Double],
+      featureCoefficients: SortedMap[Long, (String, Double)],
       prefixOrColumnName: String,
       nested: Boolean
   ): DataFrame = {
@@ -755,13 +765,15 @@ class GLMExplainTransformer(override val uid: String)
     Map over Rows and features to calculate final contribution of each feature flattened mode
     ----------------------------------------------------------------------
    */
-  private val mappingContributionsRows
-      : StructType => (String, Map[String, Double]) => Row => Row =
+  private val mappingContributionsRows: StructType => (
+      String,
+      SortedMap[Long, (String, Double)]
+  ) => Row => Row =
     (schema) =>
       (prefixOrColumnName, featureCoefficients) =>
         (row) => {
           val calculate: List[Double] = featureCoefficients.map {
-            case (featureName, _) =>
+            case (_, (featureName, _)) =>
               // retrieve the linear contributions from prefixOrColumnName_featureName column flattened mode
               val linearContribution = row.getDouble(
                 schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
@@ -825,7 +837,7 @@ class GLMExplainTransformer(override val uid: String)
 
   def calculateTotalContrib(
       df: DataFrame,
-      featureCoefficients: Map[String, Double],
+      featureCoefficients: SortedMap[Long, (String, Double)],
       prefixOrColumnName: String,
       nested: Boolean
   ): DataFrame = {
@@ -836,8 +848,10 @@ class GLMExplainTransformer(override val uid: String)
     df.mapPartitions(x => x.map(func))(encoder)
   }
 
-  private val mappingSumRows
-      : (StructType, Boolean) => (String, Map[String, Double]) => Row => Row =
+  private val mappingSumRows: (StructType, Boolean) => (
+      String,
+      SortedMap[Long, (String, Double)]
+  ) => Row => Row =
     (schema, nested) =>
       (prefixOrColumnName, featureCoefficients) =>
         (row) => {
@@ -846,7 +860,7 @@ class GLMExplainTransformer(override val uid: String)
               row.getSeq[Double](schema.fieldIndex(prefixOrColumnName)).sum
             else
               featureCoefficients.map {
-                case (featureName, _) =>
+                case (_, (featureName, _)) =>
                   row
                     .getDouble(
                       schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
