@@ -1,7 +1,16 @@
 package com.clarify.prediction.explainer
 
 import org.apache.spark.sql.test.SharedSparkSession
+import org.apache.spark.sql.types.{
+  DoubleType,
+  LongType,
+  StringType,
+  StructField,
+  StructType
+}
 import org.apache.spark.sql.{DataFrame, QueryTest}
+
+import scala.collection.immutable.Nil
 
 class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
 
@@ -13,9 +22,16 @@ class GLMExplainTransformerTest extends QueryTest with SharedSparkSession {
 
     predictionDF.createOrReplaceTempView("my_predictions")
 
+    val my_schema = StructType(
+      StructField("Feature_Index", LongType) ::
+        StructField("Feature", StringType) ::
+        StructField("Original_Feature", StringType) ::
+        StructField("Coefficient", DoubleType) :: Nil
+    )
+
     val coefficientsDF = spark.read
       .option("header", "true")
-      .option("inferSchema", "true")
+      .schema(my_schema)
       .csv(getClass.getResource("/basic/coefficients.csv").getPath)
 
     coefficientsDF.createOrReplaceTempView("my_coefficients")

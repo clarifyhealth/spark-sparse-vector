@@ -4,7 +4,16 @@ import com.clarify.prediction.explainer.GLMExplainTransformer
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.{DataFrame, QueryTest}
-import org.apache.spark.sql.functions.{lit}
+import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.types.{
+  DoubleType,
+  LongType,
+  StringType,
+  StructField,
+  StructType
+}
+
+import scala.collection.immutable.Nil
 
 class ModelMetaTransformerTest extends QueryTest with SharedSparkSession {
 
@@ -22,9 +31,16 @@ class ModelMetaTransformerTest extends QueryTest with SharedSparkSession {
 
     predictionFinalDF.createOrReplaceTempView("my_predictions")
 
+    val my_schema = StructType(
+      StructField("Feature_Index", LongType) ::
+        StructField("Feature", StringType) ::
+        StructField("Original_Feature", StringType) ::
+        StructField("Coefficient", DoubleType) :: Nil
+    )
+
     val coefficientsDF = spark.read
       .option("header", "true")
-      .option("inferSchema", "true")
+      .schema(my_schema)
       .csv(getClass.getResource("/basic/coefficients.csv").getPath)
       .withColumn("model_id", lit("test_model_id"))
 
