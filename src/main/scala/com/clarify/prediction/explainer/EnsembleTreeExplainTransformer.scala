@@ -1,6 +1,6 @@
 package com.clarify.prediction.explainer
 
-import org.apache.spark.ml.Transformer
+import org.apache.spark.ml.classification.RandomForestClassificationModel
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.{SQLDataTypes, Vector, Vectors}
 import org.apache.spark.ml.param.{Param, ParamMap}
@@ -10,6 +10,7 @@ import org.apache.spark.ml.util.{
   DefaultParamsWritable,
   Identifiable
 }
+import org.apache.spark.ml.{Model, Transformer}
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types._
@@ -102,13 +103,47 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   final def setDropPathColumn(value: Boolean): EnsembleTreeExplainTransformer =
     set(dropPathColumn, value)
 
+  /**
+    * Param for control to model classification vs regression
+    */
+  final val isClassification: Param[Boolean] =
+    new Param[Boolean](
+      this,
+      "isClassification",
+      "is classification  type or else regression "
+    )
+
+  final def getIsClassification: Boolean = $(isClassification)
+
+  final def setIsClassification(
+      value: Boolean
+  ): EnsembleTreeExplainTransformer =
+    set(isClassification, value)
+
+  /**
+    * Param for ensembleType
+    */
+  final val ensembleType: Param[String] =
+    new Param[String](
+      this,
+      "ensembleType",
+      "input ensembleType RF or GDB etc"
+    )
+
+  final def getEnsembleType: String = $(ensembleType)
+
+  final def setEnsembleType(value: String): EnsembleTreeExplainTransformer =
+    set(ensembleType, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
     coefficientView -> "coefficient",
     label -> "test",
     modelPath -> "modelPath",
-    dropPathColumn -> true
+    dropPathColumn -> true,
+    isClassification -> false,
+    ensembleType -> "rf"
   )
 
   /**
@@ -220,7 +255,10 @@ class EnsembleTreeExplainTransformer(override val uid: String)
         predictionsDf,
         featureIndexCoefficient
       )
-    val model = RandomForestRegressionModel.load(getModelPath)
+    val model =
+      if (getIsClassification)
+        RandomForestClassificationModel.load(getModelPath)
+      else RandomForestRegressionModel.load(getModelPath)
 
     val contributionsDF = calculateContributions(
       predictionsWithPathsDf,
@@ -343,7 +381,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   private def calculateContributions(
       df: DataFrame,
       featureIndexCoefficient: SortedMap[Long, (String, Double)],
-      model: RandomForestRegressionModel
+      model: Model[_]
   ): DataFrame = {
     val encoder =
       buildContribEncoder(df, "contrib")
@@ -357,11 +395,16 @@ class EnsembleTreeExplainTransformer(override val uid: String)
    */
   private val contributionsRows: StructType => (
       SortedMap[Long, (String, Double)],
-      RandomForestRegressionModel
+      Model[_]
   ) => Row => Row =
     (schema) =>
       (featureIndexCoefficient, model) =>
         (row) => {
+          val innerModel =
+            model match {
+              case model1: RandomForestClassificationModel => model1
+              case model2: RandomForestRegressionModel     => model2
+            }
           val path = row.getMap[Long, Row](schema.fieldIndex("paths"))
           val contributions: Seq[Double] = featureIndexCoefficient.map {
             case (outerFeatureNum, _) =>
@@ -373,9 +416,8 @@ class EnsembleTreeExplainTransformer(override val uid: String)
                       exclusionVector: Vector
                     )
                     ) =>
-                  val contrib = model.predict(inclusionVector) - model.predict(
-                    exclusionVector
-                  )
+                  val contrib = innerModel.predict(inclusionVector) - innerModel
+                    .predict(exclusionVector)
                   contrib
               }
           }.toSeq
