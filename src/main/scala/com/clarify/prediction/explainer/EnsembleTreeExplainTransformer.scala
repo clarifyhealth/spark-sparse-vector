@@ -121,7 +121,7 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     set(isClassification, value)
 
   /**
-    * Param for predictionView view name.
+    * Param for ensembleType
     */
   final val ensembleType: Param[String] =
     new Param[String](
