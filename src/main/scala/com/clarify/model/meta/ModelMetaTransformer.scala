@@ -11,7 +11,7 @@ import org.apache.spark.ml.util.{
   Identifiable
 }
 import org.apache.spark.sql.functions.{avg, lit, substring_index}
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DoubleType, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset}
 import org.json4s._
 import org.json4s.jackson.Json
@@ -231,7 +231,7 @@ class ModelMetaTransformer(override val uid: String)
         Summarizer.mean($"contrib_vector").alias("pop_contribution"),
         if (predictionsSampleDF.columns.contains(sigma_mean_col))
           avg(sigma_mean_col).alias("sigma_mean")
-        else lit(0.0).alias("sigma_mean")
+        else lit(0.0).cast(DoubleType).alias("sigma_mean")
       )
       .collect()(0)
     logger.info(
@@ -255,7 +255,7 @@ class ModelMetaTransformer(override val uid: String)
 
     // Intercept
     val intercept =
-      featureIndexMap.getOrElse(-1, ("Intercept", 0, "Intercept"))._2
+      featureIndexMap.getOrElse(-1, ("Intercept", 0.0, "Intercept"))._2
 
     // Feature and Coefficient
     val featureCoefficients =
@@ -304,12 +304,12 @@ class ModelMetaTransformer(override val uid: String)
     val summaryRowCoefficientsDF = summaryRow
       .withColumn("pop_mean", lit(pop_mean))
       .withColumn("pop_contribution", lit(pop_contribution))
-      .withColumn("sigma_mean", lit(sigma_mean))
+      .withColumn("sigma_mean", lit(sigma_mean).cast(DoubleType))
       .withColumn("link_function", lit(getLinkFunction))
       .withColumn("family", lit(getFamily))
-      .withColumn("link_power", lit(getLinkPower))
-      .withColumn("variance_power", lit(getLinkPower))
-      .withColumn("intercept", lit(intercept))
+      .withColumn("link_power", lit(getLinkPower).cast(DoubleType))
+      .withColumn("variance_power", lit(getLinkPower).cast(DoubleType))
+      .withColumn("intercept", lit(intercept).cast(DoubleType))
       .withColumn("coefficients", lit(coefficientArray))
       .withColumn("features", lit(featureArray))
       .withColumn("ohe_features", lit(oheFeatureArray))
