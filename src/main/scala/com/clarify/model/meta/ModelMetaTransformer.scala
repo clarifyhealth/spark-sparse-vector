@@ -12,7 +12,7 @@ import org.apache.spark.ml.util.{
 }
 import org.apache.spark.sql.functions.{avg, lit, substring_index}
 import org.apache.spark.sql.types.{DoubleType, StructType}
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.json4s._
 import org.json4s.jackson.Json
 
@@ -352,7 +352,21 @@ class ModelMetaTransformer(override val uid: String)
     * @return
     */
   def fetchRegressionMetric(prediction: DataFrame): Map[String, AnyVal] = {
-    if (prediction.columns.contains("bias_avg")) {
+    if (prediction.columns.contains("regression_metrics") & prediction.columns
+          .contains("custom_metrics")) {
+      val predictionLabel = s"prediction_${getLabelCol}"
+      val oneRow = prediction
+        .selectExpr(
+          s"regression_metrics.${predictionLabel}.r2 as r2",
+          s"regression_metrics.${predictionLabel}.rmse as rmse",
+          s"regression_metrics.${predictionLabel}.mae as mae",
+          s"custom_metrics.${predictionLabel}.bias_avg as bias_avg",
+          s"custom_metrics.${predictionLabel}.zero_residuals as zero_residuals",
+          s"custom_metrics.${predictionLabel}.count_total as count_total"
+        )
+        .collect()(0)
+      oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
+    } else if (prediction.columns.contains("bias_avg")) {
       val oneRow = prediction
         .selectExpr(
           "r2",
@@ -382,7 +396,28 @@ class ModelMetaTransformer(override val uid: String)
     * @return
     */
   def fetchClassificationMetric(prediction: DataFrame): Map[String, AnyVal] = {
-    if (prediction.columns.contains("accuracy")) {
+    if (prediction.columns.contains("classification_metrics")) {
+      val tempRow =
+        prediction
+          .selectExpr("size(classification_metrics) as count")
+          .collect()(0)
+      val predictionLabel = s"prediction_${getLabelCol}"
+      if (tempRow.getInt(0) > 0) {
+        val oneRow = prediction
+          .selectExpr(
+            s"classification_metrics.${predictionLabel}.accuracy as accuracy",
+            s"classification_metrics.${predictionLabel}.f1 as f1",
+            s"classification_metrics.${predictionLabel}.aucROC as aucROC",
+            s"classification_metrics.${predictionLabel}.aucPR as aucPR",
+            s"classification_metrics.${predictionLabel}.weightedPrecision as weightedPrecision",
+            s"classification_metrics.${predictionLabel}.weightedRecall as weightedRecall"
+          )
+          .collect()(0)
+        oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
+      } else {
+        classificationDefaults()
+      }
+    } else if (prediction.columns.contains("accuracy")) {
       val oneRow = prediction
         .select(
           "accuracy",
@@ -395,6 +430,12 @@ class ModelMetaTransformer(override val uid: String)
         .collect()(0)
       oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
     } else {
+      classificationDefaults()
+    }
+  }
+
+  private val classificationDefaults: () => Map[String, Double] =
+    () =>
       Map(
         "accuracy" -> -1.0,
         "f1" -> -1.0,
@@ -403,8 +444,6 @@ class ModelMetaTransformer(override val uid: String)
         "weightedPrecision" -> -1.0,
         "weightedRecall" -> -1.0
       )
-    }
-  }
 
   def getRandomNSample(inputDF: DataFrame, n: Int = 1000000): DataFrame = {
     val count = inputDF.count()
