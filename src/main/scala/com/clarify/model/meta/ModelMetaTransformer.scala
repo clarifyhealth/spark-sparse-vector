@@ -325,9 +325,12 @@ class ModelMetaTransformer(override val uid: String)
     val predictionsOneRowDF = predictionsSampleDF.limit(1)
 
     val regressionMetric = fetchRegressionMetric(predictionsOneRowDF)
+    val customMetric = fetchCustomMetric(predictionsOneRowDF)
     val classificationMetric = fetchClassificationMetric(predictionsOneRowDF)
 
     val projections = Seq("*") ++ regressionMetric.map {
+      case (key, value) => s"cast(${value} as double) as ${key}"
+    } ++ customMetric.map {
       case (key, value) => s"cast(${value} as double) as ${key}"
     } ++ classificationMetric.map {
       case (key, value) => s"cast(${value} as double) as ${key}"
@@ -352,26 +355,69 @@ class ModelMetaTransformer(override val uid: String)
     * @return
     */
   def fetchRegressionMetric(prediction: DataFrame): Map[String, AnyVal] = {
-    if (prediction.columns.contains("regression_metrics") & prediction.columns
-          .contains("custom_metrics")) {
+    if (prediction.columns.contains("regression_metrics")) {
+      val tempRow =
+        prediction
+          .selectExpr(
+            "size(regression_metrics) as regression_count"
+          )
+          .collect()(0)
       val predictionLabel = s"prediction_${getLabelCol}"
-      val oneRow = prediction
-        .selectExpr(
-          s"regression_metrics.${predictionLabel}.r2 as r2",
-          s"regression_metrics.${predictionLabel}.rmse as rmse",
-          s"regression_metrics.${predictionLabel}.mae as mae",
-          s"custom_metrics.${predictionLabel}.bias_avg as bias_avg",
-          s"custom_metrics.${predictionLabel}.zero_residuals as zero_residuals",
-          s"custom_metrics.${predictionLabel}.count_total as count_total"
-        )
-        .collect()(0)
-      oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
-    } else if (prediction.columns.contains("bias_avg")) {
+      if (tempRow.getInt(0) > 0) {
+        val oneRow = prediction
+          .selectExpr(
+            s"regression_metrics.${predictionLabel}.r2 as r2",
+            s"regression_metrics.${predictionLabel}.rmse as rmse",
+            s"regression_metrics.${predictionLabel}.mae as mae"
+          )
+          .collect()(0)
+        oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
+      } else {
+        regressionDefaults()
+      }
+    } else if (prediction.columns.contains("r2")) {
       val oneRow = prediction
         .selectExpr(
           "r2",
           s"prediction_${getLabelCol}_rmse as rmse",
-          "mae",
+          "mae"
+        )
+        .collect()(0)
+      oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
+    } else {
+      regressionDefaults()
+    }
+  }
+
+  /**
+    * Extract the custom metric from a single row prediction DataFrame
+    * @param prediction This is one Row DataFrame
+    * @return
+    */
+  def fetchCustomMetric(prediction: DataFrame): Map[String, AnyVal] = {
+    if (prediction.columns.contains("custom_metrics")) {
+      val tempRow =
+        prediction
+          .selectExpr(
+            "size(custom_metrics) as custom_count"
+          )
+          .collect()(0)
+      val predictionLabel = s"prediction_${getLabelCol}"
+      if (tempRow.getInt(0) > 0) {
+        val oneRow = prediction
+          .selectExpr(
+            s"custom_metrics.${predictionLabel}.bias_avg as bias_avg",
+            s"custom_metrics.${predictionLabel}.zero_residuals as zero_residuals",
+            s"custom_metrics.${predictionLabel}.count_total as count_total"
+          )
+          .collect()(0)
+        oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
+      } else {
+        customDefaults()
+      }
+    } else if (prediction.columns.contains("bias_avg")) {
+      val oneRow = prediction
+        .selectExpr(
           "bias_avg",
           "zero_residuals",
           "count_total"
@@ -379,14 +425,7 @@ class ModelMetaTransformer(override val uid: String)
         .collect()(0)
       oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
     } else {
-      Map(
-        "r2" -> -1.0,
-        "rmse" -> -1.0,
-        "mae" -> -1.0,
-        "bias_avg" -> -1.0,
-        "zero_residuals" -> -1.0,
-        "count_total" -> -1.0
-      )
+      customDefaults()
     }
   }
 
@@ -445,6 +484,20 @@ class ModelMetaTransformer(override val uid: String)
         "weightedRecall" -> -1.0
       )
 
+  private val regressionDefaults: () => Map[String, Double] =
+    () =>
+      Map(
+        "r2" -> -1.0,
+        "rmse" -> -1.0,
+        "mae" -> -1.0
+      )
+  private val customDefaults: () => Map[String, Double] =
+    () =>
+      Map(
+        "bias_avg" -> -1.0,
+        "zero_residuals" -> -1.0,
+        "count_total" -> -1.0
+      )
   def getRandomNSample(inputDF: DataFrame, n: Int = 1000000): DataFrame = {
     val count = inputDF.count()
     val howManyTake = if (count > n) n else count
