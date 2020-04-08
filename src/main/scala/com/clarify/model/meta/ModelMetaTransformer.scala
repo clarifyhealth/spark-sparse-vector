@@ -12,7 +12,7 @@ import org.apache.spark.ml.util.{
 }
 import org.apache.spark.sql.functions.{avg, lit, substring_index}
 import org.apache.spark.sql.types.{DoubleType, StructType}
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.{DataFrame, Dataset}
 import org.json4s._
 import org.json4s.jackson.Json
 
