@@ -156,6 +156,36 @@ class ModelMetaTransformer(override val uid: String)
   final def setLinkPower(value: Double): ModelMetaTransformer =
     set(linkPower, value)
 
+  /**
+    * Param for model category.
+    */
+  final val modelCategory: Param[String] =
+    new Param[String](
+      this,
+      "modelCategory",
+      "modelCategory : predictive vs diagnostic"
+    )
+
+  final def getModelCategory: String = $(modelCategory)
+
+  final def setModelCategory(value: String): ModelMetaTransformer =
+    set(modelCategory, value)
+
+  /**
+    * Param for model category.
+    */
+  final val modelMetasPaths: Param[List[String]] =
+    new Param[List[String]](
+      this,
+      "modelMetasPaths",
+      "modelMetasPaths : The list of diagnostic modelMetas"
+    )
+
+  final def getModelMetasPaths: List[String] = $(modelMetasPaths)
+
+  final def setModelMetasPaths(value: List[String]): ModelMetaTransformer =
+    set(modelMetasPaths, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
@@ -166,7 +196,9 @@ class ModelMetaTransformer(override val uid: String)
     featuresCol -> "features",
     family -> "gaussian",
     linkPower -> 0.0,
-    variancePower -> -1.0
+    variancePower -> -1.0,
+    modelCategory -> "diagnostic",
+    modelMetasPaths -> List()
   )
 
   // Transformer requires 3 methods:
@@ -314,6 +346,7 @@ class ModelMetaTransformer(override val uid: String)
       .withColumn("features", lit(featureArray))
       .withColumn("ohe_features", lit(oheFeatureArray))
       .withColumn("feature_coefficients", lit(hccDescriptionsJson))
+      .withColumn("model_category", lit("diagnostic"))
 
     logger.info(
       s"Done ${getPredictionView} Coefficient Summary"
@@ -324,19 +357,92 @@ class ModelMetaTransformer(override val uid: String)
     )
     val predictionsOneRowDF = predictionsSampleDF.limit(1)
 
-    val regressionMetric = fetchRegressionMetric(predictionsOneRowDF)
-    val customMetric = fetchCustomMetric(predictionsOneRowDF)
-    val classificationMetric = fetchClassificationMetric(predictionsOneRowDF)
+    val projections =
+      buildAppendMetricExpression(predictionsOneRowDF, getLabelCol)
 
-    val projections = Seq("*") ++ regressionMetric.map {
-      case (key, value) => s"cast(${value} as double) as ${key}"
-    } ++ customMetric.map {
-      case (key, value) => s"cast(${value} as double) as ${key}"
-    } ++ classificationMetric.map {
-      case (key, value) => s"cast(${value} as double) as ${key}"
+    val firstDF = summaryRowCoefficientsDF.selectExpr(projections: _*)
+
+    val finalDF = getModelCategory match {
+      case "predictive" => {
+
+        val diagnosticModelMetaDF =
+          dataset.sqlContext.read.load(getModelMetasPaths: _*).limit(1)
+        val rowSchema = diagnosticModelMetaDF.schema
+        val diagnosticRow = diagnosticModelMetaDF.collect()(0)
+
+        val hccDescriptionsJsonConcat = concatFeatureDesc(
+          diagnosticRow
+            .getString(rowSchema.fieldIndex("feature_coefficients")),
+          hccDescriptionsJson
+        )
+        val secondSummaryRow = coefficientsDF.select($"model_id").limit(1)
+        val secondSummaryRowDF = secondSummaryRow
+          .withColumn(
+            "pop_mean",
+            lit(
+              diagnosticRow
+                .getSeq[Double](rowSchema.fieldIndex("pop_mean"))
+                .toArray ++ pop_mean
+            )
+          )
+          .withColumn(
+            "pop_contribution",
+            lit(
+              diagnosticRow
+                .getSeq[Double](rowSchema.fieldIndex("pop_contribution"))
+                .toArray ++ pop_contribution
+            )
+          )
+          .withColumn("sigma_mean", lit(-1.0).cast(DoubleType))
+          .withColumn("link_function", lit("na"))
+          .withColumn("family", lit("na"))
+          .withColumn("link_power", lit(-1.0).cast(DoubleType))
+          .withColumn("variance_power", lit(-1.0).cast(DoubleType))
+          .withColumn(
+            "intercept",
+            lit(
+              diagnosticRow
+                .getDouble(rowSchema.fieldIndex("intercept")) + intercept
+            ).cast(DoubleType)
+          )
+          .withColumn(
+            "coefficients",
+            lit(
+              diagnosticRow
+                .getSeq[Double](rowSchema.fieldIndex("coefficients"))
+                .toArray ++ coefficientArray
+            )
+          )
+          .withColumn(
+            "features",
+            lit(
+              diagnosticRow
+                .getSeq[Double](rowSchema.fieldIndex("features"))
+                .toArray ++ featureArray
+            )
+          )
+          .withColumn(
+            "ohe_features",
+            lit(
+              diagnosticRow
+                .getSeq[Double](rowSchema.fieldIndex("ohe_features"))
+                .toArray ++ oheFeatureArray
+            )
+          )
+          .withColumn("feature_coefficients", lit(hccDescriptionsJsonConcat))
+          .withColumn("model_category", lit("predictive"))
+
+        val projections =
+          buildAppendMetricExpression(
+            predictionsOneRowDF,
+            getLabelCol.replace("residual", "predictive")
+          )
+
+        val secondDF = secondSummaryRowDF.selectExpr(projections: _*)
+        firstDF.union(secondDF)
+      }
+      case _ => firstDF
     }
-
-    val finalDF = summaryRowCoefficientsDF.selectExpr(projections: _*)
 
     // finalDF.show(truncate = false)
 
@@ -349,12 +455,47 @@ class ModelMetaTransformer(override val uid: String)
     finalDF
   }
 
+  def concatFeatureDesc(first: String, second: String): String = {
+    s"""{${first.replace("{", "").replace("}", "")},
+         ${second.replace("{", "").replace("}", "")}}"""
+  }
+
+  /**
+    *
+    * @param prediction
+    * @param label
+    * @return
+    */
+  def buildAppendMetricExpression(
+      prediction: DataFrame,
+      label: String
+  ): Seq[String] = {
+    val regressionMetric =
+      fetchRegressionMetric(prediction, getLabelCol)
+    val customMetric = fetchCustomMetric(prediction, getLabelCol)
+    val classificationMetric =
+      fetchClassificationMetric(prediction, getLabelCol)
+
+    val projections = Seq("*") ++ regressionMetric.map {
+      case (key, value) => s"cast(${value} as double) as ${key}"
+    } ++ customMetric.map {
+      case (key, value) => s"cast(${value} as double) as ${key}"
+    } ++ classificationMetric.map {
+      case (key, value) => s"cast(${value} as double) as ${key}"
+    }
+    projections
+  }
+
   /**
     * Extract the regression metric from a single row prediction DataFrame
     * @param prediction This is one Row DataFrame
+    * @param label
     * @return
     */
-  def fetchRegressionMetric(prediction: DataFrame): Map[String, AnyVal] = {
+  def fetchRegressionMetric(
+      prediction: DataFrame,
+      label: String
+  ): Map[String, AnyVal] = {
     if (prediction.columns.contains("regression_metrics")) {
       val tempRow =
         prediction
@@ -362,7 +503,7 @@ class ModelMetaTransformer(override val uid: String)
             "size(regression_metrics) as regression_count"
           )
           .collect()(0)
-      val predictionLabel = s"prediction_${getLabelCol}"
+      val predictionLabel = s"prediction_${label}"
       if (tempRow.getInt(0) > 0) {
         val oneRow = prediction
           .selectExpr(
@@ -379,7 +520,7 @@ class ModelMetaTransformer(override val uid: String)
       val oneRow = prediction
         .selectExpr(
           "r2",
-          s"prediction_${getLabelCol}_rmse as rmse",
+          s"prediction_${label}_rmse as rmse",
           "mae"
         )
         .collect()(0)
@@ -391,10 +532,15 @@ class ModelMetaTransformer(override val uid: String)
 
   /**
     * Extract the custom metric from a single row prediction DataFrame
+    *
     * @param prediction This is one Row DataFrame
+    * @param label
     * @return
     */
-  def fetchCustomMetric(prediction: DataFrame): Map[String, AnyVal] = {
+  def fetchCustomMetric(
+      prediction: DataFrame,
+      label: String
+  ): Map[String, AnyVal] = {
     if (prediction.columns.contains("custom_metrics")) {
       val tempRow =
         prediction
@@ -402,7 +548,7 @@ class ModelMetaTransformer(override val uid: String)
             "size(custom_metrics) as custom_count"
           )
           .collect()(0)
-      val predictionLabel = s"prediction_${getLabelCol}"
+      val predictionLabel = s"prediction_${label}"
       if (tempRow.getInt(0) > 0) {
         val oneRow = prediction
           .selectExpr(
@@ -432,15 +578,19 @@ class ModelMetaTransformer(override val uid: String)
   /**
     * Extract the classification metric from a single row prediction DataFrame
     * @param prediction This is one Row DataFrame
+    * @param label
     * @return
     */
-  def fetchClassificationMetric(prediction: DataFrame): Map[String, AnyVal] = {
+  def fetchClassificationMetric(
+      prediction: DataFrame,
+      label: String
+  ): Map[String, AnyVal] = {
     if (prediction.columns.contains("classification_metrics")) {
       val tempRow =
         prediction
           .selectExpr("size(classification_metrics) as count")
           .collect()(0)
-      val predictionLabel = s"prediction_${getLabelCol}"
+      val predictionLabel = s"prediction_${label}"
       if (tempRow.getInt(0) > 0) {
         val oneRow = prediction
           .selectExpr(
@@ -498,6 +648,7 @@ class ModelMetaTransformer(override val uid: String)
         "zero_residuals" -> -1.0,
         "count_total" -> -1.0
       )
+
   def getRandomNSample(inputDF: DataFrame, n: Int = 1000000): DataFrame = {
     val count = inputDF.count()
     val howManyTake = if (count > n) n else count
