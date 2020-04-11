@@ -3,7 +3,7 @@ package com.clarify.model.meta
 import org.apache.log4j.Logger
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.linalg.Vector
-import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.ml.param.{Param, ParamMap, StringArrayParam}
 import org.apache.spark.ml.stat.Summarizer
 import org.apache.spark.ml.util.{
   DefaultParamsReadable,
@@ -174,16 +174,16 @@ class ModelMetaTransformer(override val uid: String)
   /**
     * Param for model category.
     */
-  final val modelMetasPaths: Param[List[String]] =
-    new Param[List[String]](
+  final val modelMetasPaths: StringArrayParam =
+    new StringArrayParam(
       this,
       "modelMetasPaths",
       "modelMetasPaths : The list of diagnostic modelMetas"
     )
 
-  final def getModelMetasPaths: List[String] = $(modelMetasPaths)
+  final def getModelMetasPaths: Array[String] = $(modelMetasPaths)
 
-  final def setModelMetasPaths(value: List[String]): ModelMetaTransformer =
+  final def setModelMetasPaths(value: Array[String]): ModelMetaTransformer =
     set(modelMetasPaths, value)
 
   // (Optional) You can set defaults for Param values if you like.
@@ -198,7 +198,7 @@ class ModelMetaTransformer(override val uid: String)
     linkPower -> 0.0,
     variancePower -> -1.0,
     modelCategory -> "diagnostic",
-    modelMetasPaths -> List()
+    modelMetasPaths -> Array()
   )
 
   // Transformer requires 3 methods:
