@@ -471,10 +471,10 @@ class ModelMetaTransformer(override val uid: String)
       label: String
   ): Seq[String] = {
     val regressionMetric =
-      fetchRegressionMetric(prediction, getLabelCol)
-    val customMetric = fetchCustomMetric(prediction, getLabelCol)
+      fetchRegressionMetric(prediction, label)
+    val customMetric = fetchCustomMetric(prediction, label)
     val classificationMetric =
-      fetchClassificationMetric(prediction, getLabelCol)
+      fetchClassificationMetric(prediction, label)
 
     val projections = Seq("*") ++ regressionMetric.map {
       case (key, value) => s"cast(${value} as double) as ${key}"
