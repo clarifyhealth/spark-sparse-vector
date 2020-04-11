@@ -417,7 +417,7 @@ class ModelMetaTransformer(override val uid: String)
             "features",
             lit(
               diagnosticRow
-                .getSeq[Double](rowSchema.fieldIndex("features"))
+                .getSeq[String](rowSchema.fieldIndex("features"))
                 .toArray ++ featureArray
             )
           )
@@ -425,7 +425,7 @@ class ModelMetaTransformer(override val uid: String)
             "ohe_features",
             lit(
               diagnosticRow
-                .getSeq[Double](rowSchema.fieldIndex("ohe_features"))
+                .getSeq[String](rowSchema.fieldIndex("ohe_features"))
                 .toArray ++ oheFeatureArray
             )
           )
