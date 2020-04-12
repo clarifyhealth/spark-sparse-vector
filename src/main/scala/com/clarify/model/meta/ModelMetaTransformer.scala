@@ -331,7 +331,13 @@ class ModelMetaTransformer(override val uid: String)
     logger.info(
       s"Start ${getPredictionView}  Coefficient Summary"
     )
-    val summaryRow = coefficientsDF.select($"model_id").limit(1)
+    val summaryRow = getModelCategory match {
+      case "predictive" =>
+        coefficientsDF
+          .selectExpr("concat_ws('-',model_id,'X') as model_id")
+          .limit(1)
+      case _ => coefficientsDF.select($"model_id").limit(1)
+    }
 
     val summaryRowCoefficientsDF = summaryRow
       .withColumn("pop_mean", lit(pop_mean))
