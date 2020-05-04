@@ -135,6 +135,21 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   final def setEnsembleType(value: String): EnsembleTreeExplainTransformer =
     set(ensembleType, value)
 
+  /**
+    * Param for control to control boosted classification
+    */
+  final val boosted: Param[Boolean] =
+    new Param[Boolean](
+      this,
+      "boosted",
+      "is boosted classification"
+    )
+
+  final def getBoosted: Boolean = $(boosted)
+
+  final def setBoosted(value: Boolean): EnsembleTreeExplainTransformer =
+    set(boosted, value)
+
   // (Optional) You can set defaults for Param values if you like.
   setDefault(
     predictionView -> "predictions",
@@ -143,7 +158,8 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     modelPath -> "modelPath",
     dropPathColumn -> true,
     isClassification -> false,
-    ensembleType -> "rf"
+    ensembleType -> "rf",
+    boosted -> false
   )
 
   /**
