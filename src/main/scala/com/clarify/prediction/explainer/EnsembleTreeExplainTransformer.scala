@@ -15,7 +15,7 @@ import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
-
+import scala.math.exp
 import scala.collection.SortedMap
 import scala.collection.immutable.Nil
 
@@ -279,11 +279,18 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     val contributionsDF = calculateContributions(
       predictionsWithPathsDf,
       featureIndexCoefficient,
+      getBoosted,
       model
     )
-    val contrib_intercept = model.predict(
+    val contrib_simple = model.predict(
       Vectors.sparse(featureIndexCoefficient.size, Array(), Array())
     )
+    val contrib_intercept =
+      if (getBoosted)
+        1 / (1 + exp(-contrib_simple))
+      else
+        contrib_simple
+
     val finalDF =
       contributionsDF.withColumn(
         "contrib_intercept",
@@ -397,12 +404,13 @@ class EnsembleTreeExplainTransformer(override val uid: String)
   private def calculateContributions(
       df: DataFrame,
       featureIndexCoefficient: SortedMap[Long, (String, Double)],
+      boosted: Boolean,
       model: Model[_]
   ): DataFrame = {
     val encoder =
       buildContribEncoder(df, "contrib")
     val func =
-      contributionsRows(df.schema)(featureIndexCoefficient, model)
+      contributionsRows(df.schema)(featureIndexCoefficient, boosted, model)
     df.mapPartitions(x => x.map(func))(encoder)
   }
   /*
@@ -411,10 +419,11 @@ class EnsembleTreeExplainTransformer(override val uid: String)
    */
   private val contributionsRows: StructType => (
       SortedMap[Long, (String, Double)],
+      Boolean,
       Model[_]
   ) => Row => Row =
     (schema) =>
-      (featureIndexCoefficient, model) =>
+      (featureIndexCoefficient, boosted, model) =>
         (row) => {
           val innerModel =
             model match {
@@ -432,8 +441,15 @@ class EnsembleTreeExplainTransformer(override val uid: String)
                       exclusionVector: Vector
                     )
                     ) =>
-                  val contrib = innerModel.predict(inclusionVector) - innerModel
-                    .predict(exclusionVector)
+                  val contrib =
+                    if (boosted)
+                      (1 / (1 + exp(-innerModel.predict(inclusionVector)))) - (1 / (1 + exp(
+                        -innerModel.predict(exclusionVector)
+                      )))
+                    else
+                      innerModel.predict(inclusionVector) - innerModel.predict(
+                        exclusionVector
+                      )
                   contrib
               }
           }.toSeq
