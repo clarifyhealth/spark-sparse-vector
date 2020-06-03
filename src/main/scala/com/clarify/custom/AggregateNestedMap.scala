@@ -20,7 +20,6 @@ class AggregateNestedMap
           } else {
             !rowValue.anyNull
           }
-        case (_, value: GenericRowWithSchema) => !value.isNullAt(0)
       }
     }.toMap
   }
