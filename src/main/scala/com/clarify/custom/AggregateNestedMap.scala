@@ -12,6 +12,9 @@ class AggregateNestedMap
   ): Map[String, Row] = {
     entries.flatMap { item =>
       item.filter {
+        case (null, null) => false
+        case (_, null)    => false
+        case (null, _)    => false
         case (_, rowValue: GenericRowWithSchema) =>
           if (rowValue.schema.names.contains("predicted_value")) {
             !rowValue.isNullAt(rowValue.fieldIndex("predicted_value"))

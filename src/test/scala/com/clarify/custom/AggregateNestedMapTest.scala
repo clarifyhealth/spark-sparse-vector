@@ -17,10 +17,10 @@ class AggregateNestedMapTest extends QueryTest with SparkSessionTestWrapper {
     spark.sharedState.cacheManager.clearCache()
     val inner = StructType(
       List(
+        StructField("predicted_value", DoubleType),
         StructField("model_id", StringType),
         StructField("valid", IntegerType),
-        StructField("rmse", DoubleType),
-        StructField("value", DoubleType)
+        StructField("rmse", DoubleType)
       )
     )
 
