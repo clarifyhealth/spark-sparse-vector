@@ -1,8 +1,8 @@
-package com.clarify.signal
+package com.clarify.array
 
-import org.apache.spark.sql.api.java.UDF2
-import breeze.signal._
 import breeze.linalg._
+import breeze.signal._
+import org.apache.spark.sql.api.java.UDF2
 
 class Convolve extends UDF2[Seq[Double], Seq[Double], Seq[Double]] {
 
