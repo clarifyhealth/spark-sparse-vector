@@ -18,13 +18,13 @@ class ConvolveTest extends QueryTest with SparkSessionTestWrapper {
       DataTypes.createArrayType(DataTypes.DoubleType)
     )
 
-    val out_df = testDF.selectExpr(
+    val resultDF = testDF.selectExpr(
       "data",
       "array_convolve(data,kernelEven) as convolveEven",
       "array_convolve(data,kernelOdd) as convolveOdd"
     )
     checkAnswer(
-      out_df.select("convolveEven", "convolveOdd"),
+      resultDF.select("convolveEven", "convolveOdd"),
       spark.sql(
         "select cast(array(7.0, 10.0, 13.0) as array<double>) as kernelEven, " +
           "cast(array(16.0, 22.0) as array<double>) as kernelOdd"
