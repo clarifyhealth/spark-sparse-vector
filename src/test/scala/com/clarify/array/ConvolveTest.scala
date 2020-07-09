@@ -7,9 +7,7 @@ import com.clarify.sparse_vectors.SparkSessionTestWrapper
 class ConvolveTest extends QueryTest with SparkSessionTestWrapper {
   test("basic test") {
     val testDF = spark.sql(
-      "select cast(array(2.0, 3.0, 4.0, 5.0) as array<double>) as data, " +
-        "cast(array(1.0, 2.0) as array<double>) as kernelEven, " +
-        "cast(array(1.0, 2.0, 3.0) as array<double>) as kernelOdd"
+      "select cast(array(2.0, 3.0, 4.0, 5.0) as array<double>) as data"
     )
 
     spark.udf.register(
@@ -20,14 +18,14 @@ class ConvolveTest extends QueryTest with SparkSessionTestWrapper {
 
     val resultDF = testDF.selectExpr(
       "data",
-      "array_convolve(data,kernelEven) as convolveEven",
-      "array_convolve(data,kernelOdd) as convolveOdd"
+      "array_convolve(data,2) as convolveEven",
+      "array_convolve(data,3) as convolveOdd"
     )
     checkAnswer(
       resultDF.select("convolveEven", "convolveOdd"),
       spark.sql(
-        "select cast(array(7.0, 10.0, 13.0) as array<double>) as convolveEven, " +
-          "cast(array(16.0, 22.0) as array<double>) as convolveOdd"
+        "select cast(array(2.5, 3.5, 4.5) as array<double>) as convolveEven, " +
+          "cast(array(3.0, 3.9999999999999996) as array<double>) as convolveOdd"
       )
     )
 
