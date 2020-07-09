@@ -23,7 +23,7 @@ class VarianceTest extends QueryTest with SparkSessionTestWrapper {
     checkAnswer(
       resultDF.select("array_variance"),
       spark.sql(
-        "select cast(3.5 as double) as array_variance"
+        "select cast(2.9166666666666665 as double) as array_variance"
       )
     )
 

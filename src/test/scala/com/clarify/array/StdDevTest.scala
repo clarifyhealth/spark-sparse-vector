@@ -23,7 +23,7 @@ class StdDevTest extends QueryTest with SparkSessionTestWrapper {
     checkAnswer(
       resultDF.select("array_stddev"),
       spark.sql(
-        "select cast(1.8708286933869707 as double) as array_stddev"
+        "select cast(1.707825127659933 as double) as array_stddev"
       )
     )
 
