@@ -26,8 +26,8 @@ class ConvolveTest extends QueryTest with SparkSessionTestWrapper {
     checkAnswer(
       resultDF.select("convolveEven", "convolveOdd"),
       spark.sql(
-        "select cast(array(7.0, 10.0, 13.0) as array<double>) as kernelEven, " +
-          "cast(array(16.0, 22.0) as array<double>) as kernelOdd"
+        "select cast(array(7.0, 10.0, 13.0) as array<double>) as convolveEven, " +
+          "cast(array(16.0, 22.0) as array<double>) as convolveOdd"
       )
     )
 
