@@ -443,8 +443,10 @@ class ModelMetaTransformer(override val uid: String)
             predictionsOneRowDF,
             if (getLabelCol.startsWith("residual"))
               getLabelCol.replace("residual", "predictive")
-            else
+            else if (getLabelCol.startsWith("ncm"))
               getLabelCol.replace("ncm", "predictive")
+            else
+              getLabelCol
           )
         val secondDF = secondSummaryRowDF.selectExpr(projections: _*)
         firstDF.union(secondDF)
