@@ -1,8 +1,8 @@
 package com.clarify.array
 
-import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.QueryTest
-import org.apache.spark.sql.types.{DataType, DataTypes}
+import org.apache.spark.sql.types.{DataTypes}
+import com.clarify.sparse_vectors.SparkSessionTestWrapper
 
 class ConvolveTest extends QueryTest with SparkSessionTestWrapper {
   test("basic test") {
