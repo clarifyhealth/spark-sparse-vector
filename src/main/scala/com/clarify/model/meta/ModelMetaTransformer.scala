@@ -441,9 +441,13 @@ class ModelMetaTransformer(override val uid: String)
         val projections =
           buildAppendMetricExpression(
             predictionsOneRowDF,
-            getLabelCol.replace("residual", "predictive")
+            if (getLabelCol.startsWith("residual"))
+              getLabelCol.replace("residual", "predictive")
+            else if (getLabelCol.startsWith("ncm"))
+              getLabelCol.replace("ncm", "predictive")
+            else
+              getLabelCol
           )
-
         val secondDF = secondSummaryRowDF.selectExpr(projections: _*)
         firstDF.union(secondDF)
       }
