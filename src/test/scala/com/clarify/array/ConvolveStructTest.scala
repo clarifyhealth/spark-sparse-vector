@@ -33,7 +33,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
   }
 
-  test("basic test scenario 1") {
+  test("basic test scenario [1 NaN 3 4 5 6]") {
     val testDF = spark.sql(
       "select array(struct(0 as interval_index , cast(1.0 as double) as value, false as is_null)," +
         "struct(1 as interval_index , cast(0.0 as double) as value, true as is_null)," +
@@ -63,7 +63,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
   }
 
-  test("basic test scenario 2") {
+  test("basic test scenario [1 Nan NaN Nan 3 4 5 6]") {
     val testDF = spark.sql(
       "select array(struct(0 as interval_index , cast(1.0 as double) as value, false as is_null)," +
         "struct(1 as interval_index , cast(0.0 as double) as value, true as is_null)," +
@@ -95,7 +95,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
   }
 
-  test("basic test scenario 3") {
+  test("basic test scenario [Nan NaN Nan 3 4 5 6]") {
     val testDF = spark.sql(
       "select array(struct(0 as interval_index , cast(0.0 as double) as value, true as is_null)," +
         "struct(1 as interval_index , cast(0.0 as double) as value, true as is_null)," +
@@ -126,7 +126,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
   }
 
-  test("basic test scenario 4") {
+  test("basic test scenario [3 4 5 6 NaN]") {
     val testDF = spark.sql(
       "select array(struct(0 as interval_index , cast(3.0 as double) as value, false as is_null)," +
         "struct(1 as interval_index , cast(4.0 as double) as value, false as is_null)," +
