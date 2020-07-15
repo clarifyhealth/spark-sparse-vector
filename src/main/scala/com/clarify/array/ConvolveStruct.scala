@@ -23,7 +23,7 @@ class ConvolveStruct extends UDF1[Seq[Row], Seq[Double]] {
             case (Some(lastKnowGoodBackward), Some(lastKnowGoodForward)) =>
               (lastKnowGoodBackward + lastKnowGoodForward) / 2
             case (Some(lastKnowGoodBackward), None) => lastKnowGoodBackward
-            case (Some(lastKnowGoodForward), None)  => lastKnowGoodForward
+            case (None, Some(lastKnowGoodForward))  => lastKnowGoodForward
             case (None, None)                       => dataValues.sum / dataValues.length
           }
         } else {
@@ -32,7 +32,7 @@ class ConvolveStruct extends UDF1[Seq[Row], Seq[Double]] {
       }
     }.toArray
 
-    val window = dataValuesImputed.length
+    val window = 3
     val kernel = Common.generateKernel(window)
     convolve(DenseVector(dataValuesImputed: _*), DenseVector(kernel: _*)).toArray
   }
@@ -54,6 +54,7 @@ class ConvolveStruct extends UDF1[Seq[Row], Seq[Double]] {
     val index = (interval_index - 1 to 0 by -1).find(x => !dataValues(x).isNaN)
     index match {
       case Some(x) => Some(dataValues(x))
+      case _       => None
     }
   }
 
@@ -65,6 +66,7 @@ class ConvolveStruct extends UDF1[Seq[Row], Seq[Double]] {
       .find(x => !dataValues(x).isNaN)
     index match {
       case Some(x) => Some(dataValues(x))
+      case _       => None
     }
   }
 }
