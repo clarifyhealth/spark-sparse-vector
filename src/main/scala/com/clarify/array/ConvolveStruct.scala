@@ -3,13 +3,13 @@ package com.clarify.array
 import breeze.linalg.DenseVector
 import breeze.signal._
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.api.java.UDF1
+import org.apache.spark.sql.api.java.UDF2
 
 import scala.collection.SortedMap
 
-class ConvolveStruct extends UDF1[Seq[Row], Seq[Double]] {
+class ConvolveStruct extends UDF2[Seq[Row], Int, Seq[Double]] {
 
-  override def call(data: Seq[Row]): Seq[Double] = {
+  override def call(data: Seq[Row], window: Int): Seq[Double] = {
 
     val dataValues = SortedMap(data.map {
       case Row(interval_index: Int, value: Double, is_null: Boolean) =>
@@ -32,7 +32,6 @@ class ConvolveStruct extends UDF1[Seq[Row], Seq[Double]] {
       }
     }.toArray
 
-    val window = 3
     val kernel = Common.generateKernel(window)
     convolve(DenseVector(dataValuesImputed: _*), DenseVector(kernel: _*)).toArray
   }

@@ -21,7 +21,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
     val resultDF = testDF.selectExpr(
       "data",
-      "array_convolve_struct(data) as convolveTest"
+      "array_convolve_struct(data,3) as convolveTest"
     )
 
     checkAnswer(
@@ -51,7 +51,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
     val resultDF = testDF.selectExpr(
       "data",
-      "array_convolve_struct(data) as convolveTest"
+      "array_convolve_struct(data,3) as convolveTest"
     )
 
     checkAnswer(
@@ -83,7 +83,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
     val resultDF = testDF.selectExpr(
       "data",
-      "array_convolve_struct(data) as convolveTest"
+      "array_convolve_struct(data,3) as convolveTest"
     )
 
     checkAnswer(
@@ -114,7 +114,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
     val resultDF = testDF.selectExpr(
       "data",
-      "array_convolve_struct(data) as convolveTest"
+      "array_convolve_struct(data,3) as convolveTest"
     )
 
     checkAnswer(
@@ -143,7 +143,7 @@ class ConvolveStructTest extends QueryTest with SparkSessionTestWrapper {
 
     val resultDF = testDF.selectExpr(
       "data",
-      "array_convolve_struct(data) as convolveTest"
+      "array_convolve_struct(data,3) as convolveTest"
     )
 
     checkAnswer(
