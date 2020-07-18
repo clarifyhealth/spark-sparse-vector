@@ -24,7 +24,7 @@ class ConvolveStruct extends UDF2[Seq[Row], Int, Seq[Double]] {
               (lastKnowGoodBackward + lastKnowGoodForward) / 2
             case (Some(lastKnowGoodBackward), None) => lastKnowGoodBackward
             case (None, Some(lastKnowGoodForward))  => lastKnowGoodForward
-            case (None, None)                       => dataValues.sum / dataValues.length
+            case (None, None)                       => None
           }
         } else {
           value
