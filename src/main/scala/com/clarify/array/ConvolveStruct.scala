@@ -1,7 +1,7 @@
 package com.clarify.array
 
-import breeze.linalg.DenseVector
 import breeze.signal._
+import breeze.linalg._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.api.java.UDF2
 
