@@ -22,7 +22,13 @@ class Calculator extends UDF1[Seq[Double], Double] {
     val y_mean = y_values.sum / y_values_length
     val linear_predictions = x_values.map(x => slope * x + y_mean)
 
-    new StdDev().call(linear_predictions)
+    val residuals = linear_predictions.zip(y_values).map {
+      case (predicted, actual) => predicted - actual
+    }
+
+    val residual_stddev = new StdDev().call(residuals)
+
+    residual_stddev
 
   }
 }

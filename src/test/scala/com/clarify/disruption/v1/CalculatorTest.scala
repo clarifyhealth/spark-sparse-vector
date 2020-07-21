@@ -31,9 +31,12 @@ class CalculatorTest extends QueryTest with SparkSessionTestWrapper {
       "data",
       "calculate_disruption(data) as calculated_disruption"
     )
+
+    resultDF.show(truncate = false)
+
     checkAnswer(
       resultDF.selectExpr(
-        "case when calculated_disruption between 5 and 6 then 1 else 0 end as result"
+        "case when calculated_disruption between 2 and 5 then 1 else 0 end as result"
       ),
       spark.sql("select 1 as result")
     )
