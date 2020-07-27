@@ -866,9 +866,7 @@ class GLMExplainTransformer(override val uid: String)
                       schema.fieldIndex(s"${prefixOrColumnName}_${featureName}")
                     )
               }.sum
-          val total = calculate + row.getDouble(
-            schema.fieldIndex(s"contrib_intercept")
-          )
+          val total = calculate
           Row.merge(row, Row(total))
         }
 
