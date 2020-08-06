@@ -14,10 +14,17 @@ class CalculatorTest extends QueryTest with SparkSessionTestWrapper {
   }
   test("direct test max in the middle") {
     val calculator = new Calculator()
-    val data: Seq[Double] = Seq(2.0, 2,0, 2,0, 2.0, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0)
+    val data: Seq[Double] = Seq(2.0, 2.0, 0.0, 2.0, 0.0 , 2.0, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0)
     val result: Option[Double] = calculator.call(data)
     assert(result.isDefined)
     assert(result.get == -2.0)
+  }
+  test("direct test max at the end") {
+    val calculator = new Calculator()
+    val data: Seq[Double] = Seq(2.0, 2.0, 1.5, 2.0, 1.5 , 2.0, 1.6666666666666665, 1.3333333333333333, 2.0, 2.0, 2.0, 1.0)
+    val result: Option[Double] = calculator.call(data)
+    assert(result.isDefined)
+    assert(result.get == -1.0)
   }
   test("basic test") {
 
