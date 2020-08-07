@@ -5,26 +5,40 @@ import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.types.DataTypes
 
 class CalculatorTest extends QueryTest with SparkSessionTestWrapper {
-  test("direct test max at beginning") {
+  test("direct test max delta at beginning") {
     val calculator = new Calculator()
     val data: Seq[Double] = Seq(2.0, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
     val result: Option[Double] = calculator.call(data)
     assert(result.isDefined)
     assert(result.get == -0.3333333333333335)
   }
-  test("direct test max in the middle") {
+  test("direct test max delta in the middle") {
     val calculator = new Calculator()
     val data: Seq[Double] = Seq(2.0, 2.0, 0.0, 2.0, 0.0 , 2.0, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0)
     val result: Option[Double] = calculator.call(data)
     assert(result.isDefined)
     assert(result.get == -2.0)
   }
-  test("direct test max at the end") {
+  test("direct test max delta at the end") {
     val calculator = new Calculator()
     val data: Seq[Double] = Seq(2.0, 2.0, 1.5, 2.0, 1.5 , 2.0, 1.6666666666666665, 1.3333333333333333, 2.0, 2.0, 2.0, 1.0)
     val result: Option[Double] = calculator.call(data)
     assert(result.isDefined)
     assert(result.get == -1.0)
+  }
+  test("direct test quarterly max delta at the beginning") {
+    val calculator = new Calculator()
+    val data: Seq[Double] = Seq(3.0, 1.0, 1.0, 1.0)
+    val result: Option[Double] = calculator.call(data)
+    assert(result.isDefined)
+    assert(result.get == -2.0)
+  }
+  test("direct test quarterly max delta at the end") {
+    val calculator = new Calculator()
+    val data: Seq[Double] = Seq(3.0, 3.0, 3.0, 1.0)
+    val result: Option[Double] = calculator.call(data)
+    assert(result.isDefined)
+    assert(result.get == -2.0)
   }
   test("basic test") {
 
