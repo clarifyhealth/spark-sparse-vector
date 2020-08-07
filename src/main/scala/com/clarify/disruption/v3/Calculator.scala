@@ -18,6 +18,7 @@ class Calculator extends UDF1[Seq[Double], Option[Double]] {
     // use value or -1 if there is no value
     val out: Option[Double] = diff.lift(index.getOrElse(-1))
 
+    // change any value greater than 0 to 0 so we get only negative disruption
     Some(Array(out.getOrElse(0.0), 0.0).min)
 
   }
