@@ -7,13 +7,18 @@ import scala.util.Try
 class Calculator extends UDF1[Seq[Double], Option[Double]] {
   override def call(data: Seq[Double]): Option[Double] = {
 
-    val diff = for (i <- 1 until data.length)
+    // calculate the delta for each reading (subtracting the previous entry from it)
+    val diff: IndexedSeq[Double] = for (i <- 1 until data.length)
       yield data(i) - data(i - 1)
 
-    val index = Try(diff.indices.minBy(x => x)).toOption
+    // find index of element with the minimum value
+//    val index = Try(diff.indices.minBy(x => x)).toOption
+    val index: Option[Int] = Try(diff.indices.minBy(diff)).toOption
 
-    val out = diff.lift(index.getOrElse(-1))
+    // use value or -1 if there is no value
+    val out: Option[Double] = diff.lift(index.getOrElse(-1))
 
+    // change any value greater than 0 to 0 so we get only negative disruption
     Some(Array(out.getOrElse(0.0), 0.0).min)
 
   }
