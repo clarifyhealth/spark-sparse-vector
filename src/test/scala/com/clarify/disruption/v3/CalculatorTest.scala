@@ -121,12 +121,12 @@ class CalculatorTest extends QueryTest with SparkSessionTestWrapper {
 
     resultDF.printSchema()
 
-//    checkAnswer(
-//      resultDF.selectExpr(
-//        "calculated_disruption as result"
-//      ),
-//      spark.sql("select cast(-2.0 as double) as result")
-//    )
+    checkAnswer(
+      resultDF.selectExpr(
+        "calculated_disruption as result"
+      ),
+      spark.sql("select cast(-2.0 as double) as result")
+    )
 
   }
 
@@ -157,12 +157,12 @@ class CalculatorTest extends QueryTest with SparkSessionTestWrapper {
 
     resultDF.printSchema()
 
-    //    checkAnswer(
-    //      resultDF.selectExpr(
-    //        "calculated_disruption as result"
-    //      ),
-    //      spark.sql("select cast(-2.0 as double) as result")
-    //    )
+        checkAnswer(
+          resultDF.selectExpr(
+            "calculated_disruption as result"
+          ),
+          spark.sql("select cast(-2.0 as double) as result")
+        )
 
   }
 
