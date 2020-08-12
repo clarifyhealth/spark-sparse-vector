@@ -70,4 +70,100 @@ class CalculatorTest extends QueryTest with SparkSessionTestWrapper {
 
   }
 
+  test("null handling test") {
+
+    val testDF = spark.sql(
+      s"select cast(array(2.0, 2, 0, 2, 0, null, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0) as array<double>) as data"
+    )
+
+    spark.udf.register(
+      "calculate_disruption",
+      new Calculator(),
+      DataTypes.DoubleType
+    )
+
+    val resultDF = testDF.selectExpr(
+      "data",
+      "calculate_disruption(data) as calculated_disruption"
+    )
+
+    resultDF.show(truncate = false)
+
+    resultDF.printSchema()
+
+    //    checkAnswer(
+    //      resultDF.selectExpr(
+    //        "calculated_disruption as result"
+    //      ),
+    //      spark.sql("select cast(-2.0 as double) as result")
+    //    )
+
+  }
+
+  test("NaN handling test I") {
+
+    val testDF = spark.sql(
+      s"select cast(array(2.0, 2, 0, 2, 0, 0.0, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0) as array<double>) as data"
+    )
+
+    spark.udf.register(
+      "calculate_disruption",
+      new Calculator(),
+      DataTypes.DoubleType
+    )
+
+    val resultDF = testDF.selectExpr(
+      "data",
+      "calculate_disruption(data) as calculated_disruption"
+    )
+
+    resultDF.show(truncate = false)
+
+    resultDF.printSchema()
+
+    checkAnswer(
+      resultDF.selectExpr(
+        "calculated_disruption as result"
+      ),
+      spark.sql("select cast(-2.0 as double) as result")
+    )
+
+  }
+
+  test("NaN handling test II") {
+
+    import spark.implicits._
+
+    val data = Seq(List(2.0, 2, 0, Double.NaN, 0, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0))
+
+    val rdd = spark.sparkContext.parallelize(data)
+
+    val testDf = rdd.toDF("data")
+
+    testDf.show(truncate = false)
+
+    spark.udf.register(
+      "calculate_disruption",
+      new Calculator(),
+      DataTypes.DoubleType
+    )
+
+    val resultDF = testDf.selectExpr(
+      "data",
+      "calculate_disruption(data) as calculated_disruption"
+    )
+
+    resultDF.show(truncate = false)
+
+    resultDF.printSchema()
+
+        checkAnswer(
+          resultDF.selectExpr(
+            "calculated_disruption as result"
+          ),
+          spark.sql("select cast(-2.0 as double) as result")
+        )
+
+  }
+
 }
