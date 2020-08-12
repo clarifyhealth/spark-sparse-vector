@@ -40,6 +40,13 @@ class CalculatorTest extends QueryTest with SparkSessionTestWrapper {
     assert(result.isDefined)
     assert(result.get == -2.0)
   }
+  test("direct test data is null") {
+    val calculator = new Calculator()
+    val data: Seq[Double] = null
+    val result: Option[Double] = calculator.call(data)
+    assert(result.isDefined)
+    assert(result.get == 0.0)
+  }
   test("basic test") {
 
     val testDF = spark.sql(
