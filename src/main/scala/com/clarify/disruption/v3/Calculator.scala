@@ -9,7 +9,7 @@ class Calculator extends UDF1[Seq[Double], Option[Double]] {
 
     Option(data) match {
       case Some(value: Seq[Double]) =>
-        val data_sanitized = data.map {
+        val data_sanitized = value.map {
           case d if d.isNaN => 0.0 // Or whatever value you'd prefer.
           case d if d.isNegInfinity => 0.0 // Or whatever value you'd prefer.
           case d if d.isPosInfinity => 0.0 // Or whatever value you'd prefer.
