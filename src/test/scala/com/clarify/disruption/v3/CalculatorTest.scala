@@ -70,4 +70,64 @@ class CalculatorTest extends QueryTest with SparkSessionTestWrapper {
 
   }
 
+  test("null handling test") {
+
+    val testDF = spark.sql(
+      s"select cast(array(2.0, 2, 0, 2, 0, null, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0) as array<double>) as data"
+    )
+
+    spark.udf.register(
+      "calculate_disruption",
+      new Calculator(),
+      DataTypes.DoubleType
+    )
+
+    val resultDF = testDF.selectExpr(
+      "data",
+      "calculate_disruption(data) as calculated_disruption"
+    )
+
+    resultDF.show(truncate = false)
+
+    resultDF.printSchema()
+
+    //    checkAnswer(
+    //      resultDF.selectExpr(
+    //        "calculated_disruption as result"
+    //      ),
+    //      spark.sql("select cast(-2.0 as double) as result")
+    //    )
+
+  }
+
+  test("NaN handling test") {
+
+    val testDF = spark.sql(
+      s"select cast(array(2.0, 2, 0, 2, 0, Double.NaN, 1.6666666666666665, 1.3333333333333333, 1.0, 1.0, 1.0, 1.0) as array<double>) as data"
+    )
+
+    spark.udf.register(
+      "calculate_disruption",
+      new Calculator(),
+      DataTypes.DoubleType
+    )
+
+    val resultDF = testDF.selectExpr(
+      "data",
+      "calculate_disruption(data) as calculated_disruption"
+    )
+
+    resultDF.show(truncate = false)
+
+    resultDF.printSchema()
+
+//    checkAnswer(
+//      resultDF.selectExpr(
+//        "calculated_disruption as result"
+//      ),
+//      spark.sql("select cast(-2.0 as double) as result")
+//    )
+
+  }
+
 }
