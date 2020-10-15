@@ -13,7 +13,7 @@ class EnsembleTreeExplainTransformerTest
     val predictionDF = spark.read
       .option("header", "true")
       .option("inferSchema", "true")
-      .csv(getClass.getResource("/basic/rf_prediction_test.csv").getPath)
+      .csv(getClass.getResource("/basic/model_ready_test.csv").getPath)
 
     predictionDF.createOrReplaceTempView("my_predictions")
 
@@ -27,7 +27,7 @@ class EnsembleTreeExplainTransformerTest
     val coefficientsDF = spark.read
       .option("header", "true")
       .schema(my_schema)
-      .csv(getClass.getResource("/basic/feature_importances.csv").getPath)
+      .csv(getClass.getResource("/basic/feature_importances_test.csv").getPath)
 
     coefficientsDF.show()
     coefficientsDF.printSchema()
@@ -77,7 +77,7 @@ class EnsembleTreeExplainTransformerTest
   def writeToCsv(inputDF: DataFrame): Unit = {
 
     val features =
-      "sex_male,sex_female,age_0,age_1,age_2,age_3,age_4,age_5,age_6,age_7,age_8,age_9,age_10,age_11"
+      "gender_OHE_Male,gender_OHE_Female,gender_OHE___unknown,gender_OHE_Unknown,race_eth_OHE_White,race_eth_OHE_Black,race_eth_OHE_Asian,race_eth_OHE_Other,race_eth_OHE___unknown,race_eth_OHE_Unknown"
         .split(",")
 
     val rfContrib = (0 until features.length)

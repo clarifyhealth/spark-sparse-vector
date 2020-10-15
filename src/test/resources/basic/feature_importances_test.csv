@@ -1,0 +1,9 @@
+Feature_Index,Feature,Original_Feature,Coefficient,Feature_Pre_Encoding,model_id
+1,gender_OHE_Female,gender_OHE_Female,0.4995725128314538,gender,rf_tco-total_amt_train
+3,race_eth_OHE_White,race_eth_OHE_White,9.830968385575727E-4,race_eth,rf_tco-total_amt_train
+2,gender_OHE___unknown,gender_OHE___unknown,0.0,gender,rf_tco-total_amt_train
+5,race_eth_OHE_Asian,race_eth_OHE_Asian,0.0,race_eth,rf_tco-total_amt_train
+4,race_eth_OHE_Black,race_eth_OHE_Black,0.33744208553796134,race_eth,rf_tco-total_amt_train
+0,gender_OHE_Male,gender_OHE_Male,0.1615062864376914,gender,rf_tco-total_amt_train
+6,race_eth_OHE_Other,race_eth_OHE_Other,4.96018354335837E-4,race_eth,rf_tco-total_amt_train
+7,race_eth_OHE___unknown,race_eth_OHE___unknown,0.0,race_eth,rf_tco-total_amt_train
