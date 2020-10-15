@@ -1,0 +1,16 @@
+ccg_id,total_amt,patient_id,gender,race_eth,gender_OHE_Male,gender_OHE_Female,gender_OHE___unknown,gender_OHE_Unknown,race_eth_OHE_White,race_eth_OHE_Black,race_eth_OHE_Asian,race_eth_OHE_Other,race_eth_OHE___unknown,race_eth_OHE_Unknown,contrib_gender_OHE_Male,contrib_gender_OHE_Female,contrib_gender_OHE___unknown,contrib_gender_OHE_Unknown,contrib_race_eth_OHE_White,contrib_race_eth_OHE_Black,contrib_race_eth_OHE_Asian,contrib_race_eth_OHE_Other,contrib_race_eth_OHE___unknown,contrib_race_eth_OHE_Unknown,glm_contrib_intercept,glm_contribs_sum
+1,15.00,pat12,Male,Black,1,0,0,0,0,1,0,0,0,0,0,1,2,3,4,5,0,0,0,0,0.54,1.00
+2,14.00,pat5,Female,White,0,1,0,0,1,0,0,0,0,0,0,1,2,3,4,5,0,0,0,0,-0.54,1.00
+3,12.00,pat6,Male,Black,1,0,0,0,0,1,0,0,0,0,0,1,2,3,4,5,0,0,0,0,-9.4,1.50
+4,10.00,pat15,Female,White,0,1,0,0,1,0,0,0,0,0,0,1,2,3,4,5,0,0,0,0,-6.7,1.50
+5,12.45,pat4,Female,Asian,0,1,0,0,0,0,1,0,0,0,0,1,2,3,4,5,0,0,0,0,0.67,2.00
+6,12.99,pat10,Male,Black,1,0,0,0,0,1,0,0,0,0,0,1,2,3,4,5,0,0,0,0,0.56,2.00
+7,13.50,pat11,Male,White,1,0,0,0,1,0,0,0,0,0,0,1,2,3,4,5,0,0,0,0,0.56,2.30
+8,10.00,pat2,Male,Black,1,0,0,0,0,1,0,0,0,0,0,1,2,3,4,5,0,0,0,0,0.45,3.56
+9,11.00,pat3,Male,Other,1,0,0,0,0,0,0,1,0,0,0,1,2,3,4,5,0,0,0,0,5.67,3.45
+10,12.00,pat8,Female,Asian,0,1,0,0,0,0,1,0,0,0,0,1,2,3,4,5,0,0,0,0,6.65,4.56
+11,13.00,pat9,Male,White,1,0,0,0,1,0,0,0,0,0,0,1,2,3,4,5,0,0,0,0,7.76,6.78
+12,14.00,pat14,Female,Asian,0,1,0,0,0,0,1,0,0,0,0,1,2,3,4,5,0,0,0,0,8.00,5.67
+13,11.00,pat7,Female,Other,0,1,0,0,0,0,0,1,0,0,0,1,2,3,4,5,0,0,0,0,5.67,7.89
+14,100.00,pat13,Male,Other,1,0,0,0,0,0,0,1,0,0,0,1,2,3,4,5,0,0,0,0,4.56,5.67
+15,111.00,pat1,Male,White,1,0,0,0,1,0,0,0,0,0,0,1,2,3,4,5,0,0,0,0,5.55,5.55

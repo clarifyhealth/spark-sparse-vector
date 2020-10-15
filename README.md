@@ -21,3 +21,11 @@ sbt clean assembly
 ```
 to deploy jar to teradrome, run `copy_jar.sh`
 
+Note:
+
+1.Install IntelliJ IDE for easy setup and testing
+
+2.Go to VCS->Get from Version Control -> Paste https url for the repo 
+
+3.Build for the sbt runs automatically if step.no.2 is done.
+
