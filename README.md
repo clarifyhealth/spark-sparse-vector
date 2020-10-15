@@ -15,10 +15,6 @@ Install https://sdkman.io/
 
 sdk install sbt 1.2.8
 
-Install IntelliJ IDE for easy setup
-
-Go to VCS->Get from Version Control -> Paste https url for the project
-
 ## Build instructions
 ```sbt
 sbt clean assembly
@@ -26,7 +22,10 @@ sbt clean assembly
 to deploy jar to teradrome, run `copy_jar.sh`
 
 Note:
-Install IntelliJ IDE for easy testing and setup
 
-Go to VCS->Get from Version Control -> Paste https url.
+1.Install IntelliJ IDE for quickest installation and setup
+
+2.Go to VCS->Get from Version Control -> Paste https url for the repo 
+
+3.Build for the sbt runs automatically if step.no.2 is done.
 
