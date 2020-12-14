@@ -2,7 +2,7 @@ name := "spark-sparse-vector"
 organization := "clarifyhealth"
 version := "0.1"
 
-scalaVersion := "2.12"
+scalaVersion := "2.12.8"
 
 val sparkVersion = "3.0.1"
 
@@ -22,8 +22,8 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion % "test" classifier "tests",
   "org.apache.spark" %% "spark-catalyst" % sparkVersion %"test" classifier "tests",
   "org.apache.spark" %% "spark-mllib" % sparkVersion %"test" classifier "tests",
-  "org.scalatest" %% "scalatest_2.12" % "3.0.1" % "test",
-  "org.scalactic" %% "scalactic_2.12" % "3.0.1"
+  "org.scalatest" %% "scalatest" % "3.0.1" % Test,
+  "org.scalactic" %% "scalactic" % "3.0.1" % Test
 )
 
 test in assembly := {}
