@@ -25,5 +25,3 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.1" % Test,
   "org.scalactic" %% "scalactic" % "3.0.1" % Test
 )
-
-test in assembly := {}
