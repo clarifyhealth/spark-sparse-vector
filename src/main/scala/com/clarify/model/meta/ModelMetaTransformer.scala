@@ -613,8 +613,7 @@ class ModelMetaTransformer(override val uid: String)
           )
           .collect()(0)
         oneRow.getValuesMap[AnyVal](oneRow.schema.fieldNames)
-      } else {
-        classificationDefaults()
+      } else {classificationDefaults()
       }
     } else if (prediction.columns.contains("accuracy")) {
       val oneRow = prediction

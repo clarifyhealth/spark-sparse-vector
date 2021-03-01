@@ -74,19 +74,18 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     set(label, value)
 
   /**
-    * Param for modelPath.
+    * Param for model.
     */
-  final val modelPath: Param[String] =
-    new Param[String](
-      this,
-      "modelPath",
-      "fitted model path"
-    )
+  final val model:  Param[Model[_]]= new Param[Model[_]](
+    this,
+    "model",
+    "fitted model"
+  )
 
-  final def getModelPath: String = $(modelPath)
+  final def getModel: Model[_] = $(model)
 
-  final def setModelPath(value: String): EnsembleTreeExplainTransformer =
-    set(modelPath, value)
+  final def setModel(value: Model[_]): EnsembleTreeExplainTransformer =
+    set(model, value)
 
   /**
     * Param for control to drop paths column
@@ -155,7 +154,6 @@ class EnsembleTreeExplainTransformer(override val uid: String)
     predictionView -> "predictions",
     coefficientView -> "coefficient",
     label -> "test",
-    modelPath -> "modelPath",
     dropPathColumn -> true,
     isClassification -> false,
     ensembleType -> "rf",
@@ -271,18 +269,22 @@ class EnsembleTreeExplainTransformer(override val uid: String)
         predictionsDf,
         featureIndexCoefficient
       )
-    val model =
-      if (getIsClassification)
-        RandomForestClassificationModel.load(getModelPath)
-      else RandomForestRegressionModel.load(getModelPath)
 
     val contributionsDF = calculateContributions(
       predictionsWithPathsDf,
       featureIndexCoefficient,
       getBoosted,
-      model
+      $(model)
     )
-    val contrib_simple = model.predict(
+
+    // load the model and match for classification vs regression
+    val loaded_model=$(model)
+    val trained_model =
+      loaded_model match {
+        case model1: RandomForestClassificationModel => model1
+        case model2: RandomForestRegressionModel     => model2
+      }
+    val contrib_simple = trained_model.predict(
       Vectors.sparse(featureIndexCoefficient.size, Array(), Array())
     )
     val contrib_intercept =
@@ -298,8 +300,8 @@ class EnsembleTreeExplainTransformer(override val uid: String)
       )
     val finalColRenamedDF =
       if (getDropPathColumn)
-        finalDF.transform(appendLabelToColumnNames(getLabel)).drop("paths")
-      else finalDF.transform(appendLabelToColumnNames(getLabel))
+        contributionsDF.transform(appendLabelToColumnNames(getLabel)).drop("paths")
+      else contributionsDF.transform(appendLabelToColumnNames(getLabel))
 
     finalColRenamedDF.createOrReplaceTempView(getPredictionView)
 

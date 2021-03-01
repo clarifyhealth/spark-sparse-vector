@@ -45,11 +45,13 @@ class EnsembleTreeExplainTransformerTest
 
     val rf_model_path = getClass.getResource("/test_rf_model").getPath
 
+    val fitted_model= RandomForestRegressionModel.load(rf_model_path)
+
     val explainTransformer = new EnsembleTreeExplainTransformer()
     explainTransformer.setCoefficientView("my_coefficients")
     explainTransformer.setPredictionView("my_predictions")
     explainTransformer.setLabel("label")
-    explainTransformer.setModelPath(rf_model_path)
+    explainTransformer.setModel(fitted_model)
     explainTransformer.setDropPathColumn(false)
 
     val df = spark.emptyDataFrame
@@ -67,8 +69,8 @@ class EnsembleTreeExplainTransformerTest
 
     outDF.show()
 
-    val model = RandomForestRegressionModel.load(rf_model_path)
-    print(model.featureImportances)
+    val test_model = RandomForestRegressionModel.load(rf_model_path)
+    print(test_model.featureImportances)
 
     writeToCsv(resultDF)
 
@@ -96,6 +98,8 @@ class EnsembleTreeExplainTransformerTest
     )
 
     val outDF = inputDF.selectExpr(contributions: _*)
+
+    inputDF.select("prediction_label_contrib","ccg_id","contrib_vector").show(false)
 
     outDF
       .coalesce(1)
