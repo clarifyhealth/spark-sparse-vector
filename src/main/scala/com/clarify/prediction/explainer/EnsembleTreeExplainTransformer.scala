@@ -264,6 +264,14 @@ class EnsembleTreeExplainTransformer(override val uid: String)
 
     val predictionsDf = dataset.sqlContext.table($(predictionView))
 
+    // load the model and match for classification vs regression
+    val loaded_model=$(model)
+    val trained_model =
+      loaded_model match {
+        case model1: RandomForestClassificationModel => model1
+        case model2: RandomForestRegressionModel     => model2
+      }
+
     val predictionsWithPathsDf =
       pathGenerator(
         predictionsDf,
@@ -277,13 +285,6 @@ class EnsembleTreeExplainTransformer(override val uid: String)
       $(model)
     )
 
-    // load the model and match for classification vs regression
-    val loaded_model=$(model)
-    val trained_model =
-      loaded_model match {
-        case model1: RandomForestClassificationModel => model1
-        case model2: RandomForestRegressionModel     => model2
-      }
     val contrib_simple = trained_model.predict(
       Vectors.sparse(featureIndexCoefficient.size, Array(), Array())
     )
@@ -300,8 +301,8 @@ class EnsembleTreeExplainTransformer(override val uid: String)
       )
     val finalColRenamedDF =
       if (getDropPathColumn)
-        contributionsDF.transform(appendLabelToColumnNames(getLabel)).drop("paths")
-      else contributionsDF.transform(appendLabelToColumnNames(getLabel))
+        finalDF.transform(appendLabelToColumnNames(getLabel)).drop("paths")
+      else finalDF.transform(appendLabelToColumnNames(getLabel))
 
     finalColRenamedDF.createOrReplaceTempView(getPredictionView)
 
