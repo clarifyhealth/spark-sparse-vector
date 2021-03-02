@@ -2,9 +2,9 @@ name := "spark-sparse-vector"
 organization := "clarifyhealth"
 version := "0.1"
 
-scalaVersion := "2.12.12"
+scalaVersion := "2.12.8"
 
-val sparkVersion = "2.4.3"
+val sparkVersion = "3.0.1"
 
 scalacOptions := Seq("-unchecked", "-deprecation")
 
@@ -22,9 +22,8 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion % "test" classifier "tests",
   "org.apache.spark" %% "spark-catalyst" % sparkVersion %"test" classifier "tests",
   "org.apache.spark" %% "spark-mllib" % sparkVersion %"test" classifier "tests",
-  "org.scalatest" %% "scalatest" % "3.0.8" % Test,
-  "org.scalactic" %% "scalactic" % "3.0.8" % Test
+  "org.scalatest" %% "scalatest" % "3.0.1" % Test,
+  "org.scalactic" %% "scalactic" % "3.0.1" % Test
 )
-
 
 test in assembly := {}

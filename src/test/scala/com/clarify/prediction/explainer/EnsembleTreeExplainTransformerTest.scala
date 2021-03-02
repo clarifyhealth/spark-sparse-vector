@@ -43,7 +43,7 @@ class EnsembleTreeExplainTransformerTest
 
     val (predictionDF, coefficientsDF) = initialize()
 
-    val rf_model_path = getClass.getResource("/test_rf_model").getPath
+    val rf_model_path = getClass.getResource("/test_rf_model_spark_3").getPath
 
     val fitted_model= RandomForestRegressionModel.load(rf_model_path)
 
