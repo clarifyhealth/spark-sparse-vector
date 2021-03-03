@@ -77,8 +77,4 @@ workflows:
             - build
           filters:
             branches:
-<<<<<<< HEAD
               only: master
-=======
-              only: master
->>>>>>> d8c1d34ead100fd7d1d8adee34c19cb699fe8fb8
