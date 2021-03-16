@@ -24,7 +24,6 @@ object StatsCalculator {
       record_count.toLong,
       sample_record_count,
       columns_to_include,
-      columns_to_histogram,
       result_view
     )
   }
