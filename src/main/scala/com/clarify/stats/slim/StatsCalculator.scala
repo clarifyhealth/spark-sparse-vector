@@ -1,4 +1,4 @@
-package com.clarify.stats.min
+package com.clarify.stats.slim
 
 import java.util
 
