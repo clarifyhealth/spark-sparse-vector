@@ -16,7 +16,6 @@ object StatsCalculator {
       record_count: Int,
       sample_record_count: Int,
       columns_to_include: util.ArrayList[String],
-      columns_to_histogram: util.ArrayList[String],
       result_view: String
   ): Boolean = {
     create_statistics(
@@ -36,7 +35,6 @@ object StatsCalculator {
       record_count: Long,
       sample_record_count: Int,
       columns_to_include: util.ArrayList[String],
-      columns_to_histogram: util.ArrayList[String],
       result_view: String
   ): Boolean = {
 
@@ -47,7 +45,6 @@ object StatsCalculator {
       record_count,
       sample_record_count,
       Helpers.getSeqString(columns_to_include),
-      Helpers.getSeqString(columns_to_histogram),
       view
     )
     result_df.createOrReplaceTempView(result_view)
@@ -59,7 +56,6 @@ object StatsCalculator {
       record_count: Long,
       sample_record_count: Int,
       columns_to_include: Seq[String],
-      columns_to_histogram: Seq[String],
       view: String
   ): DataFrame = {
 
