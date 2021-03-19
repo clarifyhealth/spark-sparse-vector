@@ -8,16 +8,16 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
-object StatsCalculator {
+object StatsCalculatorSlim {
 
   def create_statistics(
-      sql_ctx: SQLContext,
-      view: String,
-      record_count: Int,
-      sample_record_count: Int,
-      columns_to_include: util.ArrayList[String],
-      result_view: String
-  ): Boolean = {
+                         sql_ctx: SQLContext,
+                         view: String,
+                         record_count: Int,
+                         sample_record_count: Int,
+                         columns_to_include: util.ArrayList[String],
+                         result_view: String
+                       ): Boolean = {
     create_statistics(
       sql_ctx,
       view,
@@ -29,13 +29,13 @@ object StatsCalculator {
   }
 
   def create_statistics(
-      sql_ctx: SQLContext,
-      view: String,
-      record_count: Long,
-      sample_record_count: Int,
-      columns_to_include: util.ArrayList[String],
-      result_view: String
-  ): Boolean = {
+                         sql_ctx: SQLContext,
+                         view: String,
+                         record_count: Long,
+                         sample_record_count: Int,
+                         columns_to_include: util.ArrayList[String],
+                         result_view: String
+                       ): Boolean = {
 
     sql_ctx.sparkContext.setJobDescription(f"statistics for $view")
     val loaded_df: DataFrame = sql_ctx.table(view)
@@ -51,12 +51,12 @@ object StatsCalculator {
   }
 
   def _create_statistics(
-      loaded_df: DataFrame,
-      record_count: Long,
-      sample_record_count: Int,
-      columns_to_include: Seq[String],
-      view: String
-  ): DataFrame = {
+                          loaded_df: DataFrame,
+                          record_count: Long,
+                          sample_record_count: Int,
+                          columns_to_include: Seq[String],
+                          view: String
+                        ): DataFrame = {
 
     val invalid_column_types = Seq(ArrayType, MapType, StructType)
 
@@ -68,12 +68,15 @@ object StatsCalculator {
         .filter(x => !invalid_column_types.contains(x.dataType))
         .map(x => (x.name, x.dataType))
 
+
+    var my_result_data_frames: Seq[DataFrame] = Seq()
+
     Helpers.log(f"Calculating statistics for $view")
 
     val isNumeric: DataType => Boolean = (temp: DataType) => {
       val out = temp match {
         case _: ShortType | _: IntegerType | _: LongType | _: FloatType |
-            _: DoubleType | _: DecimalType =>
+             _: DoubleType | _: DecimalType =>
           true
         case _ => false
       }
@@ -95,6 +98,7 @@ object StatsCalculator {
           lit(column_name).alias("column_name"),
           lit(data_type_name).alias("data_type"),
           lit(record_count).cast(LongType).alias("total_count"),
+          lit(sample_record_count).cast(IntegerType).alias("sample_count"),
           round(
             min(col(column_name))
               .cast(DoubleType),
@@ -118,11 +122,14 @@ object StatsCalculator {
           lit(column_name).alias("column_name"),
           lit(data_type_name).alias("data_type"),
           lit(record_count).cast(LongType).alias("total_count"),
+          lit(sample_record_count).cast(IntegerType).alias("sample_count"),
           lit(null).cast(DoubleType).alias("sample_min"),
           lit(null).cast(DoubleType).alias("sample_max"),
           lit(null).cast(DoubleType).alias("sample_mean")
         )
       }
+      my_result_data_frames = my_result_data_frames :+ my_result
+    }
 
     // execute in parallel
     val my_result_list: Seq[Row] =
@@ -133,6 +140,7 @@ object StatsCalculator {
         StructField("column_name", StringType, nullable = false),
         StructField("data_type", StringType, nullable = false),
         StructField("total_count", LongType, nullable = false),
+        StructField("sample_count", IntegerType, nullable = false),
         StructField("sample_min", DoubleType),
         StructField("sample_max", DoubleType),
         StructField("sample_mean", DoubleType)
@@ -146,7 +154,5 @@ object StatsCalculator {
     Helpers.log(f"Finished calculating statistics for $view")
 
     result_statistics_df
-  }
-    result_data_frame
   }
 }
