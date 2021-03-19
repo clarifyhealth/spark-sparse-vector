@@ -1,11 +1,11 @@
-package com.clarify.stats.slim
+package com.clarify.stats.v1
 
 import com.clarify.TestHelpers
 import com.clarify.sparse_vectors.SparkSessionTestWrapper
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, QueryTest, Row}
 
-class StatsCalculatorTest extends QueryTest with SparkSessionTestWrapper {
+class StatsCalculatorSlimTest extends QueryTest with SparkSessionTestWrapper {
 
   test("calculate statistics") {
     spark.sharedState.cacheManager.clearCache()

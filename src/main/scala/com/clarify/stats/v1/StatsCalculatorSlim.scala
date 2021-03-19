@@ -1,12 +1,11 @@
-package com.clarify.stats.slim
-
-import java.util
+package com.clarify.stats.v1
 
 import com.clarify.Helpers
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+
+import java.util
 
 object StatsCalculatorSlim {
 
