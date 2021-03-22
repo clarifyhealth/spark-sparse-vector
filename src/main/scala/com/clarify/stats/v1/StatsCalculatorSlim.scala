@@ -94,7 +94,7 @@ object StatsCalculatorSlim {
         // Helpers.log(f"Processing numerical column ${normal_column._1} $normal_column")
         //noinspection SpellCheckingInspection
         my_result = loaded_df.select(
-          lit(view).alias("ccg_view_name"),
+          lit(view).alias("view_name"),
           lit(column_name).alias("column_name"),
           lit(data_type_name).alias("data_type"),
           lit(record_count).cast(LongType).alias("total_count"),
@@ -119,7 +119,7 @@ object StatsCalculatorSlim {
         // Helpers.log(f"Processing non-numerical column ${normal_column._1} $normal_column")
         //noinspection SpellCheckingInspection
         my_result = loaded_df.select(
-          lit(view).alias("ccg_view_name"),
+          lit(view).alias("view_name"),
           lit(column_name).alias("column_name"),
           lit(data_type_name).alias("data_type"),
           lit(record_count).cast(LongType).alias("total_count"),
@@ -138,7 +138,7 @@ object StatsCalculatorSlim {
     // val result_statistics_df: DataFrame = my_result_data_frames.reduce((a, b) => a.union(b))
     val statistics_schema = StructType(
       Array(
-        StructField("ccg_view_name", StringType, nullable = false),
+        StructField("view_name", StringType, nullable = false),
         StructField("column_name", StringType, nullable = false),
         StructField("data_type", StringType, nullable = false),
         StructField("total_count", LongType, nullable = false),
