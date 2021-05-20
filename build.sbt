@@ -22,6 +22,6 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion % "test" classifier "tests",
   "org.apache.spark" %% "spark-catalyst" % sparkVersion %"test" classifier "tests",
   "org.apache.spark" %% "spark-mllib" % sparkVersion %"test" classifier "tests",
-  "org.scalatest" %% "scalatest" % "3.0.2" % Test,
-  "org.scalactic" %% "scalactic" % "3.0.2" % Test
+  "org.scalatest" %% "scalatest" % "3.1.0" % Test,
+  "org.scalactic" %% "scalactic" % "3.1.0" % Test
 )
