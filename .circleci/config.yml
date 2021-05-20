@@ -52,7 +52,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - target/spark-sparse-vector-assembly-0.1.jar
+            - target/spark-sparse-vector-assembly-0.2.jar
 
   deploy:
     <<: *default_config
@@ -61,7 +61,7 @@ jobs:
     steps:
       - *attach_workspace
       - aws-s3/copy:
-          from: /tmp/workspace/target/spark-sparse-vector-assembly-0.1.jar
+          from: /tmp/workspace/target/spark-sparse-vector-assembly-0.2.jar
           to: ${AWS_JAR_BUCKET}
 
 workflows:

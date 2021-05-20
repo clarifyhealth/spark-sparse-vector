@@ -1,6 +1,6 @@
 name := "spark-sparse-vector"
 organization := "clarifyhealth"
-version := "0.1"
+version := "0.2"
 
 scalaVersion := "2.12.8"
 
@@ -25,5 +25,3 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.2" % Test,
   "org.scalactic" %% "scalactic" % "3.0.2" % Test
 )
-
-test in assembly := {}
